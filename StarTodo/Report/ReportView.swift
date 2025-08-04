@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CoreData
 
 struct ReportView: View {
     @ObservedObject var viewModel: ReportViewModel

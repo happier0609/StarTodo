@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CoreData
 
 struct TimerItemRowView: View {
     let item: TodoEntity
