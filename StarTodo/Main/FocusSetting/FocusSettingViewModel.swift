@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import CoreData
 
 /// 집중모드 설정 화면에서 선택된 할 일과 확장 상태를 관리하는 뷰모델
 class FocusSettingViewModel: ObservableObject {
