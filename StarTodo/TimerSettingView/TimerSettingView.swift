@@ -96,7 +96,7 @@ struct TimerSettingView: View {
                 
                 let todoIDPairs = todosWithTime
 
-                FocusModeView(todoIDPairs: todoIDPairs)
+//                FocusModeView(todoIDPairs: todoIDPairs)
                 
                 // ✅ 화면 전환 트리거
                 navigateToFocus = true
