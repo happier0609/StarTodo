@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import CoreData
 
 struct FocusModeView: View {
     let todoIDPairs: [(UUID, Int)]
@@ -70,4 +71,13 @@ struct FocusModeView: View {
             )
         }
     }
+}
+
+#Preview {
+    let context = PreviewCoreDataManager.shared.context
+    let todos = makePreviewTodos(context: context)
+    let todoIDPairs = todos.map { ($0.id ?? UUID(), Int($0.setTime)) }
+
+    return FocusModeView(todoIDPairs: todoIDPairs)
+        .environment(\.managedObjectContext, context)
 }
