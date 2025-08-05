@@ -38,19 +38,31 @@ class FocusModeViewModel: ObservableObject {
     private var lastTick: Date = Date()
     
     // MARK: - 초기화
+    // 일반 실행용 초기화자
     init(todoIDPairs: [(UUID, Int)]) {
         self.todoStates = todoIDPairs.compactMap { id, time in
             if let todo = CoreDataManager.shared.fetchTodo(by: id) {
                 return FocusTodoState(todo: todo, setTime: time, elapsed: 0, isCompleted: false)
             }
             return nil
-            
-            // 프리뷰 환경에서는 타이머 실행 안 함
-            if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
-                startTimer()
-            }
         }
-        startTimer()
+
+        // 프리뷰 환경이 아닐 때만 타이머 시작
+        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
+            startTimer()
+        }
+    }
+
+    // 프리뷰 전용 초기화자
+    init(previewTodos: [TodoEntity]) {
+        self.todoStates = previewTodos.map {
+            FocusTodoState(
+                todo: $0,
+                setTime: Int($0.setTime),
+                elapsed: 0,
+                isCompleted: false
+            )
+        }
     }
     
     // 현재 할일 가져오기
