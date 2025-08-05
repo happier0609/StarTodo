@@ -112,12 +112,12 @@ struct TimerSettingView: View {
             .padding(.horizontal)
 
             // ✅ 버튼 아래에 NavigationLink 추가
-            NavigationLink(
-                destination: FocusModeView(todoIDPairs: todoIDPairsToPass),
-                isActive: $navigateToFocus,
-                label: { EmptyView() }
-            )
-            .hidden() // 화면엔 안 보이게 숨김
+//            NavigationLink(
+//                destination: FocusModeView(todoIDPairs: todoIDPairsToPass),
+//                isActive: $navigateToFocus,
+//                label: { EmptyView() }
+//            )
+//            .hidden() // 화면엔 안 보이게 숨김
         }
         .padding(.top)
         .navigationBarTitleDisplayMode(.inline)
