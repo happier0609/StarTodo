@@ -75,10 +75,12 @@ extension FocusModeViewModel {
 struct FocusModeView_Previews: PreviewProvider {
     static var previews: some View {
         let context = PreviewCoreDataManager.shared.context
-        let viewModel = FocusModeViewModel.previewInstance(context: context)
         
-        return FocusModeView(viewModel: viewModel)
+        let todos = makePreviewTodos(context: context)
+        let todoIDPairs = todos.map { ($0.id ?? UUID(), Int($0.setTime)) }
+        
+        return FocusModeView(todoIDPairs: todoIDPairs)
             .environment(\.managedObjectContext, context)
-            .previewDevice("iPad Pro (11-inch)")
+            .previewDevice("iPhone 16 Pro")
     }
 }

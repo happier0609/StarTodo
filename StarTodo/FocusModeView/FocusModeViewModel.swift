@@ -44,12 +44,13 @@ class FocusModeViewModel: ObservableObject {
                 return FocusTodoState(todo: todo, setTime: time, elapsed: 0, isCompleted: false)
             }
             return nil
+            
+            // 프리뷰 환경에서는 타이머 실행 안 함
+            if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
+                startTimer()
+            }
         }
         startTimer()
-    }
-    
-    init(viewModel: FocusModeViewModel) {
-        _viewModel = StateObject(wrappedValue: viewModel)
     }
     
     // 현재 할일 가져오기
