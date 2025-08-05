@@ -27,19 +27,6 @@ struct FocusTimerView: View {
                     setTime: current.setTime,
                     elapsedTime: current.elapsed
                 )
-
-                // 잠깐 쉬기 버튼
-                Button(action: {
-                    viewModel.showBreakSheet = true
-                }) {
-                    Label("잠깐 쉬기", systemImage: "rocket")
-                }
-                .disabled(viewModel.isBreakActive)
-
-                // 예상 종료 시간
-                Text("예상 종료 시간 \(viewModel.expectedEndTimeString)")
-                    .font(.footnote)
-                    .foregroundColor(.blue)
             } else {
                 Text("진행할 할 일이 없습니다.")
             }
