@@ -27,7 +27,18 @@ struct FocusModeHeaderView: View {
             Text("\(elapsedMinutes)분 째 탐사 중...")
         }
         .foregroundColor(Color("Info400"))
-        .typo(.textSMEmphasized)
+        .typo(.textMDEmphasized)
         .padding(.top, 4)
     }
+}
+
+#Preview {
+    VStack {
+        FocusModeHeaderView(elapsedMinutes: 12, onExit: {
+            print("종료하기 버튼 눌림")
+        })
+        Spacer()
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Color("BgDark"))
 }
