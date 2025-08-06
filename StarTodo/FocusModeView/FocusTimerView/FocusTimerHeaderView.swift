@@ -15,18 +15,17 @@ struct FocusTimerHeaderView: View {
     
     var body: some View {
         VStack(spacing: 8) {
-            HStack(spacing: 8) {
+            HStack(spacing: 10) {
                 GlowingCheckButton(
                     isCompleted: isCompleted,
                     onTap: onComplete
                 )
                 
-                Text("진행 중 \(title)")
+                Text("\(title)")
                     .typo(.titleLGEmphasized)
                     .foregroundColor(Color("BgLight"))
-                
-                Spacer()
             }
+            
             HStack(spacing: 0){
                 Text("남은 시간 ")
                     .typo(.textSMRegular)
@@ -39,4 +38,13 @@ struct FocusTimerHeaderView: View {
         }
         .padding(.horizontal)
     }
+}
+
+#Preview {
+    FocusModeView(
+        dummyTodos: [
+            DummyTodo(id: UUID(), title: "영어 단어 외우기", setTime: 25, elapsed: 0, isCompleted: false),
+            DummyTodo(id: UUID(), title: "수학 문제 풀기", setTime: 15, elapsed: 0, isCompleted: false),
+        ]
+    )
 }
