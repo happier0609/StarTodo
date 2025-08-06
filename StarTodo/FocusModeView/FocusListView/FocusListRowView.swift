@@ -28,7 +28,6 @@ struct FocusListRowView: View {
         }
         .padding()
         .background(isCurrent ? Color("Cool600") : Color.clear)
-//        .cornerRadius(10)
     }
 }
 
