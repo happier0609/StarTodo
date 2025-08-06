@@ -13,20 +13,6 @@ struct CircularTimerView: View {
     
     var body: some View {
         ZStack {
-            // MARK: 원 여러개
-            //            // 🔵 여러 원 고리
-            //            ForEach(0..<numberOfRings, id: \.self) { index in
-            //                Circle()
-            //                    .stroke(Color.gray.opacity(0.3), lineWidth: 6)
-            //                    .frame(width: baseSize + CGFloat(index * 24), height: baseSize + CGFloat(index * 24))
-            //            }
-            //
-            //            // ⚪️ 현재 진행률 표시
-            //            Circle()
-            //                .trim(from: 0, to: progressRatio)
-            //                .stroke(Color.white, style: StrokeStyle(lineWidth: 6, lineCap: .round))
-            //                .frame(width: baseSize + CGFloat((numberOfRings - 1) * 24), height: baseSize + CGFloat((numberOfRings - 1) * 24))
-            //                .rotationEffect(.degrees(-90))
             
             // 🔵 회색 배경 원 (1개만!)
             Circle()
@@ -71,11 +57,6 @@ struct CircularTimerView: View {
         250
     }
     
-    // MARK: 원 여러개
-    //    private var numberOfRings: Int {
-    //        max(1, min(3, (setTime + 59) / 60)) // 60분 기준 1개, 180분 이상은 최대 3개
-    //    }
-    
     private var totalDurationSeconds: Int {
         setTime * 60
     }
@@ -90,12 +71,6 @@ struct CircularTimerView: View {
     VStack(spacing: 40) {
         Text("🔵 1시간 중 25분 경과")
         CircularTimerView(setTime: 60, elapsedTime: 25 * 60)
-        
-        //        Text("🔵 2시간 중 90분 경과")
-        //        CircularTimerView(setTime: 120, elapsedTime: 90 * 60)
-        //
-        //        Text("🔵 3시간 중 170분 경과")
-        //        CircularTimerView(setTime: 180, elapsedTime: 170 * 60)
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(Color.black)
