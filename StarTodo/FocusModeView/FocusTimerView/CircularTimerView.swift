@@ -72,15 +72,16 @@ struct CircularTimerView: View {
         setTime * 60
     }
 
-    // ✅ 경과 비율 (0 ~ 1)
-    private var progressRatio: CGFloat {
-        guard totalDurationSeconds > 0 else { return 0 }
-        return min(CGFloat(elapsedTime) / CGFloat(totalDurationSeconds), 1.0)
+    // 🟡 회색 배경 원 (사용자 설정 기준)
+    private var backgroundTrimRatio: CGFloat {
+        min(CGFloat(setTime) / 60.0, 1.0) // 예: 40분이면 0.66
     }
 
-    // ✅ 회색 배경 원의 trim 비율
-    private var backgroundTrimRatio: CGFloat {
-        min(CGFloat(setTime) / 60.0, 1.0)
+    // ⚪️ 흰색 진행 바 (항상 60분 기준으로 회전)
+    private var progressRatio: CGFloat {
+        let oneRotationSeconds: CGFloat = 60 * 60 // 60분 = 3600초
+        let loopRatio = CGFloat(elapsedTime) / oneRotationSeconds
+        return loopRatio.truncatingRemainder(dividingBy: 1.0)
     }
 }
 
