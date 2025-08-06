@@ -25,10 +25,9 @@ struct FocusListView: View {
                         )
                     }
                 }
-                .padding()
                 .background(
                     RoundedRectangle(cornerRadius: 10)
-                        .fill(Color("Cool000"))
+                        .fill(Color("Cool1000"))
                 )
                 .padding(.horizontal)
             }
