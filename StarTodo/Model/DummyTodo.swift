@@ -5,12 +5,18 @@
 //  Created by 조민경 on 8/5/25.
 //
 
-import SwiftUI
+import Foundation
 
-struct DummyTodo: Identifiable {
+struct DummyTodo: Identifiable, Equatable {
     let id: UUID
     let title: String
-    var setTime: Int
-    var elapsed: Int
+    let setTime: Int        // 단위: 분
+    var elapsed: Int        // 단위: 초
     var isCompleted: Bool
+
+    func markedAsCompleted() -> DummyTodo {
+        var copy = self
+        copy.isCompleted = true
+        return copy
+    }
 }

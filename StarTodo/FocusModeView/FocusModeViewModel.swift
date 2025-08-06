@@ -56,6 +56,17 @@ class FocusModeViewModel: ObservableObject {
         let seconds = todos.reduce(0) { $0 + $1.elapsed }
         return seconds / 60
     }
+    
+    var sortedTodosForListView: [DummyTodo] {
+        let completed = todos.enumerated()
+            .filter { $0.element.isCompleted }
+            .sorted { $0.offset < $1.offset } // 완료된 순서 유지
+
+        let remaining = todos.enumerated()
+            .filter { !$0.element.isCompleted }
+
+        return (completed + remaining).map { $0.element }
+    }
 
     func startTimer() {
         stopTimer()
@@ -98,11 +109,40 @@ class FocusModeViewModel: ObservableObject {
             }
         }
     }
+    
+    func markTodoAsCompleted(id: UUID) {
+        guard let index = todos.firstIndex(where: { $0.id == id }) else { return }
+        todos[index].isCompleted = true
+
+        // 만약 현재 항목이라면 자동 진행도 처리
+        if index == currentIndex {
+            moveToNextTodo()
+        }
+    }
+    
+    func moveToNextTodo() {
+        if let nextIndex = todos.firstIndex(where: { !$0.isCompleted }) {
+            currentIndex = nextIndex
+            startTimer()
+        } else {
+            endFocusSession()
+        }
+    }
 
     func endFocusSession() {
         stopTimer()
         reportData = todos
         shouldNavigateToReport = true
+    }
+    
+    func selectTodo(at index: Int) {
+        guard index != currentIndex,
+              todos.indices.contains(index),
+              !todos[index].isCompleted else { return }
+
+        stopTimer()
+        currentIndex = index
+        startTimer()
     }
 
     private func formatTime(seconds: Int) -> String {

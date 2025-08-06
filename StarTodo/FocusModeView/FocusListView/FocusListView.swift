@@ -14,15 +14,18 @@ struct FocusListView: View {
         VStack(alignment: .leading, spacing: 20) {
             ScrollView {
                 VStack(spacing: 8) {
-                    ForEach(Array(viewModel.todos.enumerated()), id: \.offset) { index, todo in
+                    ForEach(Array(viewModel.sortedTodosForListView.enumerated()), id: \.offset) { index, todo in
                         FocusListRowView(
                             title: todo.title,
                             isCompleted: todo.isCompleted,
-                            isCurrent: index == viewModel.currentIndex,
+                            isCurrent: todo.id == viewModel.currentTodo?.id,
                             onComplete: {
-                                viewModel.markCurrentTodoAsCompleted()
+                                viewModel.markTodoAsCompleted(id: todo.id)
                             }
                         )
+                        .onTapGesture {
+                            viewModel.selectTodo(at: index)
+                        }
                     }
                 }
                 .background(
@@ -41,7 +44,10 @@ struct FocusListView: View {
     let dummyTodos = [
         DummyTodo(id: UUID(), title: "수학 문제 풀기", setTime: 25, elapsed: 0, isCompleted: false),
         DummyTodo(id: UUID(), title: "영어 단어 외우기", setTime: 20, elapsed: 0, isCompleted: false),
-        DummyTodo(id: UUID(), title: "과학 정리하기", setTime: 15, elapsed: 0, isCompleted: true)
+        DummyTodo(id: UUID(), title: "울라랄라라라ㅏ", setTime: 15, elapsed: 0, isCompleted: false),
+        DummyTodo(id: UUID(), title: "우아아ㅏ아아ㅏㅇ", setTime: 15, elapsed: 0, isCompleted: false),
+        DummyTodo(id: UUID(), title: "뿌아앙ㅇㅇㅇ", setTime: 15, elapsed: 0, isCompleted: false),
+        DummyTodo(id: UUID(), title: "ㄱㄱㄱㄱㄱㄱㄱㄱ", setTime: 15, elapsed: 0, isCompleted: false)
     ]
     let viewModel = FocusModeViewModel(dummyTodos: dummyTodos)
 
