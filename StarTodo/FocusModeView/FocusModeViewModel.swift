@@ -56,6 +56,17 @@ class FocusModeViewModel: ObservableObject {
         let seconds = todos.reduce(0) { $0 + $1.elapsed }
         return seconds / 60
     }
+    
+    var sortedTodosForListView: [DummyTodo] {
+        let completed = todos.enumerated()
+            .filter { $0.element.isCompleted }
+            .sorted { $0.offset < $1.offset } // 완료된 순서 유지
+
+        let remaining = todos.enumerated()
+            .filter { !$0.element.isCompleted }
+
+        return (completed + remaining).map { $0.element }
+    }
 
     func startTimer() {
         stopTimer()
