@@ -9,11 +9,7 @@ import SwiftUI
 
 struct FocusModeView: View {
     @StateObject private var viewModel: FocusModeViewModel
-    @State private var selectedTab: Tab = .timer
-    
-    enum Tab {
-        case timer, list
-    }
+    @State private var selectedTab: FocusTab = .timer
     
     // ✅ 커스텀 생성자 (CoreData 제거)
     init(dummyTodos: [DummyTodo]) {
@@ -47,14 +43,9 @@ struct FocusModeView: View {
                     EmptyView()
                 }
                 .hidden()
-                .padding()
                 
                 // 세그먼티드 컨트롤
-                Picker("", selection: $selectedTab) {
-                    Text("타이머").tag(Tab.timer)
-                    Text("목록").tag(Tab.list)
-                }
-                .pickerStyle(.segmented)
+                CustomSegmentedControl(selectedTab: $selectedTab)
                 .padding()
                 
                 // 화면 전환
