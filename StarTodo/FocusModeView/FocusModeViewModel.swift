@@ -104,6 +104,16 @@ class FocusModeViewModel: ObservableObject {
         reportData = todos
         shouldNavigateToReport = true
     }
+    
+    func selectTodo(at index: Int) {
+        guard index != currentIndex,
+              todos.indices.contains(index),
+              !todos[index].isCompleted else { return }
+
+        stopTimer()
+        currentIndex = index
+        startTimer()
+    }
 
     private func formatTime(seconds: Int) -> String {
         String(format: "%02d:%02d", seconds / 60, seconds % 60)
