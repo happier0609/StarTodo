@@ -14,7 +14,7 @@ struct FocusListRowView: View {
     let onComplete: () -> Void
 
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
             GlowingCheckButton(
                 isCompleted: isCompleted,
                 onTap: onComplete
