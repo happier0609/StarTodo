@@ -23,6 +23,9 @@ struct FocusListView: View {
                                 viewModel.markCurrentTodoAsCompleted()
                             }
                         )
+                        .onTapGesture {
+                            viewModel.selectTodo(at: index)
+                        }
                     }
                 }
                 .background(
