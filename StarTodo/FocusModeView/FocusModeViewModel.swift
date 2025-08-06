@@ -109,6 +109,25 @@ class FocusModeViewModel: ObservableObject {
             }
         }
     }
+    
+    func markTodoAsCompleted(id: UUID) {
+        guard let index = todos.firstIndex(where: { $0.id == id }) else { return }
+        todos[index].isCompleted = true
+
+        // 만약 현재 항목이라면 자동 진행도 처리
+        if index == currentIndex {
+            moveToNextTodo()
+        }
+    }
+    
+    func moveToNextTodo() {
+        if let nextIndex = todos.firstIndex(where: { !$0.isCompleted }) {
+            currentIndex = nextIndex
+            startTimer()
+        } else {
+            endFocusSession()
+        }
+    }
 
     func endFocusSession() {
         stopTimer()

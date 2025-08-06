@@ -20,7 +20,7 @@ struct FocusListView: View {
                             isCompleted: todo.isCompleted,
                             isCurrent: todo.id == viewModel.currentTodo?.id,
                             onComplete: {
-                                viewModel.markCurrentTodoAsCompleted()
+                                viewModel.markTodoAsCompleted(id: todo.id)
                             }
                         )
                         .onTapGesture {
