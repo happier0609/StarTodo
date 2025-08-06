@@ -27,20 +27,20 @@ struct CircularTimerView: View {
                 .rotationEffect(.degrees(-90))
             
             // ✨ 끝 지점에 원형 점 표시 + Glow
-                        GeometryReader { geometry in
-                            let radius = baseSize / 2
-                            let angle = Angle(degrees: 360 * Double(progressRatio) - 90)
-                            let center = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
-
-                            let x = center.x + radius * cos(CGFloat(angle.radians))
-                            let y = center.y + radius * sin(CGFloat(angle.radians))
-
-                            Circle()
-                                .fill(Color.white)
-                                .frame(width: 14, height: 14)
-                                .position(x: x, y: y)
-                                .shadow(color: Color.white.opacity(0.8), radius: 6, x: 0, y: 0) // Glow 효과
-                        }
+            GeometryReader { geometry in
+                let radius = baseSize / 2
+                let angle = Angle(degrees: 360 * Double(progressRatio) - 90)
+                let center = CGPoint(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                
+                let x = center.x + radius * cos(CGFloat(angle.radians))
+                let y = center.y + radius * sin(CGFloat(angle.radians))
+                
+                Circle()
+                    .fill(Color.white)
+                    .frame(width: 14, height: 14)
+                    .position(x: x, y: y)
+                    .shadow(color: Color.white.opacity(0.8), radius: 6, x: 0, y: 0) // Glow 효과
+            }
             
             // 🐻 캐릭터 이미지
             Image("Kapi")
