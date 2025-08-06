@@ -40,18 +40,16 @@ struct FocusListView: View {
     }
 }
 
-#Preview {
-    let dummyTodos = [
-        DummyTodo(id: UUID(), title: "수학 문제 풀기", setTime: 25, elapsed: 0, isCompleted: false),
-        DummyTodo(id: UUID(), title: "영어 단어 외우기", setTime: 20, elapsed: 0, isCompleted: false),
-        DummyTodo(id: UUID(), title: "울라랄라라라ㅏ", setTime: 15, elapsed: 0, isCompleted: false),
-        DummyTodo(id: UUID(), title: "우아아ㅏ아아ㅏㅇ", setTime: 15, elapsed: 0, isCompleted: false),
-        DummyTodo(id: UUID(), title: "뿌아앙ㅇㅇㅇ", setTime: 15, elapsed: 0, isCompleted: false),
-        DummyTodo(id: UUID(), title: "ㄱㄱㄱㄱㄱㄱㄱㄱ", setTime: 15, elapsed: 0, isCompleted: false)
-    ]
-    let viewModel = FocusModeViewModel(dummyTodos: dummyTodos)
 
-    return FocusListView(viewModel: viewModel)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(Color("BgDark"))
+#Preview {
+    FocusModeView(
+        dummyTodos: [
+            DummyTodo(id: UUID(), title: "수학 문제 풀기", setTime: 25, elapsed: 0, isCompleted: false),
+            DummyTodo(id: UUID(), title: "영어 단어 외우기", setTime: 20, elapsed: 0, isCompleted: false),
+            DummyTodo(id: UUID(), title: "울라랄라라라ㅏ", setTime: 15, elapsed: 0, isCompleted: false),
+            DummyTodo(id: UUID(), title: "우아아ㅏ아아ㅏㅇ", setTime: 15, elapsed: 0, isCompleted: false),
+            DummyTodo(id: UUID(), title: "뿌아앙ㅇㅇㅇ", setTime: 15, elapsed: 0, isCompleted: false),
+            DummyTodo(id: UUID(), title: "ㄱㄱㄱㄱㄱㄱㄱㄱ", setTime: 15, elapsed: 0, isCompleted: false)
+        ]
+    )
 }

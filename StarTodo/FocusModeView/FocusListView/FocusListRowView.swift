@@ -12,6 +12,17 @@ struct FocusListRowView: View {
     let isCompleted: Bool
     let isCurrent: Bool
     let onComplete: () -> Void
+    
+    // ✅ 텍스트 색상을 상태에 따라 결정
+        private var titleColor: Color {
+            if isCompleted {
+                return Color("Cool600")
+            } else if isCurrent {
+                return Color("BgLight")
+            } else {
+                return Color("Cool200")
+            }
+        }
 
     var body: some View {
         HStack(spacing: 12) {
@@ -21,7 +32,7 @@ struct FocusListRowView: View {
             )
 
             Text(title)
-                .foregroundColor(isCompleted ? Color("Cool600") : Color("BgLight"))
+                .foregroundColor(titleColor)
                 .typo(.textLGEmphasized)
 
             Spacer()
