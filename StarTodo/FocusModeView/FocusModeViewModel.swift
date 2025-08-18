@@ -11,13 +11,22 @@ import SwiftUI
 
 @MainActor
 class FocusModeViewModel: ObservableObject {
+    // MARK: - 집중(할 일) 관련 상태
     @Published var todos: [DummyTodo] = []
     @Published var currentIndex: Int = 0
-    @Published var isBreakActive: Bool = false
-    @Published var showBreakSheet: Bool = false
+    
+    // MARK: - 휴식 관련 상태
+    @Published var isBreakActive: Bool = false            // 현재 휴식 중인가?
+    @Published var showBreakSheet: Bool = false           // 휴식 시간 선택 시트 표시 여부
+    @Published var breakPickedMinutes: Int = 10           // 시트에서 고른 휴식 분(5~30분 중)
+    @Published private(set) var breakTotalSeconds: Int = 0// 휴식 총 시간(초)
+    @Published private(set) var breakElapsed: Int = 0     // 휴식 경과 시간(초)
+
+    // MARK: - 이동/리포트
     @Published var shouldNavigateToReport: Bool = false
     @Published var reportData: [DummyTodo] = []
 
+    // MARK: - 내부 타이머
     private var timer: Timer?
     private var lastTick: Date = Date()
 
@@ -25,22 +34,46 @@ class FocusModeViewModel: ObservableObject {
     init(dummyTodos: [DummyTodo]) {
         self.todos = dummyTodos
 
+        // 프리뷰에서는 실제 타이머 돌지 않도록
         if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
             startTimer()
         }
     }
 
+    // 현재 진행 중인 할 일(없을 수 있으니 Optional)
     var currentTodo: DummyTodo? {
         guard todos.indices.contains(currentIndex) else { return nil }
         return todos[currentIndex]
     }
 
-    var remainingTimeString: String {
-        guard let currentTodo else { return "00:00" }
-        let remaining = max(0, currentTodo.setTime * 60 - currentTodo.elapsed)
-        return formatTime(seconds: remaining)
+    // MARK: - 표시용(집중/휴식 공용) 프로퍼티
+    /// 원형 타이머 뷰에 전달할 "설정 시간(분)"
+    /// - 휴식 중이면 휴식 분, 아니면 현재 할 일의 setTime
+    var displaySetMinutes: Int {
+        if isBreakActive { return breakTotalSeconds / 60 }
+        return currentTodo?.setTime ?? 0
     }
 
+    /// 원형 타이머 뷰에 전달할 "경과 시간(초)"
+    /// - 휴식 중이면 휴식 경과, 아니면 현재 할 일의 경과
+    var displayElapsedSeconds: Int {
+        if isBreakActive { return breakElapsed }
+        return currentTodo?.elapsed ?? 0
+    }
+
+    /// 남은 시간 문자열(집중/휴식 모두 대응)
+    var remainingTimeString: String {
+        if isBreakActive {
+            let remaining = max(0, breakTotalSeconds - breakElapsed)
+            return formatTime(seconds: remaining)
+        } else {
+            guard let currentTodo else { return "00:00" }
+            let remaining = max(0, currentTodo.setTime * 60 - currentTodo.elapsed)
+            return formatTime(seconds: remaining)
+        }
+    }
+
+    /// 예상 종료 시간(집중 기준 계산. 휴식 중 표시 문구 교체는 View에서 처리 예정)
     var expectedEndTimeString: String {
         let totalRemaining = todos[currentIndex...].reduce(0) {
             $0 + max(0, ($1.setTime * 60 - $1.elapsed))
@@ -52,11 +85,13 @@ class FocusModeViewModel: ObservableObject {
         return formatter.string(from: endDate)
     }
 
+    /// 총 경과 시간(분) – 상단 "n분째 탐사 중" 등에 사용
     var elapsedTotalMinutes: Int {
         let seconds = todos.reduce(0) { $0 + $1.elapsed }
         return seconds / 60
     }
     
+    /// 리스트용 정렬: 완료가 위, 나머지는 기존 순서 유지
     var sortedTodosForListView: [DummyTodo] {
         let completed = todos.enumerated()
             .filter { $0.element.isCompleted }
@@ -68,6 +103,7 @@ class FocusModeViewModel: ObservableObject {
         return (completed + remaining).map { $0.element }
     }
 
+    // MARK: - 타이머 제어
     func startTimer() {
         stopTimer()
         lastTick = Date()
@@ -81,13 +117,23 @@ class FocusModeViewModel: ObservableObject {
         timer = nil
     }
 
+    /// 1초마다 호출되는 틱 – 휴식/집중을 분기 처리
     private func tick() {
-        guard !isBreakActive, todos.indices.contains(currentIndex) else { return }
-
         let now = Date()
         let delta = Int(now.timeIntervalSince(lastTick))
         lastTick = now
 
+        // 🔹 휴식 타이머 진행
+        if isBreakActive {
+            breakElapsed += delta
+            if breakElapsed >= breakTotalSeconds {
+                handleBreakFinished()  // TODO: Step 5에서 알림/안내창 붙이기
+            }
+            return
+        }
+
+        // 🔹 집중 타이머 진행
+        guard todos.indices.contains(currentIndex) else { return }
         todos[currentIndex].elapsed += delta
 
         if todos[currentIndex].elapsed >= todos[currentIndex].setTime * 60 {
@@ -95,31 +141,53 @@ class FocusModeViewModel: ObservableObject {
         }
     }
 
+    // MARK: - 휴식 제어 API
+    /// 휴식 시작: 현재 집중 타이머를 멈추고 휴식 타이머로 전환
+    func startBreak(minutes: Int) {
+        stopTimer()
+        isBreakActive = true
+        breakTotalSeconds = minutes * 60
+        breakElapsed = 0
+        startTimer()
+    }
+
+    /// 휴식 중단 후 다시 집중 재개
+    func endBreakAndResume() {
+        isBreakActive = false
+        startTimer()
+    }
+
+    /// 휴식이 자연 종료되었을 때 처리(알림/모달은 다음 단계에서)
+    private func handleBreakFinished() {
+        isBreakActive = false
+        startTimer()
+        // TODO: Step 5 - 로컬 알림 발송 + "휴식 시간 종료" 안내창 노출 후 "할 일로 돌아가기"
+    }
+
+    // MARK: - 집중(할 일) 흐름
     func markCurrentTodoAsCompleted() {
         guard todos.indices.contains(currentIndex) else { return }
         todos[currentIndex].isCompleted = true
         stopTimer()
 
+        // 2초 후 다음 항목 이동(연출용)
         DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            if self.currentIndex + 1 < self.todos.count {
-                self.currentIndex += 1
-                self.startTimer()
-            } else {
-                self.endFocusSession()
-            }
+            self.moveToNextTodo()
         }
     }
     
+    /// 특정 id의 항목을 완료 처리(리스트에서 개별 완료 시 사용)
     func markTodoAsCompleted(id: UUID) {
         guard let index = todos.firstIndex(where: { $0.id == id }) else { return }
         todos[index].isCompleted = true
 
-        // 만약 현재 항목이라면 자동 진행도 처리
+        // 현재 항목을 완료했다면 흐름 이어서 진행
         if index == currentIndex {
             moveToNextTodo()
         }
     }
     
+    /// 다음 작업으로 이동: "남아있는 항목 중 가장 위"를 선택
     func moveToNextTodo() {
         if let nextIndex = todos.firstIndex(where: { !$0.isCompleted }) {
             currentIndex = nextIndex
@@ -135,6 +203,7 @@ class FocusModeViewModel: ObservableObject {
         shouldNavigateToReport = true
     }
     
+    /// 리스트에서 특정 인덱스를 눌렀을 때 해당 작업으로 이동
     func selectTodo(at index: Int) {
         guard index != currentIndex,
               todos.indices.contains(index),
@@ -145,6 +214,7 @@ class FocusModeViewModel: ObservableObject {
         startTimer()
     }
 
+    // MARK: - Util
     private func formatTime(seconds: Int) -> String {
         String(format: "%02d:%02d", seconds / 60, seconds % 60)
     }
