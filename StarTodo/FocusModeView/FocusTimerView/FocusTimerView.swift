@@ -31,9 +31,6 @@ struct FocusTimerView: View {
                 Text("진행할 할 일이 없습니다.")
             }
         }
-        .sheet(isPresented: $viewModel.showBreakSheet) {
-            // BreakSettingSheet(viewModel: viewModel)
-        }
     }
 }
 

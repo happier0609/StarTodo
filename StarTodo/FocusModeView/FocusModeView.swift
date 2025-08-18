@@ -63,6 +63,12 @@ struct FocusModeView: View {
                 )
             }
         }
+        .breakTimeAlert(
+                    isPresented: $viewModel.showBreakSheet,
+                    minutes: $viewModel.breakPickedMinutes
+                ) {
+                    viewModel.startBreak(minutes: viewModel.breakPickedMinutes)
+                }
     }
 }
 
