@@ -9,12 +9,13 @@ import SwiftUI
 
 struct FocusModeFooterView: View {
     let expectedEndTimeString: String
+    let isBreakActive: Bool
     let onRestTap: () -> Void
     
     var body: some View {
         VStack(spacing: 16) {
             Button(action: onRestTap) {
-                Image("Rest")
+                Image(isBreakActive ? "ReStart" : "Rest")
                     .frame(height: 50)
             }
             
@@ -27,16 +28,22 @@ struct FocusModeFooterView: View {
 }
 
 #Preview {
-    VStack {
-        Spacer()
-        
+    VStack(spacing: 28) {
+        // 휴식 중
         FocusModeFooterView(
-            expectedEndTimeString: "오후 3:30",
-            onRestTap: {
-                print("🛑 쉬기 버튼 눌림")
-            }
+            expectedEndTimeString: "오후 4:40",
+            isBreakActive: true,
+            onRestTap: {}
+        )
+
+        // 휴식 아님
+        FocusModeFooterView(
+            expectedEndTimeString: "오후 4:40",
+            isBreakActive: false,
+            onRestTap: {}
         )
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(Color("BgDark")) // 실제 배경 컬러에 맞게 조정
+    .background(Color("BgDark"))
+    .preferredColorScheme(.dark)
 }

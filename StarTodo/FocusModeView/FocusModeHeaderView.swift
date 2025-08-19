@@ -8,7 +8,8 @@
 import SwiftUI
 
 struct FocusModeHeaderView: View {
-    let elapsedMinutes: Int
+//    let elapsedMinutes: Int
+    let statusText: String
     let onExit: () -> Void
 
     var body: some View {
@@ -25,7 +26,7 @@ struct FocusModeHeaderView: View {
             
             HStack(spacing: 4) {
                 Image("Working")
-                Text("\(elapsedMinutes)분 째 탐사 중...")
+                Text(statusText)
             }
             .foregroundColor(Color("Info400"))
             .typo(.textMDEmphasized)
@@ -33,15 +34,4 @@ struct FocusModeHeaderView: View {
             
         }
     }
-}
-
-#Preview {
-    VStack {
-        FocusModeHeaderView(elapsedMinutes: 12, onExit: {
-            print("종료하기 버튼 눌림")
-        })
-        Spacer()
-    }
-    .frame(maxWidth: .infinity, maxHeight: .infinity)
-    .background(Color("BgDark"))
 }

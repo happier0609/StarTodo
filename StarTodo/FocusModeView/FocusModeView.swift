@@ -25,10 +25,8 @@ struct FocusModeView: View {
             VStack {
                 // 상단 종료 버튼 + 타이틀
                 FocusModeHeaderView(
-                    elapsedMinutes: viewModel.elapsedTotalMinutes,
-                    onExit: {
-                        viewModel.endFocusSession()
-                    }
+                    statusText: viewModel.headerStatusText,          // ← 추가한 계산 프로퍼티
+                    onExit: { viewModel.endFocusSession() }
                 )
                 
                 NavigationLink(
@@ -46,7 +44,7 @@ struct FocusModeView: View {
                 
                 // 세그먼티드 컨트롤
                 CustomSegmentedControl(selectedTab: $selectedTab)
-                .padding()
+                    .padding()
                 
                 // 화면 전환
                 if selectedTab == .timer {
@@ -57,11 +55,35 @@ struct FocusModeView: View {
                 
                 FocusModeFooterView(
                     expectedEndTimeString: viewModel.expectedEndTimeString,
-                    onRestTap: {
-                        viewModel.showBreakSheet = true
+                    isBreakActive: viewModel.isBreakActive
+                ) {
+                    if viewModel.isBreakActive {
+                        viewModel.endBreakAndResume()             // 다시 시작하기
+                    } else {
+                        viewModel.showBreakSheet = true           // 휴식 알럿 표시
                     }
-                )
+                }
             }
+        }
+        .breakTimeAlert(
+            isPresented: $viewModel.showBreakSheet,
+            minutes: $viewModel.breakPickedMinutes
+        ) {
+            viewModel.startBreak(minutes: viewModel.breakPickedMinutes)
+        }
+        // ✅ 휴식 종료 오버레이
+        .disabled(viewModel.showBreakEndOverlay) // 배경 인터랙션 잠금
+        .overlay {
+            if viewModel.showBreakEndOverlay {
+                BreakEndOverlay {
+                    viewModel.endBreakAndResume()
+                }
+                .transition(.opacity)
+            }
+        }
+        .onAppear {
+            // (선택) 로컬 알림 권한 미리 요청하고 싶으면:
+//             viewModel.requestNotificationAuthorizationIfNeeded()
         }
     }
 }
