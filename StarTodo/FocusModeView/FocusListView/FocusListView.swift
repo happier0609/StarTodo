@@ -9,9 +9,15 @@ import SwiftUI
 
 struct FocusListView: View {
     @ObservedObject var viewModel: FocusModeViewModel
-
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 20) {
+//            // ⬇️ 휴식 중이면 안내 버블
+//            if viewModel.isBreakActive {
+//                BreakInfoBubble()
+//                    .transition(.opacity.combined(with: .move(edge: .top)))
+//                    .padding(.top, 8)
+//            }
             ScrollView {
                 VStack(spacing: 8) {
                     ForEach(Array(viewModel.sortedTodosForListView.enumerated()), id: \.offset) { index, todo in
@@ -34,7 +40,7 @@ struct FocusListView: View {
                 )
                 .padding(.horizontal)
             }
-
+            
             Spacer()
         }
     }
