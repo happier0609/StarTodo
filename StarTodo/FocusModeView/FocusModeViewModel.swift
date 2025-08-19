@@ -21,6 +21,7 @@ class FocusModeViewModel: ObservableObject {
     @Published var breakPickedMinutes: Int = 10           // 시트에서 고른 휴식 분(5~30분 중)
     @Published private(set) var breakTotalSeconds: Int = 0// 휴식 총 시간(초)
     @Published private(set) var breakElapsed: Int = 0     // 휴식 경과 시간(초)
+    @Published var showBreakEndOverlay: Bool = false        // 휴식 종료 오버레이 노출용
 
     // MARK: - 이동/리포트
     @Published var shouldNavigateToReport: Bool = false
@@ -47,6 +48,25 @@ class FocusModeViewModel: ObservableObject {
     }
 
     // MARK: - 표시용(집중/휴식 공용) 프로퍼티
+    
+    /// 헤더 문구 계산(집중/휴식 자동 분기)
+    var headerStatusText: String {
+        if isBreakActive {
+            let m = max(0, breakElapsed / 60)
+            return "\(m)분째 휴식 중..."
+        } else {
+            return "\(elapsedTotalMinutes)분 째 탐사 중..."
+        }
+    }
+    
+    /// 휴식 종료 처리에서 오버레이 띄우기
+    private func handleBreakFinished() {
+        isBreakActive = false
+        stopTimer()
+        showBreakEndOverlay = true        // ← 오버레이 ON
+        // (버튼 누르면 endBreakAndResume()로 재개)
+    }
+    
     /// 원형 타이머 뷰에 전달할 "설정 시간(분)"
     /// - 휴식 중이면 휴식 분, 아니면 현재 할 일의 setTime
     var displaySetMinutes: Int {
