@@ -15,7 +15,7 @@ struct FocusModeFooterView: View {
     var body: some View {
         VStack(spacing: 16) {
             Button(action: onRestTap) {
-                Image("Rest")
+                Image(isBreakActive ? "ReStart" : "Rest")
                     .frame(height: 50)
             }
             
@@ -25,4 +25,25 @@ struct FocusModeFooterView: View {
         }
         .padding(.bottom, 20)
     }
+}
+
+#Preview {
+    VStack(spacing: 28) {
+        // 휴식 중
+        FocusModeFooterView(
+            expectedEndTimeString: "오후 4:40",
+            isBreakActive: true,
+            onRestTap: {}
+        )
+
+        // 휴식 아님
+        FocusModeFooterView(
+            expectedEndTimeString: "오후 4:40",
+            isBreakActive: false,
+            onRestTap: {}
+        )
+    }
+    .frame(maxWidth: .infinity, maxHeight: .infinity)
+    .background(Color("BgDark"))
+    .preferredColorScheme(.dark)
 }
