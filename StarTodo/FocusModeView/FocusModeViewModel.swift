@@ -59,14 +59,6 @@ class FocusModeViewModel: ObservableObject {
         }
     }
     
-    /// 휴식 종료 처리에서 오버레이 띄우기
-    private func handleBreakFinished() {
-        isBreakActive = false
-        stopTimer()
-        showBreakEndOverlay = true        // ← 오버레이 ON
-        // (버튼 누르면 endBreakAndResume()로 재개)
-    }
-    
     /// 원형 타이머 뷰에 전달할 "설정 시간(분)"
     /// - 휴식 중이면 휴식 분, 아니면 현재 할 일의 setTime
     var displaySetMinutes: Int {
@@ -177,11 +169,12 @@ class FocusModeViewModel: ObservableObject {
         startTimer()
     }
 
-    /// 휴식이 자연 종료되었을 때 처리(알림/모달은 다음 단계에서)
+    /// 휴식 종료 처리에서 오버레이 띄우기
     private func handleBreakFinished() {
         isBreakActive = false
-        startTimer()
-        // TODO: Step 5 - 로컬 알림 발송 + "휴식 시간 종료" 안내창 노출 후 "할 일로 돌아가기"
+        stopTimer()
+        showBreakEndOverlay = true        // ← 오버레이 ON
+        // (버튼 누르면 endBreakAndResume()로 재개)
     }
 
     // MARK: - 집중(할 일) 흐름
