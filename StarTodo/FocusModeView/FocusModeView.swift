@@ -64,6 +64,27 @@ struct FocusModeView: View {
                     }
                 }
             }
+            // ✅ 종료 확인 알럿
+            .alert("정말 종료할까요?", isPresented: $viewModel.showEndConfirmAlert) {
+                Button("취소", role: .cancel) { }
+                Button("종료하기", role: .destructive) {
+                    viewModel.confirmEndSession()   // ← 타이머 정지 + (임시)저장 + 이동 트리거
+                }
+            } message: {
+                Text("지금까지의 진행 상태를 저장한 뒤 리포트로 이동합니다.")
+            }
+            
+//            // ✅ Report로 이동
+//            NavigationLink(
+//                destination: ReportView(
+//                    viewModel: ReportViewModel(todos: viewModel.reportData),
+//                    onComplete: {
+//                        // 필요 시 메인으로 복귀 처리
+//                    }
+//                ),
+//                isActive: $viewModel.shouldNavigateToReport
+//            ) { EmptyView() }
+//                .hidden()
         }
         .breakTimeAlert(
             isPresented: $viewModel.showBreakSheet,
@@ -83,7 +104,7 @@ struct FocusModeView: View {
         }
         .onAppear {
             // (선택) 로컬 알림 권한 미리 요청하고 싶으면:
-//             viewModel.requestNotificationAuthorizationIfNeeded()
+            //             viewModel.requestNotificationAuthorizationIfNeeded()
         }
     }
 }
