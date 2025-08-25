@@ -6,13 +6,16 @@
 //
 
 import SwiftUI
+import SwiftData
 
 @main
 struct StarTodoApp: App {
-
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
         }
+        // SwiftData 컨테이너
+        .modelContainer(for: [FocusSession.self, FocusItem.self])
     }
 }
