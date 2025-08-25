@@ -206,15 +206,15 @@ class FocusModeViewModel: ObservableObject {
         shouldNavigateToReport = true
     }
 
-    /// 현재 세션 저장(스텁) — 나중에 CoreData로 교체
+    // (임시) 저장 함수 — 지금은 print만 하는 스텁
     private func persistCurrentSession() {
-        let record = FocusSessionRecord(
-            todos: todos,
-            startedAt: sessionStart,
-            endedAt: Date(),
-            totalBreakSeconds: totalBreakSecondsAccum
-        )
-        FocusSessionStore.shared.save(record)
+        #if DEBUG
+        print("✅ Session Saved (stub)",
+              "start:", sessionStart,
+              "end:", Date(),
+              "break:", totalBreakSecondsAccum, "sec",
+              "todos:", todos.map { "\($0.title)=\($0.elapsed)s/\($0.setTime*60)s" })
+        #endif
     }
 
     // MARK: - 집중(할 일) 흐름
