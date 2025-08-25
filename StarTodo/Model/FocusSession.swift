@@ -7,7 +7,7 @@
 
 
 import SwiftData
-// 집중모드에 들어갔을 때 측정되는 단위
+// 한 번의 집중 모드 실행(시작 시간, 종료 시간, 휴식 합계 등)
 
 @Model
 final class FocusSession {
