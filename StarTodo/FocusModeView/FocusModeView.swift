@@ -6,10 +6,13 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct FocusModeView: View {
     @StateObject private var viewModel: FocusModeViewModel
     @State private var selectedTab: FocusTab = .timer
+    
+    @Environment(\.modelContext) private var modelContext
     
     // ✅ 커스텀 생성자 (CoreData 제거)
     init(dummyTodos: [DummyTodo]) {
@@ -74,17 +77,17 @@ struct FocusModeView: View {
                 Text("지금까지의 진행 상태를 저장한 뒤 리포트로 이동합니다.")
             }
             
-//            // ✅ Report로 이동
-//            NavigationLink(
-//                destination: ReportView(
-//                    viewModel: ReportViewModel(todos: viewModel.reportData),
-//                    onComplete: {
-//                        // 필요 시 메인으로 복귀 처리
-//                    }
-//                ),
-//                isActive: $viewModel.shouldNavigateToReport
-//            ) { EmptyView() }
-//                .hidden()
+            //            // ✅ Report로 이동
+            //            NavigationLink(
+            //                destination: ReportView(
+            //                    viewModel: ReportViewModel(todos: viewModel.reportData),
+            //                    onComplete: {
+            //                        // 필요 시 메인으로 복귀 처리
+            //                    }
+            //                ),
+            //                isActive: $viewModel.shouldNavigateToReport
+            //            ) { EmptyView() }
+            //                .hidden()
         }
         .breakTimeAlert(
             isPresented: $viewModel.showBreakSheet,
@@ -103,8 +106,7 @@ struct FocusModeView: View {
             }
         }
         .onAppear {
-            // (선택) 로컬 알림 권한 미리 요청하고 싶으면:
-            //             viewModel.requestNotificationAuthorizationIfNeeded()
+            viewModel.replaceStore(SwiftDataSessionStore(context: modelContext))
         }
     }
 }
@@ -117,75 +119,3 @@ struct FocusModeView: View {
         ]
     )
 }
-
-
-
-//MARK: - 기존코드 접기
-
-//import SwiftUI
-//import CoreData
-//
-//struct FocusModeView: View {
-//    let todoIDPairs: [(UUID, Int)]
-//    @StateObject private var viewModel: FocusModeViewModel
-//
-//    @State private var selectedTab: Tab = .timer
-//
-//    enum Tab {
-//        case timer, list
-//    }
-//
-//    // ✅ 커스텀 생성자 추가
-//    init(todoIDPairs: [(UUID, Int)]) {
-//        self.todoIDPairs = todoIDPairs
-//        _viewModel = StateObject(wrappedValue: FocusModeViewModel(todoIDPairs: todoIDPairs))
-//    }
-//
-//    var body: some View {
-//        VStack {
-//            // 상단 종료 버튼 + 타이틀
-//            FocusModeHeaderView(
-//                elapsedMinutes: viewModel.elapsedTotalMinutes,
-//                onExit: {
-//                    viewModel.endFocusSession()
-//                }
-//            )
-//            NavigationLink(
-//                destination: ReportView(
-//                    viewModel: ReportViewModel(), // 새 인스턴스 또는 필요한 데이터를 전달
-//                    onComplete: {
-//                        // MainView로 돌아가기 위한 로직 (예: Navigation 상태 변경)
-//                    }
-//                ),
-//                isActive: $viewModel.shouldNavigateToReport
-//            ) {
-//                EmptyView()
-//            }
-//            .hidden()
-//
-//            .padding()
-//
-//            // 세그먼티드 컨트롤
-//            Picker("", selection: $selectedTab) {
-//                Text("타이머").tag(Tab.timer)
-//                Text("목록").tag(Tab.list)
-//            }
-//            .pickerStyle(.segmented)
-//            .padding()
-//
-//            // 각 뷰 전환
-//            if selectedTab == .timer {
-//                FocusTimerView(viewModel: viewModel)
-//            } else {
-//                FocusListView(viewModel: viewModel)
-//            }
-//
-//            FocusModeFooterView(
-//                expectedEndTimeString: viewModel.expectedEndTimeString,
-//                onRestTap: {
-//                    viewModel.showBreakSheet = true
-//                }
-//            )
-//        }
-//    }
-//}

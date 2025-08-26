@@ -10,7 +10,7 @@ import SwiftUI
 struct AddListEmptyView: View {
     var body: some View {
         VStack(spacing: 12) {
-            Image("Empty") // 🐻: 에셋 이름에 맞게 수정해줘!
+            Image("Empty")
                 .resizable()
                 .scaledToFit()
                 .frame(width: 160)
