@@ -6,66 +6,90 @@
 //
 
 import Foundation
-import SwiftUI
-import CoreData
+import SwiftData
 
-/// 집중모드 설정 화면에서 선택된 할 일과 확장 상태를 관리하는 뷰모델
-class FocusSettingViewModel: ObservableObject {
-    // 선택된 할 일의 UUID 목록
-    @Published var selectedTodoIDs: Set<UUID> = []
+/// 집중모드 설정 화면의 선택/확장/시간 상태만 관리(데이터 저장 X)
+@MainActor
+final class FocusSettingViewModel: ObservableObject {
+    // 선택된 항목의 id (부모/자식 모두 포함)
+    @Published var selectedIDs: Set<UUID> = []
 
-    // 확장된 상위 항목의 UUID 목록
+    // 펼쳐진 부모 id
     @Published var expandedParentIDs: Set<UUID> = []
 
-    // 표시할 상위 할 일 목록
-    @Published var focusTodoGroups: [TodoEntity] = []
+    // 화면에 보여줄 "부모" 목록 (SwiftData 모델)
+    @Published var focusParents: [Todo] = []
 
-    // ✅ 완료되지 않은 할 일들 중 상위 항목만 필터링하여 불러오기
-    func loadUncompletedFrom(_ todos: [TodoEntity]) {
-        self.focusTodoGroups = todos.filter { $0.parent == nil && !$0.isCompleted }
-    }
+    // 각 항목의 설정 시간(분). 값이 없으면 Todo.setTime 사용
+    @Published var overrideMinutes: [UUID: Int] = [:]
 
-    // ✅ 상위 항목 전체 토글 (하위 포함)
-    func toggleSelection(for parent: TodoEntity) {
-        let allIDs = [parent.id].compactMap { $0 } + parent.childrenArray.compactMap { $0.id }
-
-        if isSelected(parent.id) {
-            selectedTodoIDs.subtract(allIDs)  // 전체 해제
-        } else {
-            selectedTodoIDs.formUnion(allIDs) // 전체 선택
+    // MARK: - Load
+    /// 완료되지 않은 부모만 세팅
+    func loadFrom(_ parents: [Todo]) {
+        self.focusParents = parents.filter { $0.parent == nil && !$0.isCompleted }
+        // 필요시 정렬: order -> createdAt
+        self.focusParents.sort {
+            ($0.order, $0.createdAt) < ($1.order, $1.createdAt)
         }
     }
 
-    // ✅ 상위 항목 확장/접기 토글
-    func toggleExpanded(for parent: TodoEntity) {
-        guard let id = parent.id else { return }
-
-        if expandedParentIDs.contains(id) {
-            expandedParentIDs.remove(id)
-        } else {
-            expandedParentIDs.insert(id)
+    // MARK: - Expand / Select
+    func toggleExpanded(for parent: Todo) {
+        if let id = parent.id as UUID? {
+            if expandedParentIDs.contains(id) { expandedParentIDs.remove(id) }
+            else { expandedParentIDs.insert(id) }
         }
     }
 
-    // ✅ 해당 UUID가 확장 상태인지 여부 반환
-    func isExpanded(_ id: UUID?) -> Bool {
-        guard let id else { return false }
+    func isExpanded(_ parent: Todo) -> Bool {
+        guard let id = parent.id as UUID? else { return false }
         return expandedParentIDs.contains(id)
     }
 
-    // ✅ 해당 UUID가 선택되었는지 여부 반환
-    func isSelected(_ id: UUID?) -> Bool {
-        guard let id else { return false }
-        return selectedTodoIDs.contains(id)
+    /// 부모를 토글하면 부모+자식 전체 토글
+    func toggleSelection(for parent: Todo) {
+        let allIDs: [UUID] = [parent.id] + parent.children.map(\.id)
+        let shouldSelect = !allIDs.allSatisfy { selectedIDs.contains($0) }
+        if shouldSelect {
+            selectedIDs.formUnion(allIDs)
+        } else {
+            for id in allIDs { selectedIDs.remove(id) }
+        }
     }
 
-    // ✅ 선택된 항목만 반환 (다음 화면에 전달하기 위함)
-    func selectedTodos(from allTodos: [TodoEntity]) -> [TodoEntity] {
-        allTodos.filter { todo in
-            if let id = todo.id {
-                return selectedTodoIDs.contains(id)
+    func toggleChild(_ child: Todo) {
+        if selectedIDs.contains(child.id) { selectedIDs.remove(child.id) }
+        else { selectedIDs.insert(child.id) }
+    }
+
+    func isSelected(_ id: UUID?) -> Bool {
+        guard let id else { return false }
+        return selectedIDs.contains(id)
+    }
+
+    // MARK: - Time
+    func minutes(for todo: Todo) -> Int {
+        overrideMinutes[todo.id] ?? todo.setTime
+    }
+    func setMinutes(_ m: Int, for todo: Todo) {
+        overrideMinutes[todo.id] = m
+    }
+
+    // MARK: - 결과 묶기 (FocusMode로 넘길 데이터)
+    /// 선택된 항목만 (부모/자식 합쳐서) 반환
+    func pickedTodos(from allParents: [Todo]) -> [Todo] {
+        var result: [Todo] = []
+        for p in allParents {
+            if isSelected(p.id) { result.append(p) }
+            for c in p.children {
+                if isSelected(c.id) { result.append(c) }
             }
-            return false
         }
+        return result
+    }
+
+    /// FocusMode에 넘길 `(UUID, minutes)` 페이로드
+    func payload() -> [(UUID, Int)] {
+        pickedTodos(from: focusParents).map { ($0.id, minutes(for: $0)) }
     }
 }
