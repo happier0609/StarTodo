@@ -16,6 +16,6 @@ struct StarTodoApp: App {
             ContentView()
         }
         // SwiftData 컨테이너
-        .modelContainer(for: [FocusSession.self, FocusItem.self])
+        .modelContainer(for: [Todo.self, FocusSession.self, FocusItem.self])
     }
 }
