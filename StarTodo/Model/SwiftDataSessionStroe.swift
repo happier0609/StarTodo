@@ -5,6 +5,7 @@
 //  Created by 조민경 on 8/26/25.
 //
 
+import Foundation
 import SwiftData
 
 final class SwiftDataSessionStore: SessionStore {

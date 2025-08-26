@@ -5,6 +5,7 @@
 //  Created by 조민경 on 8/25/25.
 //
 
+import Foundation
 import SwiftData
 // 집중모드에 들어갔을 때 측정되는 단위
 
@@ -21,6 +22,6 @@ final class FocusItem {
         self.setSeconds = setSeconds
         self.elapsedSeconds = elapsedSeconds
         self.isCompleted = isCompleted
-        this.order = order
+        self.order = order
     }
 }
