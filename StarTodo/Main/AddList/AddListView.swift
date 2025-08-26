@@ -87,3 +87,7 @@ struct AddListView: View {
         return (roots.map(\.order).max() ?? -1) + 1
     }
 }
+
+#Preview {
+    MainView()
+}
