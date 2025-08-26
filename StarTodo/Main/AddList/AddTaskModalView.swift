@@ -10,44 +10,84 @@ import SwiftData
 
 struct AddTaskModalView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
 
     @State private var title: String = ""
     @State private var minutes: Int = 25
-    var parent: Todo? = nil               // 특정 상위에 바로 추가하고 싶을 때 주입
+
+    var parent: Todo? = nil
     var onAdded: ((Todo) -> Void)?
 
     var body: some View {
         VStack(spacing: 16) {
-            Text("할 일 추가").font(.headline)
+            Text("할 일 추가")
+                .typo(.textLGEmphasized)
+                .foregroundColor(Color("BgLight"))
 
-            TextField("할 일 제목", text: $title)
-                .textFieldStyle(.roundedBorder)
-
-            Stepper("시간 \(minutes)분", value: $minutes, in: 5...180, step: 5)
+            TextField("제목을 입력하세요", text: $title)
+                .padding(12)
+                .background(Color("Cool1000"))
+                .clipShape(RoundedRectangle(cornerRadius: 12))
+                .foregroundColor(Color("BgLight"))
+                .typo(.textMDRegular)
 
             HStack {
-                Button("취소") {
-                    dismiss()
-                }
+                Text("시간")
+                    .typo(.textSMEmphasized)
+                    .foregroundColor(Color("Cool300"))
                 Spacer()
-                Button("추가") {
-                    let t = insertTodo()
-                    onAdded?(t)
+                Stepper("\(minutes)분", value: $minutes, in: 5...180, step: 5)
+                    .foregroundColor(Color("BgLight"))
+            }
+            .padding(.horizontal, 2)
+
+            HStack(spacing: 12) {
+                Button("취소") { dismiss() }
+                    .typo(.textMDEmphasized)
+                    .foregroundColor(Color("Cool300"))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color("Cool1000"))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                Button {
+                    let new = insertTodo()
+                    onAdded?(new)
                     dismiss()
+                } label: {
+                    HStack(spacing: 8) {
+                        Image(systemName: "paperplane.fill")
+                        Text("추가")
+                            .typo(.textMDEmphasized)
+                    }
+                    .foregroundColor(Color("White"))
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 12)
+                    .background(Color("Primary500"))
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
                 .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
+                .opacity(title.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
             }
         }
-        .padding()
-        .background(.ultraThinMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 16))
-        .padding()
+        .padding(20)
+        .background(
+            RoundedRectangle(cornerRadius: 20)
+                .fill(Color("Cool900").opacity(0.9))
+        )
+        .padding(.horizontal, 24)
     }
 
-    @Environment(\.dismiss) private var dismiss
-
     private func insertTodo() -> Todo {
-        let order = nextOrder(in: parent)
+        let order: Int
+        if let parent {
+            order = (parent.children.map(\.order).max() ?? -1) + 1
+        } else {
+            let fd = FetchDescriptor<Todo>(predicate: #Predicate { $0.parent == nil })
+            let roots = (try? modelContext.fetch(fd)) ?? []
+            order = (roots.map(\.order).max() ?? -1) + 1
+        }
+
         let todo = Todo(title: title,
                         isCompleted: false,
                         setTime: minutes,
@@ -56,19 +96,10 @@ struct AddTaskModalView: View {
                         performedDate: nil,
                         order: order,
                         parent: parent)
+
         modelContext.insert(todo)
         try? modelContext.save()
         return todo
-    }
-
-    private func nextOrder(in parent: Todo?) -> Int {
-        if let parent {
-            return (parent.children.map(\.order).max() ?? -1) + 1
-        } else {
-            let fd = FetchDescriptor<Todo>(predicate: #Predicate { $0.parent == nil })
-            let roots = (try? modelContext.fetch(fd)) ?? []
-            return (roots.map(\.order).max() ?? -1) + 1
-        }
     }
 }
 

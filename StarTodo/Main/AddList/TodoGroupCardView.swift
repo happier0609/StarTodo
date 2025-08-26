@@ -6,62 +6,73 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct TodoGroupCardView: View {
-    let parent: TodoEntity
-    let children: [TodoEntity]
-    let onToggle: (TodoEntity) -> Void
-    let onLongPressEdit: (TodoEntity) -> Void
+    @Environment(\.modelContext) private var modelContext
+
+    let parent: Todo
+    var onEdit: (() -> Void)?
+    var onDelete: (() -> Void)?
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // 상위 항목
-            HStack {
-                Button(action: {
-                    onToggle(parent)
-                }) {
-                    Image(parent.isCompleted ? "Check" : "noneCheck")
-                        .foregroundColor(parent.isCompleted ? .gray.opacity(0.4) : .gray)
-                        .animation(.easeInOut(duration: 0.2), value: parent.isCompleted)
-                }
-                Text(parent.wrappedTitle)
-                    .typo(.textMDRegular)
-                    .foregroundColor(parent.isCompleted ? .gray.opacity(0.4) : .primary)
-                    .strikethrough(parent.isCompleted, color: .gray.opacity(0.4))
-                    .animation(.easeInOut(duration: 0.2), value: parent.isCompleted)
-            }
-            .padding(.bottom, 4)
-            .contentShape(Rectangle())
-            .gesture(
-                LongPressGesture().onEnded { _ in
-                    onLongPressEdit(parent)
-                }
-            )
+        VStack(alignment: .leading, spacing: 12) {
+            // 헤더
+            HStack(spacing: 12) {
+                Text(parent.title)
+                    .typo(.textLGEmphasized)
+                    .foregroundColor(Color("BgLight"))
 
-            // 하위 항목
-            ForEach(children, id: \TodoEntity.objectID) { child in
-                HStack {
-                    Button(action: {
-                        onToggle(child)
-                    }) {
-                        Image(child.isCompleted ? "Check" : "noneCheck")
-                            .foregroundColor(child.isCompleted ? .gray.opacity(0.4) : .gray)
-                            .animation(.easeInOut(duration: 0.2), value: child.isCompleted)
-                    }
-                    Text(child.wrappedTitle)
-                        .font(.subheadline)
-                        .foregroundColor(child.isCompleted ? .gray.opacity(0.4) : .primary)
-                        .strikethrough(child.isCompleted, color: .gray.opacity(0.4))
-                        .animation(.easeInOut(duration: 0.2), value: child.isCompleted)
+                Spacer()
+
+                Button {
+                    onEdit?()
+                } label: {
+                    Image(systemName: "square.and.pencil")
+                        .foregroundColor(Color("Cool300"))
                 }
-                .padding(.leading, 16)
+
+                Button(role: .destructive) {
+                    modelContext.delete(parent)
+                    try? modelContext.save()
+                    onDelete?()
+                } label: {
+                    Image(systemName: "trash")
+                        .foregroundColor(Color("Cool300"))
+                }
+            }
+
+            // 자식 리스트
+            VStack(spacing: 8) {
+                ForEach(parent.children.sorted(by: { $0.order < $1.order })) { child in
+                    HStack(spacing: 12) {
+                        // 체크 모양 (보기용)
+                        Circle()
+                            .stroke(child.isCompleted ? Color("Cool600") : Color("Cool300"), lineWidth: 2)
+                            .frame(width: 18, height: 18)
+
+                        Text(child.title)
+                            .foregroundColor(child.isCompleted ? Color("Cool600") : Color("BgLight"))
+                            .typo(.textMDRegular)
+
+                        Spacer()
+
+                        // 시간 배지
+                        Text("\(child.setTime)분")
+                            .typo(.textSMEmphasized)
+                            .foregroundColor(Color("BgLight"))
+                            .padding(.vertical, 4)
+                            .padding(.horizontal, 8)
+                            .background(Color("Cool900"))
+                            .clipShape(Capsule())
+                    }
+                    .padding(.vertical, 4)
+                }
             }
         }
-        .padding()
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.white))
-        .cornerRadius(12)
-        .contentShape(Rectangle())
+        .padding(16)
+        .background(Color("Cool1000"))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
     }
 }
 
