@@ -6,100 +6,114 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct AddTaskModalView: View {
-    @Environment(\.modelContext) private var modelContext
-    @Environment(\.dismiss) private var dismiss
-
-    @State private var title: String = ""
-    @State private var minutes: Int = 25
-
-    var parent: Todo? = nil
-    var onAdded: ((Todo) -> Void)?
-
+    @Binding var isPresented: Bool
+    @Binding var editingTodo: TodoEntity?
+    @EnvironmentObject var viewModel: MainViewModel
+    
+    @State private var parentTitle: String = ""
+    @State private var childTasks: [String] = []
+    
+    // ✅ shake 관련
+    @State private var shakeOffset: CGFloat = 0
+    @State private var shouldShake: Bool = false
+    
     var body: some View {
-        VStack(spacing: 16) {
-            Text("할 일 추가")
-                .typo(.textLGEmphasized)
-                .foregroundColor(Color("BgLight"))
-
-            TextField("제목을 입력하세요", text: $title)
-                .padding(12)
-                .background(Color("Cool1000"))
-                .clipShape(RoundedRectangle(cornerRadius: 12))
-                .foregroundColor(Color("BgLight"))
-                .typo(.textMDRegular)
-
-            HStack {
-                Text("시간")
-                    .typo(.textSMEmphasized)
-                    .foregroundColor(Color("Cool300"))
-                Spacer()
-                Stepper("\(minutes)분", value: $minutes, in: 5...180, step: 5)
-                    .foregroundColor(Color("BgLight"))
-            }
-            .padding(.horizontal, 2)
-
-            HStack(spacing: 12) {
-                Button("취소") { dismiss() }
+        ZStack(alignment: .bottomTrailing) {
+            VStack(alignment: .leading, spacing: 16) {
+                Text(editingTodo == nil ? "할 일 추가" : "할 일 수정")
                     .typo(.textMDEmphasized)
-                    .foregroundColor(Color("Cool300"))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color("Cool1000"))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
-
-                Button {
-                    let new = insertTodo()
-                    onAdded?(new)
-                    dismiss()
-                } label: {
-                    HStack(spacing: 8) {
-                        Image(systemName: "paperplane.fill")
-                        Text("추가")
-                            .typo(.textMDEmphasized)
+                
+                // ✅ 제목 + List 아이콘 조건부 표시
+                HStack(spacing: 8) {
+                    if !childTasks.filter({ !$0.trimmingCharacters(in: .whitespaces).isEmpty }).isEmpty {
+                        Image("List")
+                            .resizable()
+                            .frame(width: 18, height: 18)
                     }
-                    .foregroundColor(Color("White"))
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color("Primary500"))
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    TextField("여기에 새로운 할 일을 추가하세요.", text: $parentTitle)
+                        .typo(.textMDRegular)
+//                        .foregroundStyle(Color("Cool300"))
                 }
-                .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
-                .opacity(title.trimmingCharacters(in: .whitespaces).isEmpty ? 0.5 : 1)
+                
+                // ✅ 하위 작업 리스트
+                ForEach(Array(childTasks.enumerated()), id: \.offset) { index, task in
+                    HStack(spacing: 8) {
+                        Image("noneCheck")
+                            .foregroundColor(Color("Primary500"))
+
+                        TextField("하위 작업 추가하기", text: $childTasks[index])
+                            .typo(.textSMRegular)
+//                            .foregroundStyle(Color("Cool300"))
+                            .frame(maxWidth: .infinity)
+                            .layoutPriority(1) // 🔥 핵심
+
+                        Button(action: {
+                            childTasks.remove(at: index)
+                        }) {
+                            Image(systemName: "xmark")
+                                .foregroundColor(.gray)
+                        }
+                    }
+                }
+                
+                
+                Button(action: {
+                    childTasks.append("")
+                }) {
+                    Label("하위 작업 추가하기", systemImage: "plus")
+                        .typo(.textSMRegular)
+                        .foregroundColor(Color("Primary600"))
+                }
+                
+                Spacer()
             }
+            .padding()
+            .onAppear {
+                if let todo = editingTodo {
+                    parentTitle = todo.wrappedTitle
+                    childTasks = todo.childrenArray.map { $0.wrappedTitle }
+                    if childTasks.isEmpty {
+                        childTasks = [""]
+                    }
+                }
+            }
+            
+            // ✅ 플로팅 완료 버튼 (에셋 + Shake)
+            Button(action: {
+                let trimmed = parentTitle.trimmingCharacters(in: .whitespaces)
+                if trimmed.isEmpty {
+                    // 👇 흔들기 트리거
+                    withAnimation(.default) {
+                        shakeOffset = 10
+                        shouldShake.toggle()
+                    }
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+                        withAnimation {
+                            shakeOffset = 0
+                        }
+                    }
+                    return
+                }
+                
+                let trimmedChildren = childTasks.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                
+                if let todo = editingTodo {
+                    viewModel.updateParentTodo(todo, newTitle: trimmed, newChildren: trimmedChildren)
+                } else {
+                    viewModel.addParentTodo(with: trimmed, childTitles: trimmedChildren)
+                }
+                
+                isPresented = false
+            }) {
+                Image(parentTitle.trimmingCharacters(in: .whitespaces).isEmpty ? "DoneYet" : "Done")
+                    .resizable()
+                    .frame(width: 56, height: 56)
+            }
+            .offset(x: shakeOffset * (shouldShake ? -1 : 1))
+            .padding()
         }
-        .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 20)
-                .fill(Color("Cool900").opacity(0.9))
-        )
-        .padding(.horizontal, 24)
-    }
-
-    private func insertTodo() -> Todo {
-        let order: Int
-        if let parent {
-            order = (parent.children.map(\.order).max() ?? -1) + 1
-        } else {
-            let fd = FetchDescriptor<Todo>(predicate: #Predicate { $0.parent == nil })
-            let roots = (try? modelContext.fetch(fd)) ?? []
-            order = (roots.map(\.order).max() ?? -1) + 1
-        }
-
-        let todo = Todo(title: title,
-                        isCompleted: false,
-                        setTime: minutes,
-                        elapsedTime: 0,
-                        createdAt: .now,
-                        performedDate: nil,
-                        order: order,
-                        parent: parent)
-
-        modelContext.insert(todo)
-        try? modelContext.save()
-        return todo
     }
 }
 

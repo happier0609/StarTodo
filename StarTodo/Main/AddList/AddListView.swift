@@ -6,161 +6,115 @@
 //
 
 import SwiftUI
-import SwiftData
 
 struct AddListView: View {
-    @Environment(\.modelContext) private var modelContext
+    @ObservedObject var viewModel: MainViewModel
+    @State private var showModal = false
+    @State private var editingTodo: TodoEntity? = nil
+    @State private var showAlert = false
+    @State private var todoToDelete: TodoEntity? = nil
 
-    @State private var parentTitle: String = ""
-    @State private var childTitles: [String] = [""]
-    @State private var defaultMinutes: Int = 25
-
-    var onComplete: (() -> Void)?
+    private func showDeleteAlert(for todo: TodoEntity) {
+        todoToDelete = todo
+        showAlert = true
+    }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 16) {
+        ZStack(alignment: .bottomTrailing) {
+            if viewModel.todayTodos.isEmpty && viewModel.previousTodos.isEmpty {
+                // 👉 할 일 없을 때 EmptyView로 대체
+                AddListEmptyView()
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 24) {
+                        if !viewModel.todayTodos.isEmpty {
+                            Text("오늘 추가됨")
+                                .typo(.captionMDRegular)
+                                .foregroundColor(Color("Cool300"))
+                                .padding(.horizontal)
 
-                // 상위 카드
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("상위 할 일")
-                        .typo(.textSMEmphasized)
-                        .foregroundColor(Color("Cool300"))
+                            todoSection(for: viewModel.todoItems)
+                        }
 
-                    TextField("제목을 입력하세요", text: $parentTitle)
-                        .padding(12)
-                        .background(Color("Cool1000"))
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
-                        .foregroundColor(Color("BgLight"))
-                        .typo(.textMDRegular)
-                }
-                .padding(.horizontal)
+                        if !viewModel.previousTodos.isEmpty {
+                            Text("이전에 추가됨")
+                                .typo(.captionMDRegular)
+                                .foregroundColor(Color("Cool300"))
+                                .padding(.horizontal)
 
-                // 기본 시간
-                HStack {
-                    Text("기본 시간")
-                        .typo(.textSMEmphasized)
-                        .foregroundColor(Color("Cool300"))
-
-                    Spacer()
-
-                    Stepper(value: $defaultMinutes, in: 5...180, step: 5) {
-                        Text("\(defaultMinutes)분")
-                            .typo(.textMDEmphasized)
-                            .foregroundColor(Color("BgLight"))
-                    }
-                }
-                .padding()
-                .background(Color("Cool1000"))
-                .clipShape(RoundedRectangle(cornerRadius: 14))
-                .padding(.horizontal)
-
-                // 하위 카드
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack {
-                        Text("하위 할 일")
-                            .typo(.textSMEmphasized)
-                            .foregroundColor(Color("Cool300"))
-                        Spacer()
-                        Button {
-                            childTitles.append("")
-                        } label: {
-                            Label("추가", systemImage: "plus.circle.fill")
-                                .labelStyle(.titleAndIcon)
-                                .foregroundColor(Color("Primary500"))
-                                .typo(.textSMEmphasized)
+                            todoSection(for: viewModel.previousTodos)
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.top)
 
-                    ForEach(childTitles.indices, id: \.self) { i in
-                        HStack(spacing: 8) {
-                            TextField("할 일 \(i+1)", text: Binding(
-                                get: { childTitles[i] },
-                                set: { childTitles[i] = $0 }
-                            ))
-                            .padding(10)
-                            .background(Color("Cool1000"))
-                            .clipShape(RoundedRectangle(cornerRadius: 10))
-                            .foregroundColor(Color("BgLight"))
-                            .typo(.textMDRegular)
-
-                            if childTitles.count > 1 {
-                                Button(role: .destructive) {
-                                    childTitles.remove(at: i)
-                                } label: {
-                                    Image(systemName: "minus.circle.fill")
-                                        .foregroundColor(Color("Cool600"))
-                                }
-                            }
-                        }
-                    }
+                    Text("오늘 완료한 일은 매일 오전 5시에 리셋됩니다.")
+                        .typo(.captionMDRegular)
+                        .foregroundColor(Color("Cool300"))
                 }
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 14)
-                        .fill(Color("Cool1000"))
-                )
-                .padding(.horizontal)
-
-                // 저장 버튼
-                Button(action: addParentTodo) {
-                    HStack(spacing: 8) {
-                        Image(systemName: "plus")
-                        Text("추가하기")
-                            .typo(.textMDEmphasized)
-                    }
-                    .foregroundColor(Color("White"))
-                    .padding(.vertical, 14)
-                    .frame(maxWidth: .infinity)
-                    .background(Color("Primary500"))
-                    .clipShape(RoundedRectangle(cornerRadius: 14))
-                }
-                .disabled(parentTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                .opacity(parentTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.5 : 1.0)
-                .padding(.horizontal)
-                .padding(.top, 8)
+                .transition(.move(edge: .leading))
             }
-            .padding(.vertical, 16)
+
+            addButton
         }
-        .background(Color("BgDark").ignoresSafeArea())
-        .navigationTitle("할 일 만들기")
-        .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showModal) {
+            AddTaskModalView(isPresented: $showModal, editingTodo: $editingTodo)
+                .environmentObject(viewModel)
+        }
+        .alert("정말 삭제할까요?", isPresented: $showAlert, presenting: todoToDelete) { todo in
+            Button("삭제", role: .destructive) {
+                viewModel.deleteTodo(todo)
+            }
+            Button("취소", role: .cancel) { }
+        } message: { todo in
+            Text("\"\(todo.wrappedTitle)\"과 관련된 모든 할 일이 함께 삭제됩니다.")
+        }
     }
 
-    private func addParentTodo() {
-        // 루트 order 계산
-        let fd = FetchDescriptor<Todo>(predicate: #Predicate { $0.parent == nil })
-        let roots = (try? modelContext.fetch(fd)) ?? []
-        let nextOrder = (roots.map(\.order).max() ?? -1) + 1
-
-        let parent = Todo(title: parentTitle,
-                          isCompleted: false,
-                          setTime: defaultMinutes,
-                          elapsedTime: 0,
-                          createdAt: .now,
-                          performedDate: nil,
-                          order: nextOrder,
-                          parent: nil)
-
-        var childOrder = 0
-        for t in childTitles where !t.trimmingCharacters(in: .whitespaces).isEmpty {
-            let child = Todo(title: t,
-                             isCompleted: false,
-                             setTime: defaultMinutes,
-                             elapsedTime: 0,
-                             createdAt: .now,
-                             performedDate: nil,
-                             order: childOrder,
-                             parent: parent)
-            childOrder += 1
-            parent.children.append(child)
+    private var addButton: some View {
+        Button(action: {
+            editingTodo = nil
+            showModal = true
+        }) {
+            Image("addTodo")
+                .padding()
         }
+    }
 
-        modelContext.insert(parent)
-        try? modelContext.save()
-        onComplete?()
+    @ViewBuilder
+    private func todoSection(for list: [TodoEntity]) -> some View {
+        VStack(spacing: 16) {
+            ForEach(list, id: \.objectID) { parent in
+                TodoGroupCardView(
+                    parent: parent,
+                    children: parent.childrenArray,
+                    onToggle: { todo in
+                        viewModel.toggleTodo(todo)
+                    },
+                    onLongPressEdit: { todo in
+                        editingTodo = todo
+                        showModal = true
+                    }
+                )
+                .background(Color.white)
+                .contentShape(Rectangle()) // 터치 확장
+                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
+                    Button(role: .destructive) {
+                        if parent.childrenArray.isEmpty {
+                            viewModel.deleteTodo(parent)
+                        } else {
+                            showDeleteAlert(for: parent)
+                        }
+                    } label: {
+                        Label("삭제", systemImage: "trash")
+                    }
+                }
+            }
+        }
+        .padding(.horizontal)
     }
 }
+
 #Preview {
-    MainView()
+    ContentView()
 }
