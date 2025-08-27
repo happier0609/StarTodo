@@ -6,43 +6,59 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct AddListView: View {
-    @ObservedObject var viewModel: MainViewModel
-    @State private var showModal = false
-    @State private var editingTodo: TodoEntity? = nil
-    @State private var showAlert = false
-    @State private var todoToDelete: TodoEntity? = nil
+    @EnvironmentObject private var repo: TodoRepository
 
-    private func showDeleteAlert(for todo: TodoEntity) {
-        todoToDelete = todo
-        showAlert = true
+    @State private var showModal = false
+    @State private var editingParent: Todo? = nil
+
+    @State private var showAlert = false
+    @State private var parentToDelete: Todo? = nil
+
+    // 루트(부모만) 조회
+    @Query(
+        filter: #Predicate<Todo> { $0.parent == nil },
+        sort: [
+            SortDescriptor(\Todo.isCompleted, order: .forward), // 미완료 → 완료
+            SortDescriptor(\Todo.order,       order: .forward),
+            SortDescriptor(\Todo.createdAt,   order: .forward)
+        ]
+    )
+    private var parents: [Todo]
+
+    // 섹션 분리(오늘/이전)
+    private var todayParents: [Todo] {
+        parents.filter { Calendar.current.isDateInToday($0.createdAt) }
+    }
+    private var previousParents: [Todo] {
+        parents.filter { !Calendar.current.isDateInToday($0.createdAt) }
     }
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            if viewModel.todayTodos.isEmpty && viewModel.previousTodos.isEmpty {
-                // 👉 할 일 없을 때 EmptyView로 대체
+            if parents.isEmpty {
                 AddListEmptyView()
             } else {
                 ScrollView {
                     VStack(alignment: .leading, spacing: 24) {
-                        if !viewModel.todayTodos.isEmpty {
+                        if !todayParents.isEmpty {
                             Text("오늘 추가됨")
                                 .typo(.captionMDRegular)
                                 .foregroundColor(Color("Cool300"))
                                 .padding(.horizontal)
 
-                            todoSection(for: viewModel.todoItems)
+                            todoSection(for: todayParents)
                         }
 
-                        if !viewModel.previousTodos.isEmpty {
+                        if !previousParents.isEmpty {
                             Text("이전에 추가됨")
                                 .typo(.captionMDRegular)
                                 .foregroundColor(Color("Cool300"))
                                 .padding(.horizontal)
 
-                            todoSection(for: viewModel.previousTodos)
+                            todoSection(for: previousParents)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -57,51 +73,64 @@ struct AddListView: View {
 
             addButton
         }
+        // 새로 만들기 / 편집
         .sheet(isPresented: $showModal) {
-            AddTaskModalView(isPresented: $showModal, editingTodo: $editingTodo)
-                .environmentObject(viewModel)
+            AddTaskModalView(editingParent: editingParent) // ← 이 뷰도 SwiftData용으로 수정 필요(아래 참고)
+                .environmentObject(repo)
         }
-        .alert("정말 삭제할까요?", isPresented: $showAlert, presenting: todoToDelete) { todo in
+        // 삭제 확인
+        .alert("정말 삭제할까요?", isPresented: $showAlert, presenting: parentToDelete) { p in
             Button("삭제", role: .destructive) {
-                viewModel.deleteTodo(todo)
+                try? repo.delete(p)
             }
-            Button("취소", role: .cancel) { }
-        } message: { todo in
-            Text("\"\(todo.wrappedTitle)\"과 관련된 모든 할 일이 함께 삭제됩니다.")
+            Button("취소", role: .cancel) {}
+        } message: { p in
+            Text("\"\(p.title)\"과 관련된 모든 할 일이 함께 삭제됩니다.")
+        }
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button {
+                    editingParent = nil
+                    showModal = true
+                } label: {
+                    Image(systemName: "plus.circle.fill")
+                }
+            }
         }
     }
 
+    // 플로팅 추가 버튼
     private var addButton: some View {
-        Button(action: {
-            editingTodo = nil
+        Button {
+            editingParent = nil
             showModal = true
-        }) {
+        } label: {
             Image("addTodo")
                 .padding()
         }
     }
 
+    // 섹션 렌더
     @ViewBuilder
-    private func todoSection(for list: [TodoEntity]) -> some View {
+    private func todoSection(for list: [Todo]) -> some View {
         VStack(spacing: 16) {
-            ForEach(list, id: \.objectID) { parent in
+            ForEach(list) { parent in
                 TodoGroupCardView(
                     parent: parent,
-                    children: parent.childrenArray,
-                    onToggle: { todo in
-                        viewModel.toggleTodo(todo)
+                    children: parent.children.sorted { $0.order < $1.order },
+                    onToggle: { item in
+                        try? repo.toggle(item)                 // 완료 토글
                     },
-                    onLongPressEdit: { todo in
-                        editingTodo = todo
+                    onLongPressEdit: { _ in
+                        editingParent = parent
                         showModal = true
                     }
                 )
-                .background(Color.white)
-                .contentShape(Rectangle()) // 터치 확장
+                .contentShape(Rectangle())
                 .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                     Button(role: .destructive) {
-                        if parent.childrenArray.isEmpty {
-                            viewModel.deleteTodo(parent)
+                        if parent.children.isEmpty {
+                            try? repo.delete(parent)
                         } else {
                             showDeleteAlert(for: parent)
                         }
@@ -113,8 +142,31 @@ struct AddListView: View {
         }
         .padding(.horizontal)
     }
+
+    private func showDeleteAlert(for parent: Todo) {
+        parentToDelete = parent
+        showAlert = true
+    }
 }
 
-#Preview {
-    ContentView()
+#if DEBUG
+struct AddListView_Previews: PreviewProvider {
+    static var previews: some View {
+        let container = try! ModelContainer(
+            for: Todo.self,
+            configurations: .init(isStoredInMemoryOnly: true)
+        )
+        let repo = TodoRepository(context: container.mainContext)
+
+        // 시드
+        let math = Todo(title: "수학 문제 풀기", setMinutes: 25, order: 0)
+        math.children.append(Todo(title: "미적분 3문제", setMinutes: 25, order: 0, parent: math))
+        container.mainContext.insert(math)
+
+        return AddListView()
+            .modelContainer(container)
+            .environmentObject(repo)
+            .background(Color("BgDark"))
+    }
 }
+#endif
