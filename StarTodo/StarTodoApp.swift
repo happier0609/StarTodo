@@ -10,12 +10,10 @@ import SwiftData
 
 @main
 struct StarTodoApp: App {
-    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            RootView()
         }
-        // SwiftData 컨테이너
         .modelContainer(for: [Todo.self, FocusSession.self, FocusItem.self])
     }
 }
