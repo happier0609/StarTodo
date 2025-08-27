@@ -8,11 +8,11 @@
 import SwiftUI
 
 struct TodoGroupCardView: View {
-    let parent: TodoEntity
-    let children: [TodoEntity]
-    let onToggle: (TodoEntity) -> Void
-    let onLongPressEdit: (TodoEntity) -> Void
-
+    let parent: Todo
+    let children: [Todo]
+    let onToggle: (Todo) -> Void
+    let onLongPressEdit: (Todo) -> Void
+    
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // 상위 항목
@@ -37,7 +37,7 @@ struct TodoGroupCardView: View {
                     onLongPressEdit(parent)
                 }
             )
-
+            
             // 하위 항목
             ForEach(children, id: \TodoEntity.objectID) { child in
                 HStack {
