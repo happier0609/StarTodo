@@ -6,14 +6,21 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct AddTaskModalView: View {
+    
+    @Environment(\.modelContext) private var modelContext
+    
     @Binding var isPresented: Bool
     @Binding var editingTodo: TodoEntity?
     @EnvironmentObject var viewModel: MainViewModel
     
     @State private var parentTitle: String = ""
     @State private var childTasks: [String] = []
+    
+    // 편집 모드라면 편집할 부모를 주입 (없으면 신규 생성)
+    var editingParent: Todo?
     
     // ✅ shake 관련
     @State private var shakeOffset: CGFloat = 0
@@ -34,7 +41,7 @@ struct AddTaskModalView: View {
                     }
                     TextField("여기에 새로운 할 일을 추가하세요.", text: $parentTitle)
                         .typo(.textMDRegular)
-//                        .foregroundStyle(Color("Cool300"))
+                        .foregroundStyle(Color("Cool300"))
                 }
                 
                 // ✅ 하위 작업 리스트
@@ -42,13 +49,13 @@ struct AddTaskModalView: View {
                     HStack(spacing: 8) {
                         Image("noneCheck")
                             .foregroundColor(Color("Primary500"))
-
+                        
                         TextField("하위 작업 추가하기", text: $childTasks[index])
                             .typo(.textSMRegular)
-//                            .foregroundStyle(Color("Cool300"))
+                            .foregroundStyle(Color("Cool300"))
                             .frame(maxWidth: .infinity)
                             .layoutPriority(1) // 🔥 핵심
-
+                        
                         Button(action: {
                             childTasks.remove(at: index)
                         }) {
