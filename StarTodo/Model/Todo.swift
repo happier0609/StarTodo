@@ -21,12 +21,12 @@ final class Todo {
     var createdAt: Date                              // 생성일
     var performedDate: Date?                         // 완료 시각(완료 취소 시 nil)
     var order: Int                                   // 같은 부모 내 정렬
-
+    
     // MARK: - 계층 구조
     var parent: Todo?                                // 상위
     @Relationship(deleteRule: .cascade, inverse: \Todo.parent)
     var children: [Todo] = []                        // 하위
-
+    
     // MARK: - 초기화
     init(id: UUID = UUID(),
          title: String,
@@ -49,8 +49,17 @@ final class Todo {
         self.order = order
         self.parent = parent
     }
-
+    
     // MARK: - 편의(기존 코드 호환용)
-    /// SwiftUI 리스트/정렬에서 자주 쓰는 래퍼(옵션)
+    // 편의
     var childrenArray: [Todo] { children.sorted { $0.order < $1.order } }
+    
+//    // ✅ 정렬 프리셋을 모델에 고정 (SwiftData.SortDescriptor 사용)
+//    static let defaultSort: [Foundation.SortDescriptor<Todo>] = [
+//            Foundation.SortDescriptor(\Todo.isCompleted, order: .forward),
+//            Foundation.SortDescriptor(\Todo.order,       order: .forward),
+//            Foundation.SortDescriptor(\Todo.createdAt,   order: .forward),
+//        ]
+//
+//        static let rootsPredicate: Foundation.Predicate<Todo> = #Predicate<Todo> { $0.parent == nil }
 }

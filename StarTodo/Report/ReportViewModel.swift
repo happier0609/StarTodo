@@ -8,65 +8,79 @@
 import Foundation
 import SwiftUI
 
-class ReportViewModel: ObservableObject {
-    // 전체 할 일 목록 (집중모드 수행 완료 후 저장된 항목만)
-    @Published var todos: [TodoEntity] = []
-    
-    // 완료한 할 일들
-    @Published var completedTodos: [TodoEntity] = []
-    
-    // 완료하지 못한 할 일들
-    @Published var incompletedTodos: [TodoEntity] = []
+/// 집중 모드 종료 후 리포트 화면에서 사용하는 ViewModel (SwiftData 버전)
+@MainActor
+final class ReportViewModel: ObservableObject {
 
-    // MARK: - 데이터 불러오기
+    // 전체 할 일 목록 (이번 세션에서 "수행됨" 표식이 있는 항목들만 전달받아 사용)
+    @Published var todos: [Todo] = []
 
-    /// 완료 여부와 관계없이 수행한 할 일들만 필터링하여 todos에 저장
-    /// 동시에 완료/미완료 리스트도 분리 저장
-    func fetchTodos(from allTodos: [TodoEntity]) {
-        todos = allTodos.filter { $0.performedDate != nil }
-        completedTodos = todos.filter { $0.isCompleted }
-        incompletedTodos = todos.filter { !$0.isCompleted }
+    // 완료/미완료 분리 리스트 (UI 편의용)
+    @Published var completedTodos: [Todo] = []
+    @Published var incompletedTodos: [Todo] = []
+
+    // MARK: - 데이터 로딩
+
+    /// 완료 여부와 상관없이, "수행된(performedDate != nil)" 항목만 리포트 대상으로 채택
+    /// 동시에 완료/미완료 리스트를 분리 저장
+    func fetchTodos(from allTodos: [Todo]) {
+        // 수행된 항목만
+        let performed = allTodos.filter { $0.performedDate != nil }
+
+        // 정렬(옵션): 완료 여부 → order → 생성일
+        self.todos = performed.sorted {
+            // 미완료가 먼저 오고, 그 다음 order, createdAt
+            if $0.isCompleted != $1.isCompleted {
+                return $0.isCompleted == false
+            }
+            if $0.order != $1.order { return $0.order < $1.order }
+            return $0.createdAt < $1.createdAt
+        }
+
+        self.completedTodos   = todos.filter { $0.isCompleted }
+        self.incompletedTodos = todos.filter { !$0.isCompleted }
     }
 
-    // MARK: - 통계 정보
+    // MARK: - 총합/통계 (⚠️ elapsedTime은 "초" 단위)
 
-    /// 총 집중 시간 (모든 수행된 할 일의 elapsedTime 합산, 단위: 분)
-    var totalFocusedTime: Int {
-        todos.reduce(0) { $0 + Int($1.elapsedTime) }
+    /// 총 집중 시간(초)
+    var totalFocusedSeconds: Int {
+        todos.reduce(0) { $0 + $1.elapsedTime }
     }
 
-    /// 총 집중 시간을 "X시간 Y분" 형식의 텍스트로 반환
+    /// 총 집중 시간(분)
+    var totalFocusedMinutes: Int {
+        totalFocusedSeconds / 60
+    }
+
+    /// 총 집중 시간 텍스트: "X시간 Y분"
     var totalFocusedTimeText: String {
-        let hours = totalFocusedTime / 60
-        let minutes = totalFocusedTime % 60
+        let hours = totalFocusedMinutes / 60
+        let minutes = totalFocusedMinutes % 60
         return "\(hours)시간 \(minutes)분"
     }
 
-    /// 전체 할 일 개수
-    var totalCount: Int {
-        todos.count
-    }
+    /// 전체 할 일 개수(수행된 것만 집계)
+    var totalCount: Int { todos.count }
 
     /// 완료한 할 일 개수
-    var completedCount: Int {
-        completedTodos.count
+    var completedCount: Int { completedTodos.count }
+
+    // MARK: - 계획 시간(분) 관련
+
+    /// 전체 수행 항목의 계획 시간(setTime, 분) 합 (모든 항목이 0초가 아니어야 합산)
+    /// - 모든 항목의 setTime이 0보다 큰 경우에만 합산; 아니면 nil
+    var totalPlannedMinutes: Int? {
+        let mins = todos.map { $0.setTime }             // 분
+        guard mins.allSatisfy({ $0 > 0 }) else { return nil }
+        return mins.reduce(0, +)
     }
 
-    // MARK: - 계획 시간 관련
-
-    /// 전체 할 일의 계획 시간(setTime) 합산 (모두 계획이 있을 때만 반환, 없으면 nil)
-    var totalPlannedTime: Int? {
-        let times = todos.map { Int($0.setTime) }
-        guard times.allSatisfy({ $0 > 0 }) else { return nil }
-        return times.reduce(0, +)
-    }
-
-    /// 총 집중 시간과 계획 시간의 차이를 바탕으로 텍스트 생성
-    /// 예: "5분 일찍 완료", "10분 더 집중"
+    /// 총 실제 시간 vs 총 계획 시간 비교 텍스트 (예: "5분 일찍 완료", "10분 더 집중")
     var timeComparisonMessage: String? {
-        guard let planned = totalPlannedTime else { return nil }
+        guard let planned = totalPlannedMinutes else { return nil }
 
-        let actual = totalFocusedTime
+        let actual = totalFocusedMinutes
         if actual > planned {
             return "\(actual - planned)분 더 집중"
         } else if actual < planned {
@@ -76,25 +90,25 @@ class ReportViewModel: ObservableObject {
         }
     }
 
-    // MARK: - 개별 할 일 시간 비교
+    // MARK: - 개별 항목 비교
 
-    /// 개별 할 일의 계획 시간과 실제 수행 시간 비교
+    /// 개별 할 일의 계획/실제 시간 비교 텍스트
     /// - 완료된 항목만 비교
-    /// - 계획 없음(0분)은 nil 반환
-    func timeDescription(for todo: TodoEntity) -> String? {
+    /// - 계획 시간이 0분이면 nil
+    func timeDescription(for todo: Todo) -> String? {
         guard todo.isCompleted else { return nil }
 
-        let planned = Int(todo.setTime)
-        let actual = Int(todo.elapsedTime)
+        let plannedMin = todo.setTime               // 분
+        let actualMin  = todo.elapsedTime / 60      // 초 → 분
 
-        if planned == 0 {
-            return nil // 계획 시간 없음
-        } else if actual > planned {
-            return "\(actual - planned)분 더 집중"
-        } else if actual < planned {
-            return "\(planned - actual)분 일찍 완료"
+        guard plannedMin > 0 else { return nil }
+
+        if actualMin > plannedMin {
+            return "\(actualMin - plannedMin)분 더 집중"
+        } else if actualMin < plannedMin {
+            return "\(plannedMin - actualMin)분 일찍 완료"
         } else {
-            return nil // 정확히 일치하거나 기타 조건은 표시 안함
+            return nil
         }
     }
 }

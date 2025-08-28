@@ -5,6 +5,7 @@
 //  Created by ChoMinKyung on 7/29/25.
 //
 
+import Foundation
 import SwiftUI
 
 struct FocusStartButton: View {

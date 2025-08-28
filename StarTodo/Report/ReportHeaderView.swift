@@ -5,7 +5,6 @@
 //  Created by ChoMinKyung on 8/3/25.
 //
 
-// FocusReportHeaderView.swift
 import SwiftUI
 
 struct ReportHeaderView: View {
@@ -18,8 +17,9 @@ struct ReportHeaderView: View {
         VStack(spacing: 16) {
             // 🐻 아이콘과 타이틀
             HStack(spacing: 2) {
-                Image("Result") // 🔄 에셋 이름에 맞게 수정 필요
+                Image("Result")
                     .resizable()
+                    .scaledToFit()
                     .frame(width: 40, height: 40)
 
                 Text("탐사 결과")
@@ -39,6 +39,7 @@ struct ReportHeaderView: View {
                     .typo(.textSMEmphasized)
                     .foregroundColor(Color("Cool300"))
             }
+            .frame(maxWidth: .infinity, alignment: .center) // ✅ 컨테이너도 중앙 정렬
 
             // ⏱ 총 집중 시간 타이틀
             VStack(spacing: 4) {
@@ -58,6 +59,7 @@ struct ReportHeaderView: View {
                 }
             }
         }
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -68,8 +70,27 @@ struct GlowingText: View {
 
     var body: some View {
         Text(text)
-            .typo(.titleLGEmphasized)
+            .font(.system(size: fontSize, weight: .heavy)) // ✅ 실제로 사용
+            .monospacedDigit()                             // ✅ 숫자 자간 고정
             .foregroundColor(Color("BgLight"))
             .shadow(color: .white.opacity(0.8), radius: 4)
     }
 }
+
+#if DEBUG
+struct ReportHeaderView_Previews: PreviewProvider {
+    static var previews: some View {
+        VStack {
+            ReportHeaderView(
+                totalTasks: 5,
+                completedTasks: 3,
+                totalHours: 1,
+                totalMinutes: 35
+            )
+            .padding()
+            .background(Color("BgDark"))
+        }
+        .previewDisplayName("Report Header")
+    }
+}
+#endif

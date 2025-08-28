@@ -5,6 +5,7 @@
 //  Created by ChoMinKyung on 5/8/25.
 //
 
+import Foundation
 import SwiftUI
 
 enum MainTabType: String, CaseIterable {

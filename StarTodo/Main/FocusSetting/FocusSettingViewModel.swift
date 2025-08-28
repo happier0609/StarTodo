@@ -35,15 +35,13 @@ final class FocusSettingViewModel: ObservableObject {
 
     // MARK: - Expand / Select
     func toggleExpanded(for parent: Todo) {
-        if let id = parent.id as UUID? {
-            if expandedParentIDs.contains(id) { expandedParentIDs.remove(id) }
-            else { expandedParentIDs.insert(id) }
-        }
+        let id = parent.id
+        if expandedParentIDs.contains(id) { expandedParentIDs.remove(id) }
+        else { expandedParentIDs.insert(id) }
     }
 
     func isExpanded(_ parent: Todo) -> Bool {
-        guard let id = parent.id as UUID? else { return false }
-        return expandedParentIDs.contains(id)
+        expandedParentIDs.contains(parent.id)
     }
 
     /// 부모를 토글하면 부모+자식 전체 토글
