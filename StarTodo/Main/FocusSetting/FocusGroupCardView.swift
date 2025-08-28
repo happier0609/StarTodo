@@ -5,18 +5,20 @@
 //  Created by ChoMinKyung on 5/11/25.
 //
 
+import Foundation
+import SwiftData
 import SwiftUI
 
 struct FocusGroupCardView: View {
-    let parent: TodoEntity
-    let children: [TodoEntity]
+    let parent: Todo
+    let children: [Todo]
     let isExpanded: Bool
     let selectedChildCount: Int
     let totalChildCount: Int
     let isSelected: Bool
     let onToggleExpand: () -> Void
     let onParentTap: () -> Void
-    let onChildTap: (TodoEntity) -> Void
+    let onChildTap: (Todo) -> Void
     
     @EnvironmentObject var focusSettingVM: FocusSettingViewModel
     
@@ -47,7 +49,7 @@ struct FocusGroupCardView: View {
                     onToggleExpand: onToggleExpand,
                     onParentTap: onParentTap
                 )
-                .padding(.bottom, isExpanded && !children.isEmpty ? 12 : 0)
+//                .padding(.bottom, isExpanded && !children.isEmpty ? 12 : 0)
                 
                 if isExpanded {
                     VStack(spacing: 10) {

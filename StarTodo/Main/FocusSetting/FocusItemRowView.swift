@@ -6,9 +6,10 @@
 //
 
 import SwiftUI
+import Foundation
 
 struct FocusItemRowView: View {
-    let todo: TodoEntity
+    let todo: Todo
     var isChild: Bool = true
     
     @EnvironmentObject var focusSettingVM: FocusSettingViewModel

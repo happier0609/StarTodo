@@ -8,14 +8,14 @@
 import SwiftUI
 
 struct ReportListView: View {
-    let todos: [TodoEntity]
-    let getComment: (TodoEntity) -> String?
-    let isCompleted: (TodoEntity) -> Bool
+    let todos: [Todo]
+    let getComment: (Todo) -> String?
+    let isCompleted: (Todo) -> Bool
     
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                ForEach(todos, id: \.wrappedID) { todo in
+                ForEach(todos, id: \.id) { todo in
                     HStack(alignment: .top) {
                         ZStack {
                             if isCompleted(todo) {
@@ -32,7 +32,7 @@ struct ReportListView: View {
                         .padding(.top, 2)
                         
                         // ✅ 텍스트 및 설명
-                        Text(todo.wrappedTitle)
+                        Text(todo.title)
                             .typo(.textMDRegular)
                             .foregroundColor(Color("BgLight"))
                         
@@ -53,3 +53,30 @@ struct ReportListView: View {
         }
     }
 }
+
+#if DEBUG
+struct ReportListView_Previews: PreviewProvider {
+    static var previews: some View {
+        let t1 = Todo(title: "수학 문제", isCompleted: true,  setTime: 25, elapsedTime: 26*60)
+        t1.performedDate = .now
+        let t2 = Todo(title: "영단어 암기", isCompleted: false, setTime: 20, elapsedTime: 12*60)
+        t2.performedDate = .now
+
+        return ReportListView(
+            todos: [t1, t2],
+            getComment: { todo in
+                // 간단한 데모용 코멘트
+                let planned = todo.setTime
+                let actual  = todo.elapsedTime / 60
+                guard todo.isCompleted, planned > 0 else { return nil }
+                if actual > planned { return "\(actual - planned)분 더 집중" }
+                if actual < planned { return "\(planned - actual)분 일찍 완료" }
+                return nil
+            },
+            isCompleted: { $0.isCompleted }
+        )
+        .background(Color("BgDark"))
+        .previewDisplayName("Report List")
+    }
+}
+#endif

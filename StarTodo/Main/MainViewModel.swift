@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-// 앱 페이지 상태 관리용 enum
+// 앱 페이지 상태
 enum AppPage {
     case todoList
     case focusSetting
@@ -19,17 +19,18 @@ enum AppPage {
 
 @MainActor
 final class MainViewModel: ObservableObject {
+
     // MARK: - Published (UI 바인딩)
-    @Published var todoEntities: [Todo] = []          // 전체 할 일
-    @Published var selectedTodos: [Todo] = []         // FocusSetting 선택
-    @Published var timeSettings: [UUID: Int] = [:]    // 각 할 일별 설정 시간(분)
-    @Published var selectedIDs: [UUID] = []           // 선택된 할 일 id
-    @Published var todoItems: [Todo] = []             // 루트(상위)만
-    @Published var selectedTodoTimes: [UUID: Int] = [:]
-    @Published var selectedFocusTodos: [Todo] = []    // 집중모드에 전달할 최종 목록
+    @Published var todoEntities: [Todo] = []            // 전체 할 일
+    @Published var selectedTodos: [Todo] = []           // FocusSetting에서 선택된 항목
+    @Published var timeSettings: [UUID: Int] = [:]      // id별 설정 분(뷰 전용 캐시)
+    @Published var selectedIDs: [UUID] = []             // 선택된 id
+    @Published var todoItems: [Todo] = []               // 루트(상위만)
+    @Published var selectedTodoTimes: [UUID: Int] = [:] // (사용 중이면 유지)
+    @Published var selectedFocusTodos: [Todo] = []      // 집중모드로 넘길 최종 목록
     @Published var currentPage: AppPage = .todoList
 
-    // 완료 카운팅 기준 시각(예: 05:00)
+    // 완료 판정 리셋 기준 시각 (ex. 새벽 5시)
     @AppStorage("resetHour") var resetHour: Int = 5
 
     // MARK: - SwiftData
@@ -39,24 +40,31 @@ final class MainViewModel: ObservableObject {
         fetchTodos()
     }
 
-    // MARK: - Computed
+    // MARK: - Derived
     var incompleteTodos: [Todo] { todoEntities.filter { !$0.isCompleted } }
     var uncompletedTodos: [Todo] { incompleteTodos }
 
     var completedTodos: [Todo] {
-        todoEntities.filter { $0.isCompleted && (($0.performedDate ?? .distantPast) >= completionResetTime) }
+        todoEntities.filter {
+            $0.isCompleted && (($0.performedDate ?? .distantPast) >= completionResetTime)
+        }
     }
 
     var todayTodos: [Todo] {
-        todoEntities.filter { Calendar.current.isDateInToday($0.createdAt) && $0.parent == nil }
+        todoEntities.filter {
+            Calendar.current.isDateInToday($0.createdAt) && $0.parent == nil
+        }
     }
 
     var previousTodos: [Todo] {
-        todoEntities.filter { !Calendar.current.isDateInToday($0.createdAt) && $0.parent == nil }
+        todoEntities.filter {
+            !Calendar.current.isDateInToday($0.createdAt) && $0.parent == nil
+        }
     }
 
+    /// 완료 리셋 기준 시각 (오늘 날짜 + resetHour)
     var completionResetTime: Date {
-        var comp = Calendar.current.dateComponents([.year,.month,.day], from: .now)
+        var comp = Calendar.current.dateComponents([.year, .month, .day], from: .now)
         comp.hour = resetHour
         return Calendar.current.date(from: comp) ?? .now
     }
@@ -64,15 +72,20 @@ final class MainViewModel: ObservableObject {
     // MARK: - Fetch
     func fetchTodos() {
         do {
-            let fd = FetchDescriptor<Todo>(
-                sortBy: [
-                    .init(\Todo.isCompleted, order: .forward),
-                    .init(\Todo.order,       order: .forward),
-                    .init(\Todo.createdAt,   order: .forward)
-                ]
-            )
-            todoEntities = try context.fetch(fd)
-            todoItems = todoEntities.filter { $0.parent == nil }
+            // 1) 정렬/필터 없이 전부 가져오기
+            let fd = FetchDescriptor<Todo>()              // ← sortBy, predicate 없음
+            var list = try context.fetch(fd)
+
+            // 2) 메모리에서 정렬 (미완료 우선 → order → createdAt)
+            list.sort {
+                if $0.isCompleted != $1.isCompleted { return !$0.isCompleted && $1.isCompleted }
+                if $0.order != $1.order { return $0.order < $1.order }
+                return $0.createdAt < $1.createdAt
+            }
+
+            // 3) 상태 갱신
+            todoEntities = list
+            todoItems = list.filter { $0.parent == nil }
         } catch {
             print("❌ SwiftData fetch 실패:", error.localizedDescription)
             todoEntities = []; todoItems = []
@@ -81,9 +94,11 @@ final class MainViewModel: ObservableObject {
 
     // MARK: - CRUD
 
-    /// 상위 할 일과 자식들 생성
+    /// 상위 할 일 + 자식들 생성
     func addParentTodo(with title: String, childTitles: [String], defaultMinutes: Int = 25) {
+        // 다음 루트 order
         let nextOrder = (todoItems.map(\.order).max() ?? -1) + 1
+
         let parent = Todo(title: title,
                           isCompleted: false,
                           setTime: defaultMinutes,
@@ -93,7 +108,9 @@ final class MainViewModel: ObservableObject {
                           order: nextOrder,
                           parent: nil)
 
-        for (idx, ct) in childTitles.enumerated() {
+        for (idx, raw) in childTitles.enumerated() {
+            let ct = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !ct.isEmpty else { continue }
             let child = Todo(title: ct,
                              isCompleted: false,
                              setTime: defaultMinutes,
@@ -109,26 +126,28 @@ final class MainViewModel: ObservableObject {
         saveContext()
     }
 
-    /// 상위 할 일 편집(자식 동기화)
+    /// 상위 할 일 편집(자식 동기화: 삭제/추가)
     func updateParentTodo(_ todo: Todo, newTitle: String, newChildren: [String]) {
         todo.title = newTitle
 
         let existing = todo.children
         let existingTitles = Set(existing.map(\.title))
-        let newSet = Set(newChildren)
+        let newTitleSet    = Set(newChildren)
 
-        // 삭제
-        for child in existing where !newSet.contains(child.title) {
+        // 삭제될 자식
+        for child in existing where !newTitleSet.contains(child.title) {
             context.delete(child)
         }
 
-        // 추가
+        // 새로 추가될 자식
         let toAdd = newChildren.filter { !existingTitles.contains($0) }
         let startOrder = (todo.children.map(\.order).max() ?? -1) + 1
-        for (offset, t) in toAdd.enumerated() {
+        for (offset, raw) in toAdd.enumerated() {
+            let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !t.isEmpty else { continue }
             let child = Todo(title: t,
                              isCompleted: false,
-                             setTime: todo.setTime,   // 부모와 동일 기본값
+                             setTime: todo.setTime,   // 부모 기본값을 물려줌
                              elapsedTime: 0,
                              createdAt: .now,
                              performedDate: nil,
@@ -151,15 +170,17 @@ final class MainViewModel: ObservableObject {
         saveContext()
     }
 
-    /// 같은 부모 내에서의 순서 재배치 (List.onMove 등에 사용)
+    /// 루트(부모 == nil) 항목의 순서를 재배치 (List.onMove 에서 사용)
     func reorderRootTodos(from: IndexSet, to destination: Int) {
+        // 현재 루트들만 정렬 기준으로 복사
         var items = todoItems.sorted { $0.order < $1.order }
         items.move(fromOffsets: from, toOffset: destination)
+        // 새 order를 0부터 다시 매겨주기
         for (idx, t) in items.enumerated() { t.order = idx }
         saveContext()
     }
 
-    // MARK: - 선택(체크박스/토글) 로직
+    // MARK: - 선택 (FocusSetting)
 
     func toggleSelection(of todo: Todo) {
         if let i = selectedTodos.firstIndex(where: { $0.id == todo.id }) {
@@ -184,6 +205,7 @@ final class MainViewModel: ObservableObject {
     func toggleParentSelection(_ parent: Todo, _ select: Bool) {
         let ids = [parent.id] + parent.children.map(\.id)
         if select {
+            // 중복 제거 후 합침
             selectedIDs = Array(Set(selectedIDs + ids))
             for t in [parent] + parent.children where !selectedTodos.contains(where: { $0.id == t.id }) {
                 selectedTodos.append(t)
@@ -207,7 +229,7 @@ final class MainViewModel: ObservableObject {
 
     // MARK: - 시간 설정 (분)
 
-    /// UI에 보여줄 설정 분(없으면 Todo의 setTime, 그마저도 없으면 30)
+    /// UI에 보여줄 설정 분 (임시 캐시 → 없으면 모델의 setTime 사용)
     func setTime(for todo: Todo) -> Int {
         timeSettings[todo.id] ?? todo.setTime
     }
@@ -231,7 +253,8 @@ final class MainViewModel: ObservableObject {
     private func saveContext() {
         do {
             try context.save()
-            fetchTodos() // 최신 배열 갱신
+            // 저장 후 다시 fetch 해서 메모리/정렬 동기화
+            fetchTodos()
         } catch {
             print("❌ SwiftData save 실패:", error.localizedDescription)
         }
