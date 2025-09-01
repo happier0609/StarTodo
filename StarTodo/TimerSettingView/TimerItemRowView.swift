@@ -9,7 +9,7 @@ import SwiftUI
 import CoreData
 
 struct TimerItemRowView: View {
-    let item: TodoEntity
+    let item: Todo
     let parentTitle: String? // 자식이면 부모 제목 표시용
     let selectedTime: Int?   // nil이면 '없음'
     let onTimeChange: (Int?) -> Void
@@ -27,7 +27,7 @@ struct TimerItemRowView: View {
 
             HStack {
                 // 🏷 할 일 제목
-                Text(item.wrappedTitle)
+                Text(item.title)
                     .typo(.textMDRegular)
                     .foregroundColor(Color("Cool1100"))
 
