@@ -44,10 +44,10 @@ struct MainView: View {
             switch selectedTab {
             case .start:
                 FocusSettingView()
-                    .environmentObject(FocusSettingViewModel()) // ✅ ViewModel 인스턴스 주입
-                    .environmentObject(viewModel) // 이미 주입돼 있다면 생략 가능
+                    .environmentObject(FocusSettingViewModel())
+                    .environmentObject(viewModel)   // ← 이건 FocusSettingView가 MainViewModel을 쓰면 유지
             case .todo:
-                AddListView(viewModel: viewModel)
+                AddListView()
             }
         }
         .background(Color("BgLight"))
