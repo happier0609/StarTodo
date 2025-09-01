@@ -15,7 +15,7 @@ enum MainTabType: String, CaseIterable {
 
 struct MainView: View {
     @State private var selectedTab: MainTabType = .todo
-    @StateObject private var viewModel = MainViewModel() // 앱 전체에서 공유되는 단일 인스턴스
+    @EnvironmentObject var viewModel: MainViewModel
     
     var body: some View {
         VStack(spacing: 0) {
@@ -44,10 +44,10 @@ struct MainView: View {
             switch selectedTab {
             case .start:
                 FocusSettingView()
-                    .environmentObject(FocusSettingViewModel()) // ✅ ViewModel 인스턴스 주입
-                    .environmentObject(viewModel) // 이미 주입돼 있다면 생략 가능
+                    .environmentObject(FocusSettingViewModel())
+                    .environmentObject(viewModel)   // ← 이건 FocusSettingView가 MainViewModel을 쓰면 유지
             case .todo:
-                AddListView(viewModel: viewModel)
+                AddListView()
             }
         }
         .background(Color("BgLight"))

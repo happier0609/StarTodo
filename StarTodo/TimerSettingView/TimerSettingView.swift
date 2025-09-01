@@ -30,30 +30,26 @@ struct TimerSettingView: View {
                     // ✅ 선택된 ID를 기준으로 할일 목록 필터링
                     let selectedIDs = viewModel.selectedIDs
                     let selectedTodos = viewModel.todoEntities
-                        .filter { selectedIDs.contains($0.wrappedID) }
+                        .filter { selectedIDs.contains($0.id) }           // wrappedID → id
                         .filter { todo in
-                            // 만약 이 할일이 자식이 아닌 경우에만 허용하거나,
-                            // 자식이 아니라면 자식 중 하나라도 선택된 경우만 허용
-                            if todo.childrenArray.isEmpty {
-                                return true // 자식이 없는 할일(진짜 자식)이면 OK
-                            } else {
-                                // 자식 중 하나라도 선택된 게 있다면, 부모는 제외
-                                let selectedChild = todo.childrenArray.contains { child in
-                                    selectedIDs.contains(child.wrappedID)
-                                }
-                                return !selectedChild // 자식이 선택되었으면 부모는 제거
+                            // 자식이 없으면 그대로 포함
+                            if todo.childrenArray.isEmpty { return true }
+                            // 자식 중 하나라도 선택되었으면 부모는 제외
+                            let childSelected = todo.childrenArray.contains { child in
+                                selectedIDs.contains(child.id)             // wrappedID → id
                             }
+                            return !childSelected
                         }
                     
                     // ✅ 각 할일 항목 보여주기 (하위 중심, 상위는 작게 표시)
-                    ForEach(selectedTodos, id: \.objectID) { todo in
-                        let parentTitle = todo.parent?.wrappedTitle
+                    ForEach(selectedTodos, id: \.id) { todo in
+                        let parentTitle = todo.parent?.title               // wrappedTitle → title
                         
                         TimerItemRowView(
-                            item: todo,
-                            parentTitle: parentTitle, // 상위 제목이 있을 경우 작게 표시
-                            selectedTime: selectedTimes[todo.wrappedID] ?? nil,
-                            onTimeChange: { selectedTimes[todo.wrappedID] = $0 }
+                            item: todo,                                    // ← TimerItemRowView가 Todo를 받도록 수정 필요
+                            parentTitle: parentTitle,
+                            selectedTime: selectedTimes[todo.id] ?? nil,   // wrappedID → id
+                            onTimeChange: { selectedTimes[todo.id] = $0 }  // wrappedID → id
                         )
                     }
                 }
@@ -81,13 +77,11 @@ struct TimerSettingView: View {
                 
                 // ✅ 실제 넘길 (할일, 시간) 목록 생성
                 let selectedIDs = viewModel.selectedIDs
-                let selectedTodos = viewModel.todoEntities.filter {
-                    selectedIDs.contains($0.wrappedID)
-                }
+                let selectedTodos = viewModel.todoEntities.filter { selectedIDs.contains($0.id) } // id
                 
                 let todosWithTime: [(UUID, Int)] = selectedTodos.compactMap { todo in
-                    guard let time = selectedTimes[todo.wrappedID] ?? nil else { return nil }
-                    return (todo.wrappedID, time)
+                    guard let time = selectedTimes[todo.id] ?? nil else { return nil }            // id
+                    return (todo.id, time)                                                        // id
                 }
                 
                 // 전달을 위해 임시 저장
@@ -95,8 +89,8 @@ struct TimerSettingView: View {
                 navigateToFocus = true
                 
                 let todoIDPairs = todosWithTime
-
-//                FocusModeView(todoIDPairs: todoIDPairs)
+                
+                //                FocusModeView(todoIDPairs: todoIDPairs)
                 
                 // ✅ 화면 전환 트리거
                 navigateToFocus = true
@@ -110,14 +104,14 @@ struct TimerSettingView: View {
                     .cornerRadius(12)
             }
             .padding(.horizontal)
-
+            
             // ✅ 버튼 아래에 NavigationLink 추가
-//            NavigationLink(
-//                destination: FocusModeView(todoIDPairs: todoIDPairsToPass),
-//                isActive: $navigateToFocus,
-//                label: { EmptyView() }
-//            )
-//            .hidden() // 화면엔 안 보이게 숨김
+            //            NavigationLink(
+            //                destination: FocusModeView(todoIDPairs: todoIDPairsToPass),
+            //                isActive: $navigateToFocus,
+            //                label: { EmptyView() }
+            //            )
+            //            .hidden() // 화면엔 안 보이게 숨김
         }
         .padding(.top)
         .navigationBarTitleDisplayMode(.inline)

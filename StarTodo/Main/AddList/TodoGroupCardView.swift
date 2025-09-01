@@ -24,7 +24,7 @@ struct TodoGroupCardView: View {
                         .foregroundColor(parent.isCompleted ? .gray.opacity(0.4) : .gray)
                         .animation(.easeInOut(duration: 0.2), value: parent.isCompleted)
                 }
-                Text(parent.wrappedTitle)
+                Text(parent.title)
                     .typo(.textMDRegular)
                     .foregroundColor(parent.isCompleted ? .gray.opacity(0.4) : .primary)
                     .strikethrough(parent.isCompleted, color: .gray.opacity(0.4))
@@ -39,7 +39,7 @@ struct TodoGroupCardView: View {
             )
             
             // 하위 항목
-            ForEach(children, id: \TodoEntity.objectID) { child in
+            ForEach(children, id: \.id) { child in
                 HStack {
                     Button(action: {
                         onToggle(child)
@@ -48,7 +48,7 @@ struct TodoGroupCardView: View {
                             .foregroundColor(child.isCompleted ? .gray.opacity(0.4) : .gray)
                             .animation(.easeInOut(duration: 0.2), value: child.isCompleted)
                     }
-                    Text(child.wrappedTitle)
+                    Text(child.title)
                         .font(.subheadline)
                         .foregroundColor(child.isCompleted ? .gray.opacity(0.4) : .primary)
                         .strikethrough(child.isCompleted, color: .gray.opacity(0.4))

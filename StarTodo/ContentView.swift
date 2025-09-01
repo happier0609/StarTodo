@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 enum TabBarType: Int, CaseIterable, Identifiable {
     case main, history
@@ -69,8 +70,4 @@ struct ContentView: View {
             }
         }
     }
-}
-
-#Preview {
-    ContentView()
 }
