@@ -71,11 +71,15 @@ struct AddListView: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.top)
                     
-                    Text("오늘 완료한 일은 매일 오전 5시에 리셋됩니다.")
-                        .typo(.captionMDRegular)
-                        .foregroundColor(Color("Cool300"))
                 }
                 .transition(.move(edge: .leading))
+                
+//                VStack {
+//                    Text("오늘 완료한 일은 매일 오전 5시에 리셋됩니다.")
+//                        .typo(.captionMDRegular)
+//                        .foregroundColor(Color("Cool300"))
+//                        .padding(.bottom, 80)
+//                }
             }
             
             addButton
