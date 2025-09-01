@@ -63,3 +63,72 @@ final class AddListViewModel: ObservableObject {
         }
     }
 }
+
+
+/// 모달용
+extension AddListViewModel {
+    func saveTodo(
+        editingParent: Todo?,
+        title: String,
+        children: [String],
+        context: ModelContext
+    ) {
+        if let todo = editingParent {
+            // 수정
+            todo.title = title
+
+            let existing = todo.children
+            let existingTitles = Set(existing.map(\.title))
+            let newTitleSet = Set(children)
+
+            // 삭제될 자식
+            for child in existing where !newTitleSet.contains(child.title) {
+                context.delete(child)
+            }
+
+            // 새로 추가될 자식
+            let toAdd = children.filter { !existingTitles.contains($0) }
+            let startOrder = (todo.children.map(\.order).max() ?? -1) + 1
+            for (offset, raw) in toAdd.enumerated() {
+                let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !t.isEmpty else { continue }
+                let child = Todo(title: t,
+                                 isCompleted: false,
+                                 setTime: todo.setTime,
+                                 elapsedTime: 0,
+                                 createdAt: .now,
+                                 performedDate: nil,
+                                 order: startOrder + offset,
+                                 parent: todo)
+                todo.children.append(child)
+            }
+        } else {
+            // 추가
+            let nextOrder = (parents.map(\.order).max() ?? -1) + 1
+            let parent = Todo(title: title,
+                              isCompleted: false,
+                              setTime: 25,
+                              elapsedTime: 0,
+                              createdAt: .now,
+                              performedDate: nil,
+                              order: nextOrder,
+                              parent: nil)
+
+            for (i, raw) in children.enumerated() {
+                let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !t.isEmpty else { continue }
+                let child = Todo(title: t,
+                                 isCompleted: false,
+                                 setTime: 25,
+                                 elapsedTime: 0,
+                                 createdAt: .now,
+                                 performedDate: nil,
+                                 order: i,
+                                 parent: parent)
+                parent.children.append(child)
+            }
+
+            context.insert(parent)
+        }
+    }
+}
