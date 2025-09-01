@@ -15,7 +15,7 @@ enum MainTabType: String, CaseIterable {
 
 struct MainView: View {
     @State private var selectedTab: MainTabType = .todo
-    @StateObject private var viewModel = MainViewModel() // 앱 전체에서 공유되는 단일 인스턴스
+    @EnvironmentObject var viewModel: MainViewModel
     
     var body: some View {
         VStack(spacing: 0) {

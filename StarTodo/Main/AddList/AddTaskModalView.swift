@@ -10,18 +10,19 @@ import SwiftData
 
 struct AddTaskModalView: View {
     @Environment(\.dismiss) private var dismiss
-        @EnvironmentObject private var repo: TodoRepository
-        @Environment(\.modelContext) private var modelContext
-        
-        @Binding var isPresented: Bool
-        var editingParent: Todo?   // nil이면 새로 추가, 있으면 편집
-        
-        @State private var parentTitle: String = ""
-        @State private var childTasks: [String] = []
-        
-        // ✅ shake 관련
-        @State private var shakeOffset: CGFloat = 0
-        @State private var shouldShake: Bool = false
+    @EnvironmentObject private var repo: TodoRepository
+    @Environment(\.modelContext) private var modelContext
+    
+    @Binding var isPresented: Bool
+    var editingParent: Todo?   // nil이면 새로 추가, 있으면 편집
+    var defaultMinutes: Int = 25
+    
+    @State private var parentTitle: String = ""
+    @State private var childTasks: [String] = []
+    
+    // ✅ shake 관련
+    @State private var shakeOffset: CGFloat = 0
+    @State private var shouldShake: Bool = false
     
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -75,39 +76,51 @@ struct AddTaskModalView: View {
             }
             .padding()
             .onAppear {
+                // 편집 모드면 값 채우기
                 if let p = editingParent {
                     parentTitle = p.title
-                    childTasks  = p.children.map(\.title)
+                    // order 기준 정렬해서 보여주기
+                    childTasks = p.children.sorted { $0.order < $1.order }.map(\.title)
                 }
             }
             
             // ✅ 플로팅 완료 버튼 (에셋 + Shake)
-            Button(action: {
-                let trimmed = parentTitle.trimmingCharacters(in: .whitespaces)
-                if trimmed.isEmpty {
-                    // 👇 흔들기 트리거
+            Button {
+                let trimmedTitle = parentTitle.trimmingCharacters(in: .whitespaces)
+                guard !trimmedTitle.isEmpty else {
                     withAnimation(.default) {
                         shakeOffset = 10
                         shouldShake.toggle()
                     }
                     DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        withAnimation {
-                            shakeOffset = 0
-                        }
+                        withAnimation { shakeOffset = 0 }
                     }
                     return
                 }
                 
-                let trimmedChildren = childTasks.map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+                let trimmedChildren = childTasks
+                    .map { $0.trimmingCharacters(in: .whitespaces) }
+                    .filter { !$0.isEmpty }
                 
-                if let todo = editingTodo {
-                    viewModel.updateParentTodo(todo, newTitle: trimmed, newChildren: trimmedChildren)
-                } else {
-                    viewModel.addParentTodo(with: trimmed, childTitles: trimmedChildren)
+                do {
+                    if let parent = editingParent {
+                        // 편집
+                        try repo.updateParent(parent,
+                                              newTitle: trimmedTitle,
+                                              newChildren: trimmedChildren,
+                                              defaultMinutes: defaultMinutes)
+                    } else {
+                        // 새로 추가
+                        try repo.createParent(title: trimmedTitle,
+                                              childTitles: trimmedChildren,
+                                              defaultMinutes: defaultMinutes)
+                    }
+                    isPresented = false      // 또는 dismiss()
+                } catch {
+                    // 필요하면 사용자에게 에러 표시
+                    print("❌ AddTaskModal 저장 실패: \(error)")
                 }
-                
-                isPresented = false
-            }) {
+            } label: {
                 Image(parentTitle.trimmingCharacters(in: .whitespaces).isEmpty ? "DoneYet" : "Done")
                     .resizable()
                     .frame(width: 56, height: 56)
@@ -116,8 +129,4 @@ struct AddTaskModalView: View {
             .padding()
         }
     }
-}
-
-#Preview {
-    MainView()
 }
