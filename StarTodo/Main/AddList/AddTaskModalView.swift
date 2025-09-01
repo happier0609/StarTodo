@@ -8,125 +8,107 @@
 import SwiftUI
 import SwiftData
 
+/// 할 일을 새로 추가하거나 수정할 수 있는 모달 뷰
+/// - 제목 입력 및 세부 항목(자식 할 일) 입력 가능
+/// - 저장 로직은 ViewModel로 위임되어 있음 (MVVM 구조)
 struct AddTaskModalView: View {
-    @Environment(\.dismiss) private var dismiss
-    @EnvironmentObject private var repo: TodoRepository
-    @Environment(\.modelContext) private var modelContext
     
+    /// 모달 표시 여부를 제어하는 바인딩
     @Binding var isPresented: Bool
-    var editingParent: Todo?   // nil이면 새로 추가, 있으면 편집
-    var defaultMinutes: Int = 25
     
-    @State private var parentTitle: String = ""
-    @State private var childTasks: [String] = []
+    /// 수정하려는 기존 할 일 (없으면 새로 생성)
+    var editingParent: Todo?
     
-    // ✅ shake 관련
-    @State private var shakeOffset: CGFloat = 0
-    @State private var shouldShake: Bool = false
+    /// SwiftData의 모델 컨텍스트 (삽입/삭제 등 DB 작업에 필요)
+    @Environment(\.modelContext) private var context
+    
+    /// 상위 뷰에서 주입받는 ViewModel (AddList 전용)
+    @EnvironmentObject private var viewModel: AddListViewModel
+
+    /// 입력된 제목 (부모 할 일)
+    @State private var title: String = ""
+    
+    /// 입력된 자식 할 일 목록 (문자열 배열)
+    @State private var children: [String] = [""]
     
     var body: some View {
-        ZStack(alignment: .bottomTrailing) {
-            VStack(alignment: .leading, spacing: 16) {
-                Text(editingParent == nil ? "할 일 추가" : "할 일 수정")
-                    .typo(.textMDEmphasized)
+        NavigationView {
+            Form {
                 
-                // ✅ 제목 + List 아이콘 조건부 표시
-                HStack(spacing: 8) {
-                    if !childTasks.filter({ !$0.trimmingCharacters(in: .whitespaces).isEmpty }).isEmpty {
-                        Image("List")
-                            .resizable()
-                            .frame(width: 18, height: 18)
-                    }
-                    TextField("여기에 새로운 할 일을 추가하세요.", text: $parentTitle)
-                        .typo(.textMDRegular)
-                        .foregroundStyle(Color("Cool300"))
+                // MARK: - 제목 입력 필드
+                Section(header: Text("할 일 제목")) {
+                    TextField("예: 방 청소하기", text: $title)
                 }
-                
-                // ✅ 하위 작업 리스트
-                ForEach(Array(childTasks.enumerated()), id: \.offset) { index, task in
-                    HStack(spacing: 8) {
-                        Image("noneCheck")
-                            .foregroundColor(Color("Primary500"))
-                        
-                        TextField("하위 작업 추가하기", text: $childTasks[index])
-                            .typo(.textSMRegular)
-                            .foregroundStyle(Color("Cool300"))
-                            .frame(maxWidth: .infinity)
-                            .layoutPriority(1) // 🔥 핵심
-                        
-                        Button(action: {
-                            childTasks.remove(at: index)
-                        }) {
-                            Image(systemName: "xmark")
-                                .foregroundColor(.gray)
+
+                // MARK: - 세부 항목 입력 필드
+                Section(header: Text("세부 항목")) {
+                    ForEach(children.indices, id: \.self) { index in
+                        HStack {
+                            TextField("세부 항목", text: $children[index])
+
+                            // 항목이 2개 이상일 때만 삭제 버튼 활성화
+                            if children.count > 1 {
+                                Button(action: {
+                                    children.remove(at: index)
+                                }) {
+                                    Image(systemName: "minus.circle.fill")
+                                        .foregroundColor(.red)
+                                }
+                            }
+                        }
+                    }
+
+                    // 새로운 자식 항목 추가 버튼
+                    Button(action: {
+                        children.append("")
+                    }) {
+                        HStack {
+                            Image(systemName: "plus.circle.fill")
+                            Text("세부 항목 추가")
                         }
                     }
                 }
-                
-                
-                Button(action: {
-                    childTasks.append("")
-                }) {
-                    Label("하위 작업 추가하기", systemImage: "plus")
-                        .typo(.textSMRegular)
-                        .foregroundColor(Color("Primary600"))
-                }
-                
-                Spacer()
             }
-            .padding()
-            .onAppear {
-                // 편집 모드면 값 채우기
-                if let p = editingParent {
-                    parentTitle = p.title
-                    // order 기준 정렬해서 보여주기
-                    childTasks = p.children.sorted { $0.order < $1.order }.map(\.title)
+            .navigationTitle(editingParent == nil ? "새로운 할 일" : "할 일 수정")
+
+            // MARK: - 상단 툴바
+            .toolbar {
+                // 왼쪽: 취소 버튼
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("취소") {
+                        isPresented = false
+                    }
+                }
+
+                // 오른쪽: 저장 버튼
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("저장") {
+                        // 저장 로직은 ViewModel에 위임
+                        viewModel.saveTodo(
+                            editingParent: editingParent,
+                            title: title,
+                            children: children,
+                            context: context
+                        )
+                        isPresented = false
+                    }
+                    // 제목이 비어있으면 저장 불가
+                    .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
                 }
             }
-            
-            // ✅ 플로팅 완료 버튼 (에셋 + Shake)
-            Button {
-                let trimmedTitle = parentTitle.trimmingCharacters(in: .whitespaces)
-                guard !trimmedTitle.isEmpty else {
-                    withAnimation(.default) {
-                        shakeOffset = 10
-                        shouldShake.toggle()
-                    }
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-                        withAnimation { shakeOffset = 0 }
-                    }
-                    return
-                }
-                
-                let trimmedChildren = childTasks
-                    .map { $0.trimmingCharacters(in: .whitespaces) }
-                    .filter { !$0.isEmpty }
-                
-                do {
-                    if let parent = editingParent {
-                        // 편집
-                        try repo.updateParent(parent,
-                                              newTitle: trimmedTitle,
-                                              newChildren: trimmedChildren,
-                                              defaultMinutes: defaultMinutes)
-                    } else {
-                        // 새로 추가
-                        try repo.createParent(title: trimmedTitle,
-                                              childTitles: trimmedChildren,
-                                              defaultMinutes: defaultMinutes)
-                    }
-                    isPresented = false      // 또는 dismiss()
-                } catch {
-                    // 필요하면 사용자에게 에러 표시
-                    print("❌ AddTaskModal 저장 실패: \(error)")
-                }
-            } label: {
-                Image(parentTitle.trimmingCharacters(in: .whitespaces).isEmpty ? "DoneYet" : "Done")
-                    .resizable()
-                    .frame(width: 56, height: 56)
+        }
+
+        // MARK: - 뷰 등장 시, 편집 모드일 경우 초기값 설정
+        .onAppear {
+            if let todo = editingParent {
+                title = todo.title
+                children = todo.children
+                    .sorted(by: { $0.order < $1.order })
+                    .map { $0.title }
+
+                // 자식 항목이 없을 경우 기본 한 칸
+                if children.isEmpty { children = [""] }
             }
-            .offset(x: shakeOffset * (shouldShake ? -1 : 1))
-            .padding()
         }
     }
 }
