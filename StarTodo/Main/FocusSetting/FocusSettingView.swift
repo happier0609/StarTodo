@@ -18,37 +18,7 @@ struct FocusSettingView: View {
             ScrollView {
                 // ✅ 뷰모델에 실제로 존재하는 컬렉션 사용
                 if focusSettingVM.focusParents.isEmpty {
-                    VStack(spacing: 24) {
-                        // 말풍선 안내
-                        HStack {
-                            Text("집중모드는 내가 당장 해야 할 일을\n‘진짜’ 실행할 수 있게 돕는 기능이에요.")
-                                .font(.system(size: 14, weight: .semibold))
-                                .foregroundColor(.white)
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color.blue)
-                                )
-                                .padding(.leading, 32)
-                            Spacer()
-                        }
-                        .padding(.top, 32)
-
-                        // 캐릭터 일러스트
-                        Image("Empty")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(height: 200)
-
-                        // 안내 문구
-                        Text("완벽보다 중요한 건 시작하는 용기.\n지금 해낼 수 있는 일들을 선택해요")
-                            .font(.system(size: 14))
-                            .foregroundColor(.gray)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.top, 64)
+                    FocusSettingEmptyView()
                 } else {
                     VStack(spacing: 16) {
                         // ✅ SwiftData 모델(Todo) 사용
@@ -109,6 +79,6 @@ struct FocusSettingView: View {
     }
 }
 
-#Preview {
-    MainView()
-}
+//#Preview {
+//    MainView()
+//}
