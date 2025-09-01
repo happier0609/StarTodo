@@ -57,6 +57,9 @@ struct AddListView: View {
                 isPresented: $viewModel.showModal,
                 editingParent: viewModel.editingParent
             )
+            .environmentObject(viewModel)
+            .presentationDetents([.medium, .large]) // 핵심! 모달 높이 설정
+            .presentationDragIndicator(.visible)    // 위쪽 드래그 표시
         }
         .alert("정말 삭제할까요?", isPresented: $viewModel.showAlert, presenting: viewModel.parentToDelete) { parent in
             Button("삭제", role: .destructive) {

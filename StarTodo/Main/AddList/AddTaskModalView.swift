@@ -11,6 +11,9 @@ import SwiftData
 /// 할 일을 새로 추가하거나 수정할 수 있는 모달 뷰
 /// - 제목 입력 및 세부 항목(자식 할 일) 입력 가능
 /// - 저장 로직은 ViewModel로 위임되어 있음 (MVVM 구조)
+/// 모달 높이는 medium ~ large 사이에서 확장되며,
+/// 하위 작업 수에 따라 스크롤로 전환됨
+
 struct AddTaskModalView: View {
     
     /// 모달 표시 여부를 제어하는 바인딩
@@ -24,7 +27,7 @@ struct AddTaskModalView: View {
     
     /// 상위 뷰에서 주입받는 ViewModel (AddList 전용)
     @EnvironmentObject private var viewModel: AddListViewModel
-
+    
     /// 입력된 제목 (부모 할 일)
     @State private var title: String = ""
     
@@ -32,82 +35,91 @@ struct AddTaskModalView: View {
     @State private var children: [String] = [""]
     
     var body: some View {
-        NavigationView {
-            Form {
-                
-                // MARK: - 제목 입력 필드
-                Section(header: Text("할 일 제목")) {
-                    TextField("예: 방 청소하기", text: $title)
-                }
-
-                // MARK: - 세부 항목 입력 필드
-                Section(header: Text("세부 항목")) {
+        VStack(spacing: 16) {
+            // 상단 입력 안내
+            HStack {
+                Text(editingParent == nil ? "여기에 새로운 할 일을 추가하세요." : "")
+                    .foregroundColor(Color.gray)
+                Spacer()
+            }
+            .padding(.top)
+            
+            // 제목 입력 필드
+            TextField("예: A프로젝트: SNS 캠페인 이미지 제작", text: $title)
+                .font(.headline)
+                .padding(.vertical, 4)
+                .padding(.horizontal)
+                .background(Color(.systemGray6))
+                .cornerRadius(10)
+            
+            // 하위 항목 목록
+            ScrollView {
+                VStack(spacing: 8) {
                     ForEach(children.indices, id: \.self) { index in
                         HStack {
-                            TextField("세부 항목", text: $children[index])
-
-                            // 항목이 2개 이상일 때만 삭제 버튼 활성화
+                            Image(systemName: "circle")
+                                .foregroundColor(.gray)
+                            TextField("하위 작업 입력", text: $children[index])
+                                .textFieldStyle(.plain)
                             if children.count > 1 {
                                 Button(action: {
                                     children.remove(at: index)
                                 }) {
-                                    Image(systemName: "minus.circle.fill")
-                                        .foregroundColor(.red)
+                                    Image(systemName: "xmark")
+                                        .foregroundColor(.gray)
                                 }
                             }
                         }
+                        .padding(.horizontal)
                     }
-
-                    // 새로운 자식 항목 추가 버튼
+                    
+                    // 하위 작업 추가 버튼
                     Button(action: {
                         children.append("")
                     }) {
-                        HStack {
-                            Image(systemName: "plus.circle.fill")
-                            Text("세부 항목 추가")
+                        HStack(spacing: 4) {
+                            Image(systemName: "plus")
+                            Text("하위 작업 추가하기")
                         }
+                        .font(.callout)
+                        .foregroundColor(.blue)
+                        .padding(.top, 8)
                     }
                 }
             }
-            .navigationTitle(editingParent == nil ? "새로운 할 일" : "할 일 수정")
-
-            // MARK: - 상단 툴바
-            .toolbar {
-                // 왼쪽: 취소 버튼
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("취소") {
-                        isPresented = false
-                    }
+            
+            Spacer()
+            
+            // 저장 버튼 (우측 하단 고정)
+            HStack {
+                Spacer()
+                Button {
+                    viewModel.saveTodo(
+                        editingParent: editingParent,
+                        title: title,
+                        children: children,
+                        context: context
+                    )
+                    isPresented = false
+                } label: {
+                    Image(systemName: "checkmark.circle.fill")
+                        .font(.system(size: 36))
+                        .foregroundColor(title.isEmpty ? .gray : .accentColor)
                 }
-
-                // 오른쪽: 저장 버튼
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("저장") {
-                        // 저장 로직은 ViewModel에 위임
-                        viewModel.saveTodo(
-                            editingParent: editingParent,
-                            title: title,
-                            children: children,
-                            context: context
-                        )
-                        isPresented = false
-                    }
-                    // 제목이 비어있으면 저장 불가
-                    .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
-                }
+                .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
             }
         }
-
-        // MARK: - 뷰 등장 시, 편집 모드일 경우 초기값 설정
+        .padding()
         .onAppear {
             if let todo = editingParent {
                 title = todo.title
                 children = todo.children
                     .sorted(by: { $0.order < $1.order })
                     .map { $0.title }
-
-                // 자식 항목이 없을 경우 기본 한 칸
-                if children.isEmpty { children = [""] }
+                
+                if children.isEmpty {
+                    children = [""]
+                }
             }
         }
     }
