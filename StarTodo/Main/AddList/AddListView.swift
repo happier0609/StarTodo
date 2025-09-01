@@ -95,16 +95,6 @@ struct AddListView: View {
         } message: { p in
             Text("\"\(p.title)\"과 관련된 모든 할 일이 함께 삭제됩니다.")
         }
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    editingParent = nil
-                    showModal = true
-                } label: {
-                    Image(systemName: "plus.circle.fill")
-                }
-            }
-        }
     }
     
     // 플로팅 추가 버튼
@@ -155,4 +145,8 @@ struct AddListView: View {
         parentToDelete = parent
         showAlert = true
     }
+}
+
+#Preview {
+    MainView()
 }
