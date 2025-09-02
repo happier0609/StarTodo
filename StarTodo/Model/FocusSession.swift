@@ -13,12 +13,18 @@ import SwiftData
 final class FocusSession {
     var startedAt: Date
     var endedAt: Date
-    var totalBreakSeconds: Int
-    @Relationship(deleteRule: .cascade) var items: [FocusItem] = []
+    var totalBreakSeconds: Int = 0
 
-    init(startedAt: Date, endedAt: Date, totalBreakSeconds: Int) {
+    @Relationship(deleteRule: .cascade) var items: [FocusItem] = []
+    @Relationship(deleteRule: .cascade) var breaks: [BreakSession] = []
+
+    init(startedAt: Date, endedAt: Date, totalBreakSeconds: Int = 0) {
         self.startedAt = startedAt
         self.endedAt = endedAt
         self.totalBreakSeconds = totalBreakSeconds
     }
+}
+
+protocol SessionStore {
+    func save(_ record: FocusSessionRecord)
 }
