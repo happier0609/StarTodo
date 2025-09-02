@@ -16,7 +16,7 @@ final class FocusItem {
     var elapsedSeconds: Int
     var isCompleted: Bool
     var order: Int
-
+    
     init(title: String, setSeconds: Int, elapsedSeconds: Int, isCompleted: Bool, order: Int) {
         self.title = title
         self.setSeconds = setSeconds
