@@ -13,15 +13,21 @@ final class FocusModeViewModel: ObservableObject {
     // MARK: - 할 일 관련 상태
     @Published var todos: [DummyTodo] = []
     @Published var currentIndex: Int = 0
-
+    @Published var isRunning: Bool = false
+    
+    private var timer: Timer?
+    private let context: ModelContext
+    
     // MARK: - 초기화
-    init(todoPairs: [(UUID, Int)], modelContext: ModelContext) {
-        loadTodos(todoPairs: todoPairs, context: modelContext)
+    init(todoIDPairs: [(UUID, Int)], context: ModelContext) {
+        self.context = context
+        loadTodos(todoPairs: todoIDPairs, context: context)
     }
-
+    
+    // MARK: - Load Todos
     private func loadTodos(todoPairs: [(UUID, Int)], context: ModelContext) {
         var loaded: [DummyTodo] = []
-
+        
         for (id, order) in todoPairs {
             if let todo = try? context.fetch(
                 FetchDescriptor<Todo>(
@@ -38,32 +44,57 @@ final class FocusModeViewModel: ObservableObject {
                 loaded.append(dummy)
             }
         }
-
-        self.todos = loaded
-    }
-
-    // MARK: - 현재 할 일 완료 처리 및 다음 항목 이동
-    func markCurrentAsCompleted() {
-        guard todos.indices.contains(currentIndex) else { return }
-        todos[currentIndex].isCompleted = true
-
-        // 다음 할 일로 이동 (남은 항목 중 가장 앞)
-        if let nextIndex = todos.firstIndex(where: { !$0.isCompleted }) {
-            currentIndex = nextIndex
-        } else {
-            // 모든 항목 완료됨
-            currentIndex = -1
+        
+        self.todos = loaded.sorted { $0.setTime < $1.setTime }
+        self.currentIndex = 0
+        
+        if !todos.isEmpty {
+            startTimer()
         }
     }
-
-    // MARK: - 현재 할 일 시간 업데이트
-    func updateElapsed(seconds: Int) {
-        guard todos.indices.contains(currentIndex) else { return }
-        todos[currentIndex].elapsed = seconds
+    
+    // MARK: - Timer Logic
+    func startTimer() {
+        guard !isRunning else { return }
+        
+        isRunning = true
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
+            Task { await self?.updateElapsed() }
+        }
     }
-
-    var currentTodo: DummyTodo? {
-        guard todos.indices.contains(currentIndex) else { return nil }
-        return todos[currentIndex]
+    
+    func stopTimer() {
+        timer?.invalidate()
+        timer = nil
+        isRunning = false
+    }
+    
+    private func updateElapsed() {
+        guard todos.indices.contains(currentIndex) else { return }
+        todos[currentIndex].elapsed += 1
+        
+        if todos[currentIndex].elapsed >= todos[currentIndex].setTime * 60 {
+            completeCurrentTodo()
+        }
+    }
+    
+    // MARK: - Complete & Move to Next
+    func completeCurrentTodo() {
+        guard todos.indices.contains(currentIndex) else { return }
+        
+        todos[currentIndex].isCompleted = true
+        stopTimer()
+        moveToNextTodo()
+    }
+    
+    private func moveToNextTodo() {
+        let next = todos.enumerated().first { !$0.element.isCompleted }
+        if let (index, _) = next {
+            currentIndex = index
+            startTimer()
+        } else {
+            // 모든 할 일 완료됨
+            isRunning = false
+        }
     }
 }
