@@ -26,6 +26,9 @@ final class MainViewModel: ObservableObject {
     // MARK: - 앱 전체 상태 관리
     @Published var todoEntities: [Todo] = []       // 전체 할 일 목록
     @Published var currentPage: AppPage = .todoList // 현재 앱 화면 상태 (탭 or 단계)
+    
+    @Published var selectedIDs: [UUID] = []
+    @Published var selectedTodoTimes: [UUID: Int] = [:]
 
     // 완료 리셋 기준 시각 (ex. 새벽 5시)
     @AppStorage("resetHour") var resetHour: Int = 5

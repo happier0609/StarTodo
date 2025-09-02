@@ -13,6 +13,20 @@ struct TimerSettingView: View {
     @State private var navigateToFocus = false // StatusBoardView로 이동할지 여부
     @State private var todoIDPairsToPass: [(UUID, Int)] = []
     
+    
+    // 뷰 body 맨 위쪽에 계산 속성으로 처리
+    var selectedTodos: [Todo] {
+        let selectedIDs = viewModel.selectedIDs
+        return viewModel.todoEntities
+            .filter { selectedIDs.contains($0.id) }
+            .filter { todo in
+                if todo.childrenArray.isEmpty { return true }
+                return !todo.childrenArray.contains { child in
+                    selectedIDs.contains(child.id)
+                }
+            }
+    }
+    
     var body: some View {
         VStack(spacing: 4) {
             Text("목록을 확인하고")
@@ -105,13 +119,13 @@ struct TimerSettingView: View {
             }
             .padding(.horizontal)
             
-            // ✅ 버튼 아래에 NavigationLink 추가
-            //            NavigationLink(
-            //                destination: FocusModeView(todoIDPairs: todoIDPairsToPass),
-            //                isActive: $navigateToFocus,
-            //                label: { EmptyView() }
-            //            )
-            //            .hidden() // 화면엔 안 보이게 숨김
+//            //             ✅ 버튼 아래에 NavigationLink 추가
+//            NavigationLink(
+//                destination: FocusModeView(todoIDPairs: todoIDPairsToPass),
+//                isActive: $navigateToFocus,
+//                label: { EmptyView() }
+//            )
+//            .hidden() // 화면엔 안 보이게 숨김
         }
         .padding(.top)
         .navigationBarTitleDisplayMode(.inline)
