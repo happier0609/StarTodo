@@ -33,7 +33,7 @@ struct FocusItemRowView: View {
             )
             .foregroundColor(isSelected ? Color("Primary500") : Color("Cool300"))
             .onTapGesture {
-                focusSettingVM.toggleSelection(for: todo)
+                focusSettingVM.toggleSelection(of: todo)
             }
     }
 }

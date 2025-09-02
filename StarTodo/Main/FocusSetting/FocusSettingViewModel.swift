@@ -5,89 +5,137 @@
 //  Created by ChoMinKyung on 7/29/25.
 //
 
+/// 역할: 선택된 할 일 관리, 선택/해제 로직, 시간 설정, 집중 모드 전환
+
 import Foundation
+import SwiftUI
 import SwiftData
 
-/// 집중모드 설정 화면의 선택/확장/시간 상태만 관리(데이터 저장 X)
+/// 집중 모드 설정 화면(FocusSettingView)을 위한 ViewModel
 @MainActor
 final class FocusSettingViewModel: ObservableObject {
-    // 선택된 항목의 id (부모/자식 모두 포함)
-    @Published var selectedIDs: Set<UUID> = []
 
-    // 펼쳐진 부모 id
-    @Published var expandedParentIDs: Set<UUID> = []
+    // MARK: - 📌 선택된 할 일 목록
+    
+    /// 현재 선택된 할 일 전체 (Todo 객체 기준)
+    @Published var selectedTodos: [Todo] = []
+    
+    /// 선택된 할 일의 ID만 저장 (중복 방지 및 빠른 체크용)
+    @Published var selectedIDs: [UUID] = []
 
-    // 화면에 보여줄 "부모" 목록 (SwiftData 모델)
+    
+    // MARK: - ⏱ 시간 설정 캐시 (할 일 ID : 분 단위)
+    
+    /// 사용자가 설정한 시간값을 임시 저장하는 캐시
+    @Published var timeSettings: [UUID: Int] = [:]
+
+    
+    // MARK: - ✅ 집중 모드 진입용 데이터
+    
+    /// 집중 모드에 진입할 때 사용할 최종 할 일 목록 (selectedTodos와 동일할 수도 있음)
+    @Published var selectedFocusTodos: [Todo] = []
+
+    
+    // MARK: - 📁 부모 할 일 목록
+    
+    /// UI에서 표시할 "상위 할 일" 목록 (자식 포함)
     @Published var focusParents: [Todo] = []
 
-    // 각 항목의 설정 시간(분). 값이 없으면 Todo.setTime 사용
-    @Published var overrideMinutes: [UUID: Int] = [:]
+    
+    // MARK: - 🔄 MainViewModel로부터 할 일 받아오기
 
-    // MARK: - Load
-    /// 완료되지 않은 부모만 세팅
-    func loadFrom(_ parents: [Todo]) {
-        self.focusParents = parents.filter { $0.parent == nil && !$0.isCompleted }
-        // 필요시 정렬: order -> createdAt
-        self.focusParents.sort {
-            ($0.order, $0.createdAt) < ($1.order, $1.createdAt)
-        }
+    /// MainViewModel에서 전달된 할 일 중, 완료되지 않은 상위 항목만 저장
+    func loadFrom(_ todos: [Todo]) {
+        focusParents = todos.filter { $0.parent == nil && !$0.isCompleted }
     }
 
-    // MARK: - Expand / Select
-    func toggleExpanded(for parent: Todo) {
-        let id = parent.id
-        if expandedParentIDs.contains(id) { expandedParentIDs.remove(id) }
-        else { expandedParentIDs.insert(id) }
+    
+    // MARK: - ✅ 선택 여부 확인
+
+    /// 특정 할 일(Todo 객체)이 선택되었는지 확인
+    func isSelected(_ todo: Todo) -> Bool {
+        selectedIDs.contains(todo.id)
     }
 
-    func isExpanded(_ parent: Todo) -> Bool {
-        expandedParentIDs.contains(parent.id)
+    /// 특정 ID(UUID)가 선택되었는지 확인 (뷰 코드 편의를 위해 오버로드)
+    func isSelected(_ id: UUID) -> Bool {
+        selectedIDs.contains(id)
     }
 
-    /// 부모를 토글하면 부모+자식 전체 토글
-    func toggleSelection(for parent: Todo) {
-        let allIDs: [UUID] = [parent.id] + parent.children.map(\.id)
-        let shouldSelect = !allIDs.allSatisfy { selectedIDs.contains($0) }
-        if shouldSelect {
-            selectedIDs.formUnion(allIDs)
+    
+    // MARK: - 🔁 선택/해제 토글
+
+    /// 할 일을 선택하거나 해제하는 함수
+    func toggleSelection(of todo: Todo) {
+        if isSelected(todo) {
+            // 선택 해제
+            selectedTodos.removeAll { $0.id == todo.id }
+            selectedIDs.removeAll { $0 == todo.id }
         } else {
-            for id in allIDs { selectedIDs.remove(id) }
+            // 선택 추가
+            selectedTodos.append(todo)
+            selectedIDs.append(todo.id)
         }
     }
 
-    func toggleChild(_ child: Todo) {
-        if selectedIDs.contains(child.id) { selectedIDs.remove(child.id) }
-        else { selectedIDs.insert(child.id) }
+    /// 선택 상태를 모두 초기화
+    func clearSelections() {
+        selectedTodos.removeAll()
+        selectedIDs.removeAll()
     }
 
-    func isSelected(_ id: UUID?) -> Bool {
-        guard let id else { return false }
-        return selectedIDs.contains(id)
-    }
+    
+    // MARK: - 👪 부모 항목 선택/해제 (자식 포함)
 
-    // MARK: - Time
-    func minutes(for todo: Todo) -> Int {
-        overrideMinutes[todo.id] ?? todo.setTime
-    }
-    func setMinutes(_ m: Int, for todo: Todo) {
-        overrideMinutes[todo.id] = m
-    }
+    /// 부모 할 일을 선택하거나 해제할 때, 자식 항목도 함께 처리
+    func toggleParentSelection(_ parent: Todo, _ select: Bool) {
+        let ids = [parent.id] + parent.children.map(\.id)
 
-    // MARK: - 결과 묶기 (FocusMode로 넘길 데이터)
-    /// 선택된 항목만 (부모/자식 합쳐서) 반환
-    func pickedTodos(from allParents: [Todo]) -> [Todo] {
-        var result: [Todo] = []
-        for p in allParents {
-            if isSelected(p.id) { result.append(p) }
-            for c in p.children {
-                if isSelected(c.id) { result.append(c) }
+        if select {
+            // 선택
+            selectedIDs = Array(Set(selectedIDs + ids)) // 중복 방지
+            for t in [parent] + parent.children where !selectedTodos.contains(where: { $0.id == t.id }) {
+                selectedTodos.append(t)
             }
+        } else {
+            // 선택 해제
+            selectedIDs.removeAll { ids.contains($0) }
+            selectedTodos.removeAll { ids.contains($0.id) }
         }
-        return result
     }
 
-    /// FocusMode에 넘길 `(UUID, minutes)` 페이로드
-    func payload() -> [(UUID, Int)] {
-        pickedTodos(from: focusParents).map { ($0.id, minutes(for: $0)) }
+    
+    // MARK: - 👶 자식 항목 선택/해제
+
+    /// 자식 할 일을 선택하거나 해제할 때 사용하는 함수
+    func toggleChildSelection(_ child: Todo, _ select: Bool) {
+        if select {
+            if !selectedIDs.contains(child.id) { selectedIDs.append(child.id) }
+            if !selectedTodos.contains(where: { $0.id == child.id }) { selectedTodos.append(child) }
+        } else {
+            selectedIDs.removeAll { $0 == child.id }
+            selectedTodos.removeAll { $0.id == child.id }
+        }
+    }
+
+    
+    // MARK: - ⏲️ 시간 설정
+
+    /// 특정 할 일의 시간 설정값을 가져옴 (없으면 원래 값 반환)
+    func setTime(for todo: Todo) -> Int {
+        timeSettings[todo.id] ?? todo.setTime
+    }
+
+    /// 특정 할 일의 시간 설정값을 업데이트
+    func updateSetTime(for todo: Todo, minutes: Int) {
+        timeSettings[todo.id] = minutes
+    }
+
+    
+    // MARK: - 🚀 집중 모드 진입 준비
+
+    /// 현재 선택된 항목들을 기반으로 집중 모드에 사용할 할 일 목록 설정
+    func prepareFocusTarget() {
+        selectedFocusTodos = selectedTodos.filter { selectedIDs.contains($0.id) }
     }
 }
