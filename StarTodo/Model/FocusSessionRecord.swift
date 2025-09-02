@@ -1,5 +1,5 @@
 //
-//  SessionStore.swift
+//  FocusSessionRecord.swift
 //  StarTodo
 //
 //  Created by 조민경 on 8/26/25.
@@ -16,12 +16,6 @@ struct FocusSessionRecord {
     var breaks: [BreakRecord]           // 개별 휴식 기록
 }
 
-/// 개별 휴식 기록을 위한 구조체
-struct BreakRecord: Codable {
-    var start: Date
-    var end: Date
-
-    var duration: TimeInterval {
-        end.timeIntervalSince(start)
-    }
+protocol SessionStore {
+    func save(_ record: FocusSessionRecord)
 }

@@ -18,8 +18,8 @@ final class SwiftDataSessionStore: SessionStore {
             endedAt: record.endedAt,
             totalBreakSeconds: record.totalBreakSeconds
         )
-
-        // 할 일 저장
+        
+        // 1️⃣ 할일 저장
         session.items = record.todos.enumerated().map { idx, t in
             FocusItem(title: t.title,
                       setSeconds: t.setTime * 60,
@@ -27,18 +27,19 @@ final class SwiftDataSessionStore: SessionStore {
                       isCompleted: t.isCompleted,
                       order: idx)
         }
-
-        // 휴식 이력 저장
-        session.breaks = record.breaks.map {
-            BreakSession(start: $0.start, end: $0.end, session: session)
+        
+        // 2️⃣ 휴식 기록 저장
+        session.breaks = record.breaks.map { br in
+            BreakSession(start: br.start, end: br.end, session: session)
         }
-
+        
+        // 3️⃣ 세션 저장
         context.insert(session)
-
         do {
             try context.save()
+            print("✅ FocusSession 저장 성공")
         } catch {
-            print("❌ SwiftData save error:", error.localizedDescription)
+            print("❌ SwiftData 저장 실패:", error.localizedDescription)
         }
     }
 }
