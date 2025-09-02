@@ -9,7 +9,6 @@ import SwiftUI
 
 struct TimerSettingView: View {
     @State private var viewModel: TimerSettingViewModel
-
     @State private var navigateToFocus = false
 
     // ✅ 생성자에서 ViewModel 주입
@@ -31,14 +30,14 @@ struct TimerSettingView: View {
             ScrollView {
                 VStack(spacing: 12) {
                     // ✅ 선택된 Todo 목록 표시
-                    ForEach(viewModel.selectedTodos, id: \.id) { todo in
+                    ForEach(viewModel.displayedTodos, id: \.id) { todo in
                         let parentTitle = todo.parent?.title
 
                         TimerItemRowView(
                             item: todo,
                             parentTitle: parentTitle,
                             selectedTime: viewModel.selectedTimes[todo.id] ?? nil,
-                            onTimeChange: { viewModel.selectedTimes[todo.id] = $0 }
+                            onTimeChange: { viewModel.setTime(for: todo.id, to: $0) }
                         )
                     }
                 }
@@ -46,7 +45,7 @@ struct TimerSettingView: View {
             }
 
             // ✅ 총 시간 표시
-            let totalMinutes = viewModel.totalSelectedMinutes
+            let totalMinutes = viewModel.totalMinutes
             let hour = totalMinutes / 60
             let minute = totalMinutes % 60
             let timeString = (hour > 0 ? "\(hour)시간 " : "") + "\(minute)분"
@@ -74,13 +73,13 @@ struct TimerSettingView: View {
             }
             .padding(.horizontal)
 
-//            // ✅ NavigationLink
-//            NavigationLink(
-//                destination: FocusModeView(todoIDPairs: viewModel.todoIDPairsToPass),
-//                isActive: $navigateToFocus,
-//                label: { EmptyView() }
-//            )
-//            .hidden()
+            // ✅ NavigationLink → FocusModeView 연결
+            NavigationLink(
+                destination: FocusModeView(todoIDPairs: viewModel.todosWithTime),
+                isActive: $navigateToFocus,
+                label: { EmptyView() }
+            )
+            .hidden()
         }
         .padding(.top)
         .navigationBarTitleDisplayMode(.inline)
