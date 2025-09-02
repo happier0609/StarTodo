@@ -13,15 +13,14 @@ import SwiftData
 final class BreakSession {
     var start: Date
     var end: Date
-
+    
     @Relationship var session: FocusSession?
-
-    init(start: Date, end: Date, session: FocusSession? = nil) {
+    
+    init(start: Date, end: Date) {
         self.start = start
         self.end = end
-        self.session = session
     }
-
+    
     var duration: TimeInterval {
         end.timeIntervalSince(start)
     }

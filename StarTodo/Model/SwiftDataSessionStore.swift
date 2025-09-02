@@ -10,8 +10,11 @@ import SwiftData
 
 final class SwiftDataSessionStore: SessionStore {
     private let context: ModelContext
-    init(context: ModelContext) { self.context = context }
-
+    
+    init(context: ModelContext) {
+        self.context = context
+    }
+    
     func save(_ record: FocusSessionRecord) {
         let session = FocusSession(
             startedAt: record.startedAt,
@@ -19,21 +22,26 @@ final class SwiftDataSessionStore: SessionStore {
             totalBreakSeconds: record.totalBreakSeconds
         )
         
-        // 1️⃣ 할일 저장
-        session.items = record.todos.enumerated().map { idx, t in
-            FocusItem(title: t.title,
-                      setSeconds: t.setTime * 60,
-                      elapsedSeconds: t.elapsed,
-                      isCompleted: t.isCompleted,
-                      order: idx)
+        // ⏱ FocusItem 변환 및 추가
+        session.items = record.todos.enumerated().map { index, todo in
+            FocusItem(
+                title: todo.title,
+                setSeconds: todo.setTime * 60,
+                elapsedSeconds: todo.elapsed,
+                isCompleted: todo.isCompleted,
+                order: index
+            )
         }
-        
-        // 2️⃣ 휴식 기록 저장
-        session.breaks = record.breaks.map { br in
-            BreakSession(start: br.start, end: br.end, session: session)
+
+        // 💤 BreakSession 변환 및 추가
+        session.breaks = record.breaks.map { breakRecord in
+            BreakSession(
+                start: breakRecord.start,
+                end: breakRecord.end
+            )
         }
-        
-        // 3️⃣ 세션 저장
+
+        // 💾 SwiftData 저장
         context.insert(session)
         do {
             try context.save()
