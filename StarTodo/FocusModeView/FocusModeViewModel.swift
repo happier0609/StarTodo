@@ -23,6 +23,8 @@ class FocusModeViewModel: ObservableObject {
     @Published private(set) var breakElapsed: Int = 0     // 휴식 경과 시간(초)
     @Published var showBreakEndOverlay: Bool = false        // 휴식 종료 오버레이 노출용
     
+    @Published var breakSessions: [BreakSession] = []
+    
     // MARK: - 이동/리포트
     @Published var shouldNavigateToReport: Bool = false
     @Published var reportData: [DummyTodo] = []
@@ -53,6 +55,18 @@ class FocusModeViewModel: ObservableObject {
     }
     
     // MARK: - 표시용(집중/휴식 공용) 프로퍼티
+    
+    func startBreak() {
+        breakStartTime = Date()
+        isBreakActive = true
+    }
+
+    func endBreak() {
+        guard let start = breakStartTime else { return }
+        let breakSession = BreakSession(id: UUID(), start: start, end: Date())
+        breakSessions.append(breakSession)
+        isBreakActive = false
+    }
     
     /// 헤더 문구 계산(집중/휴식 자동 분기)
     var headerStatusText: String {
