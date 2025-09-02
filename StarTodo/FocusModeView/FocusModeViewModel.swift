@@ -18,6 +18,16 @@ final class FocusModeViewModel: ObservableObject {
     private var timer: Timer?
     private let context: ModelContext
     
+    // MARK: - 휴식 관련 상태
+    @Published var isBreakActive: Bool = false            // 현재 휴식 중인가?
+    @Published var showBreakSheet: Bool = false           // 휴식 시간 선택 시트 표시 여부
+    @Published var breakPickedMinutes: Int = 10           // 시트에서 고른 휴식 분 (5~30분)
+    @Published private(set) var breakTotalSeconds: Int = 0// 휴식 총 시간 (초)
+    @Published private(set) var breakElapsed: Int = 0     // 휴식 경과 시간 (초)
+    @Published var showBreakEndOverlay: Bool = false      // 휴식 종료 오버레이 노출 여부
+
+    @Published var breakSessions: [BreakSession] = []     // 휴식 기록
+    
     // MARK: - 초기화
     init(todoIDPairs: [(UUID, Int)], context: ModelContext) {
         self.context = context
