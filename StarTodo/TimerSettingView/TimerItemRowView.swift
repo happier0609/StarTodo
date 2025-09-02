@@ -6,20 +6,22 @@
 //
 
 import SwiftUI
-import CoreData
+import SwiftData
 
 struct TimerItemRowView: View {
     let item: Todo
-    let parentTitle: String? // 자식이면 부모 제목 표시용
-    let selectedTime: Int?   // nil이면 '없음'
-    let onTimeChange: (Int?) -> Void
+    let parentTitle: String?          // 🧭 자식 항목일 경우 상단에 부모 제목 표시
+    let selectedTime: Int?            // ⏱ 선택된 시간 (nil이면 '없음')
+    let onTimeChange: (Int?) -> Void  // 🔁 시간 변경 시 호출되는 콜백
 
-    private let timeOptions = [nil, 5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60]
+    // ⏱ 시간 선택 옵션: nil("없음") 포함, 5분~60분까지 5분 단위
+    private let timeOptions: [Int?] = [nil] + Array(stride(from: 5, through: 60, by: 5))
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            // 🧭 부모 제목 표시
-            if let parentTitle = parentTitle {
+        VStack(alignment: .leading, spacing: 4) {
+
+            // 🧭 자식 항목일 경우 상단에 부모 제목 표시
+            if let parentTitle {
                 Text(parentTitle)
                     .typo(.textSMRegular)
                     .foregroundColor(Color("Cool400"))
@@ -58,11 +60,8 @@ struct TimerItemRowView: View {
         .cornerRadius(10)
     }
 
+    // ⏱ 시간 텍스트 변환 함수 (nil → 없음)
     private func minuteText(_ minute: Int?) -> String {
-        if let min = minute {
-            return "\(min)분"
-        } else {
-            return "없음"
-        }
+        minute.map { "\($0)분" } ?? "없음"
     }
 }
