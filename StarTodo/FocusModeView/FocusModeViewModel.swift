@@ -246,5 +246,12 @@ final class FocusModeViewModel: ObservableObject {
         
         return (completed + remaining).map { $0.element }
     }
+    
+    // MARK: - 메모리 정리
+    /// 메모리 누수 방지
+    deinit {
+        timer?.invalidate()
+        breakTimer?.invalidate()
+    }
 
 }
