@@ -168,19 +168,26 @@ final class FocusModeViewModel: ObservableObject {
         isRunning = false
         isBreakActive = false
 
-        // 현재 할 일을 완료 처리하지 않았으면 저장
-        if todos.indices.contains(currentIndex), !todos[currentIndex].isCompleted {
-            todos[currentIndex].elapsed = min(todos[currentIndex].elapsed, todos[currentIndex].setTime * 60)
-        }
-
-        // 완료하지 않은 항목이 있어도 종료 시점에서 기록 유지
-        for index in todos.indices {
-            if todos[index].elapsed > 0 && !todos[index].isCompleted {
-                // 필요 시 여기서 각 항목에 대해 저장 처리를 넣을 수 있음
+        for dummy in todos {
+            if dummy.elapsed > 0 || dummy.isCompleted {
+                do {
+                    let result = try context.fetch(
+                        FetchDescriptor<Todo>(
+                            predicate: #Predicate { $0.id == dummy.id }
+                        )
+                    )
+                    if let todo = result.first {
+                        todo.elapsedTime = dummy.elapsed
+                        todo.isCompleted = dummy.isCompleted
+                        todo.performedDate = Date()
+                        try? context.save()
+                    }
+                } catch {
+                    print("⚠️ fetch 실패: \(error.localizedDescription)")
+                }
             }
         }
 
-        // ReportView 전환 트리거 (뷰에서 NavigationLink로 사용)
         shouldNavigateToReport = true
     }
     
