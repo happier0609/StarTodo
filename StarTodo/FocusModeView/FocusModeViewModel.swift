@@ -141,6 +141,9 @@ final class FocusModeViewModel: ObservableObject {
     func completeCurrentTodo() {
         guard todos.indices.contains(currentIndex) else { return }
         
+        // ✅ 이미 완료된 항목이면 중복 처리 방지
+        guard !todos[currentIndex].isCompleted else { return }
+
         todos[currentIndex].isCompleted = true
         stopTimer()
         moveToNextTodo()
