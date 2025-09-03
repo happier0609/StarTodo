@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftData
+import SwiftUI
 
 @MainActor
 final class FocusModeViewModel: ObservableObject {
@@ -20,6 +21,12 @@ final class FocusModeViewModel: ObservableObject {
     
     private var timer: Timer?
     private let context: ModelContext
+    
+    // 현재 진행 중인 할 일(없을 수 있으니 Optional)
+    var currentTodo: DummyTodo? {
+        guard todos.indices.contains(currentIndex) else { return nil }
+        return todos[currentIndex]
+    }
     
     // MARK: - 휴식 관련 상태
     @Published var isBreakActive: Bool = false            // 현재 휴식 중인가?
@@ -140,13 +147,20 @@ final class FocusModeViewModel: ObservableObject {
     // MARK: - Complete & Move to Next
     func completeCurrentTodo() {
         guard todos.indices.contains(currentIndex) else { return }
-        
+
         // ✅ 이미 완료된 항목이면 중복 처리 방지
         guard !todos[currentIndex].isCompleted else { return }
 
-        todos[currentIndex].isCompleted = true
-        stopTimer()
-        moveToNextTodo()
+        // 애니메이션을 적용하고
+        withAnimation(.easeInOut(duration: 0.3)) {
+            todos[currentIndex].isCompleted = true
+            stopTimer()
+        }
+
+        // 0.3초 후 다음 작업으로 넘어감
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+            self.moveToNextTodo()
+        }
     }
     
     private func moveToNextTodo() {
@@ -268,6 +282,11 @@ final class FocusModeViewModel: ObservableObject {
     deinit {
         timer?.invalidate()
         breakTimer?.invalidate()
+    }
+    
+    // MARK: - Util
+    private func formatTime(seconds: Int) -> String {
+        String(format: "%02d:%02d", seconds / 60, seconds % 60)
     }
 
 }
