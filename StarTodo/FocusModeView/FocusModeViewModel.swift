@@ -102,10 +102,11 @@ final class FocusModeViewModel: ObservableObject {
                 loaded.append(dummy)
             }
         }
-        
-        self.todos = loaded.sorted { $0.setTime < $1.setTime }
+
+        // ✅ 순서를 유지하기 위해 정렬하지 않고 그대로 할당
+        self.todos = loaded
         self.currentIndex = 0
-        
+
         if !todos.isEmpty {
             startTimer()
         }
