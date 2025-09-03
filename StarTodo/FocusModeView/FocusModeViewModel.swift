@@ -28,6 +28,51 @@ final class FocusModeViewModel: ObservableObject {
 
     @Published var breakSessions: [BreakSession] = []     // 휴식 기록
     
+    private var breakTimer: Timer?
+    private var breakStartDate: Date?
+    
+    // MARK: - 휴식 타이머 로직
+    // 휴식 시작 시 현재 시간을 저장하고, 타이머 시작
+    func startBreak() {
+        isBreakActive = true
+        breakStartDate = Date()
+        breakElapsed = 0
+        startBreakTimer()
+    }
+    
+    // 1초마다 breakElapsed를 증가시킴
+    private func startBreakTimer() {
+        breakTimer?.invalidate()
+        breakTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            self?.onBreakTimerTick()
+        }
+    }
+    
+    // 휴식이 끝났는지 확인하고, 끝나면 자동 종료
+    private func onBreakTimerTick() {
+        guard isBreakActive else { return }
+
+        breakElapsed += 1
+
+        if breakElapsed >= breakPickedMinutes * 60 {
+            endBreak()
+        }
+    }
+    
+    // 휴식 종료 시점에 BreakRecord를 만들고 기록
+    func endBreak() {
+        breakTimer?.invalidate()
+        breakTimer = nil
+        isBreakActive = false
+        showBreakEndOverlay = true
+
+        if let start = breakStartDate {
+            let record = BreakSession(start: start, end: Date())
+            breakSessions.append(record)
+            breakTotalSeconds += Int(record.duration)
+        }
+    }
+    
     // MARK: - 초기화
     init(todoIDPairs: [(UUID, Int)], context: ModelContext) {
         self.context = context
