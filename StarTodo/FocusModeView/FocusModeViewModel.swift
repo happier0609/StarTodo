@@ -10,6 +10,9 @@ import SwiftData
 
 @MainActor
 final class FocusModeViewModel: ObservableObject {
+    
+    @Published var shouldNavigateToReport: Bool = false
+    
     // MARK: - 할 일 관련 상태
     @Published var todos: [DummyTodo] = []
     @Published var currentIndex: Int = 0
@@ -152,4 +155,96 @@ final class FocusModeViewModel: ObservableObject {
             isRunning = false
         }
     }
+    
+    // MARK: - 세션 종료 처리
+    func endFocusSession() {
+        stopTimer()
+        breakTimer?.invalidate()
+        breakTimer = nil
+        isRunning = false
+        isBreakActive = false
+
+        // 현재 할 일을 완료 처리하지 않았으면 저장
+        if todos.indices.contains(currentIndex), !todos[currentIndex].isCompleted {
+            todos[currentIndex].elapsed = min(todos[currentIndex].elapsed, todos[currentIndex].setTime * 60)
+        }
+
+        // 완료하지 않은 항목이 있어도 종료 시점에서 기록 유지
+        for index in todos.indices {
+            if todos[index].elapsed > 0 && !todos[index].isCompleted {
+                // 필요 시 여기서 각 항목에 대해 저장 처리를 넣을 수 있음
+            }
+        }
+
+        // ReportView 전환 트리거 (뷰에서 NavigationLink로 사용)
+        shouldNavigateToReport = true
+    }
+    
+    // MARK: - 텍스트
+    /// 헤더 문구 계산(집중/휴식 자동 분기)
+    var headerStatusText: String {
+        if isBreakActive {
+            let m = max(0, breakElapsed / 60)
+            return "\(m)분째 휴식 중..."
+        } else {
+            return "\(elapsedTotalMinutes)분 째 탐사 중..."
+        }
+    }
+    
+    /// 원형 타이머 뷰에 전달할 "설정 시간(분)"
+    /// - 휴식 중이면 휴식 분, 아니면 현재 할 일의 setTime
+    var displaySetMinutes: Int {
+        if isBreakActive { return breakTotalSeconds / 60 }
+        return currentTodo?.setTime ?? 0
+    }
+    
+    /// 원형 타이머 뷰에 전달할 "경과 시간(초)"
+    /// - 휴식 중이면 휴식 경과, 아니면 현재 할 일의 경과
+    var displayElapsedSeconds: Int {
+        if isBreakActive { return breakElapsed }
+        return currentTodo?.elapsed ?? 0
+    }
+    
+    /// 남은 시간 문자열(집중/휴식 모두 대응)
+    var remainingTimeString: String {
+        if isBreakActive {
+            let remaining = max(0, breakTotalSeconds - breakElapsed)
+            return formatTime(seconds: remaining)
+        } else {
+            guard let currentTodo else { return "00:00" }
+            let remaining = max(0, currentTodo.setTime * 60 - currentTodo.elapsed)
+            return formatTime(seconds: remaining)
+        }
+    }
+    
+    /// 예상 종료 시간(집중 기준 계산. 휴식 중 표시 문구 교체는 View에서 처리 예정)
+    var expectedEndTimeString: String {
+        let totalRemaining = todos[currentIndex...].reduce(0) {
+            $0 + max(0, ($1.setTime * 60 - $1.elapsed))
+        }
+        let endDate = Date().addingTimeInterval(TimeInterval(totalRemaining))
+        let formatter = DateFormatter()
+        formatter.dateFormat = "a h:mm"
+        formatter.locale = Locale(identifier: "ko_KR")
+        return formatter.string(from: endDate)
+    }
+    
+    /// 총 경과 시간(분) – 상단 "n분째 탐사 중" 등에 사용
+    var elapsedTotalMinutes: Int {
+        let seconds = todos.reduce(0) { $0 + $1.elapsed }
+        return seconds / 60
+    }
+    
+    /// 리스트용 정렬: 완료가 위, 나머지는 기존 순서 유지
+    var sortedTodosForListView: [DummyTodo] {
+        let completed = todos.enumerated()
+            .filter { $0.element.isCompleted }
+            .sorted { $0.offset < $1.offset } // 완료된 순서 유지
+        
+        let remaining = todos.enumerated()
+            .filter { !$0.element.isCompleted }
+        
+        return (completed + remaining).map { $0.element }
+    }
+
 }

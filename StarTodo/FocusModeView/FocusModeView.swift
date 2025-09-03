@@ -14,11 +14,6 @@ struct FocusModeView: View {
     
     @Environment(\.modelContext) private var modelContext
     
-    // ✅ 커스텀 생성자 (CoreData 제거)
-    init(dummyTodos: [DummyTodo]) {
-        _viewModel = StateObject(wrappedValue: FocusModeViewModel(dummyTodos: dummyTodos))
-    }
-    
     var body: some View {
         ZStack {
             // ✅ 전체 배경
@@ -50,9 +45,10 @@ struct FocusModeView: View {
                     .padding()
                 
                 // 화면 전환
-                if selectedTab == .timer {
+                switch selectedTab {
+                case .timer:
                     FocusTimerView(viewModel: viewModel)
-                } else {
+                case .list:
                     FocusListView(viewModel: viewModel)
                 }
                 
@@ -76,18 +72,6 @@ struct FocusModeView: View {
             } message: {
                 Text("지금까지의 진행 상태를 저장한 뒤 리포트로 이동합니다.")
             }
-            
-            //            // ✅ Report로 이동
-            //            NavigationLink(
-            //                destination: ReportView(
-            //                    viewModel: ReportViewModel(todos: viewModel.reportData),
-            //                    onComplete: {
-            //                        // 필요 시 메인으로 복귀 처리
-            //                    }
-            //                ),
-            //                isActive: $viewModel.shouldNavigateToReport
-            //            ) { EmptyView() }
-            //                .hidden()
         }
         .breakTimeAlert(
             isPresented: $viewModel.showBreakSheet,
@@ -109,13 +93,4 @@ struct FocusModeView: View {
             viewModel.replaceStore(SwiftDataSessionStore(context: modelContext))
         }
     }
-}
-
-#Preview {
-    FocusModeView(
-        dummyTodos: [
-            DummyTodo(id: UUID(), title: "영어 단어 외우기", setTime: 25, elapsed: 0, isCompleted: false),
-            DummyTodo(id: UUID(), title: "수학 문제 풀기", setTime: 15, elapsed: 0, isCompleted: false),
-        ]
-    )
 }
