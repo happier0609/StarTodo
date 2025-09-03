@@ -220,9 +220,14 @@ final class FocusModeViewModel: ObservableObject {
     
     /// 예상 종료 시간(집중 기준 계산. 휴식 중 표시 문구 교체는 View에서 처리 예정)
     var expectedEndTimeString: String {
-        let totalRemaining = todos[currentIndex...].reduce(0) {
+        // 할 일 기준 남은 시간 (초)
+        let taskRemainingSeconds = todos[currentIndex...].reduce(0) {
             $0 + max(0, ($1.setTime * 60 - $1.elapsed))
         }
+
+        // 휴식 시간 포함
+        let totalRemaining = taskRemainingSeconds + breakTotalSeconds
+
         let endDate = Date().addingTimeInterval(TimeInterval(totalRemaining))
         let formatter = DateFormatter()
         formatter.dateFormat = "a h:mm"
