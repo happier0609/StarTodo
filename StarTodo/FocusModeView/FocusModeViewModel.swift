@@ -20,7 +20,6 @@ final class FocusModeViewModel: ObservableObject {
     @Published var isRunning: Bool = false
     
     private var timer: Timer?
-    private let context: ModelContext
     
     // 현재 진행 중인 할 일(없을 수 있으니 Optional)
     var currentTodo: DummyTodo? {
@@ -35,11 +34,17 @@ final class FocusModeViewModel: ObservableObject {
     @Published private(set) var breakTotalSeconds: Int = 0// 휴식 총 시간 (초)
     @Published private(set) var breakElapsed: Int = 0     // 휴식 경과 시간 (초)
     @Published var showBreakEndOverlay: Bool = false      // 휴식 종료 오버레이 노출 여부
-
+    
     @Published var breakSessions: [BreakSession] = []     // 휴식 기록
     
     private var breakTimer: Timer?
     private var breakStartDate: Date?
+    
+    private let modelContext: ModelContext
+    
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
+    }
     
     // MARK: - 휴식 타이머 로직
     // 휴식 시작 시 현재 시간을 저장하고, 타이머 시작
@@ -58,15 +63,18 @@ final class FocusModeViewModel: ObservableObject {
         }
     }
     
-    // 휴식이 끝났는지 확인하고, 끝나면 자동 종료
+    // 휴식이 끝났는지 확인
     private func onBreakTimerTick() {
         guard isBreakActive else { return }
-
+        
         breakElapsed += 1
-
-        if breakElapsed >= breakPickedMinutes * 60 {
-            endBreak()
+        
+        // 선택한 시간을 넘겼는지 여부 체크 → 시각적 표시 등에 활용 가능
+        if breakElapsed == breakPickedMinutes * 60 {
+            showBreakEndOverlay = true  // "휴식 시간이 끝났어요" 알림 표시
         }
+        
+        // 사용자가 수동으로 종료할 때까지 계속 누적됨 (타이머는 멈추지 않음)
     }
     
     // 휴식 종료 시점에 BreakRecord를 만들고 기록
@@ -75,12 +83,24 @@ final class FocusModeViewModel: ObservableObject {
         breakTimer = nil
         isBreakActive = false
         showBreakEndOverlay = true
-
+        
         if let start = breakStartDate {
-            let record = BreakSession(start: start, end: Date())
+            let end = Date()
+            let duration = end.timeIntervalSince(start)
+            
+            let isOver = duration > Double(breakPickedMinutes * 60)
+            
+            let record = BreakSession(start: start, end: end, isOverdue: isOver)
+            modelContext.insert(record)
             breakSessions.append(record)
-            breakTotalSeconds += Int(record.duration)
+            breakTotalSeconds += Int(duration)
         }
+    }
+    
+    // 휴식을 종료하고 할 일을 다시 시작
+    func endBreakAndResume() {
+        endBreak()                  // 기존 휴식 종료 로직
+        resumeCurrentTodo()        // 필요하다면 할 일 타이머 재시작
     }
     
     // MARK: - 초기화
@@ -109,23 +129,21 @@ final class FocusModeViewModel: ObservableObject {
                 loaded.append(dummy)
             }
         }
-
+        
         // ✅ 순서를 유지하기 위해 정렬하지 않고 그대로 할당
         self.todos = loaded
         self.currentIndex = 0
-
+        
         if !todos.isEmpty {
             startTimer()
         }
     }
     
     // MARK: - Timer Logic
-    func startTimer() {
-        guard !isRunning else { return }
-        
-        isRunning = true
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            Task { await self?.updateElapsed() }
+    private func startTimer() {
+        todoTimer?.invalidate()
+        todoTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            self?.onTodoTimerTick()
         }
     }
     
@@ -144,19 +162,33 @@ final class FocusModeViewModel: ObservableObject {
         }
     }
     
+    func resumeCurrentTodo() {
+        // 현재 인덱스 유효성 확인
+        guard todos.indices.contains(currentIndex) else { return }
+        
+        // 이미 완료된 할 일이라면 재시작하지 않음
+        guard !todos[currentIndex].isCompleted else { return }
+        
+        // 이미 타이머가 돌고 있다면 중복 방지
+        guard todoTimer == nil else { return }
+        
+        // 타이머 시작
+        startTodoTimer()
+    }
+    
     // MARK: - Complete & Move to Next
     func completeCurrentTodo() {
         guard todos.indices.contains(currentIndex) else { return }
-
+        
         // ✅ 이미 완료된 항목이면 중복 처리 방지
         guard !todos[currentIndex].isCompleted else { return }
-
+        
         // 애니메이션을 적용하고
         withAnimation(.easeInOut(duration: 0.3)) {
             todos[currentIndex].isCompleted = true
             stopTimer()
         }
-
+        
         // 0.3초 후 다음 작업으로 넘어감
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
             self.moveToNextTodo()
@@ -181,7 +213,7 @@ final class FocusModeViewModel: ObservableObject {
         breakTimer = nil
         isRunning = false
         isBreakActive = false
-
+        
         for dummy in todos {
             if dummy.elapsed > 0 || dummy.isCompleted {
                 do {
@@ -201,7 +233,7 @@ final class FocusModeViewModel: ObservableObject {
                 }
             }
         }
-
+        
         shouldNavigateToReport = true
     }
     
@@ -248,10 +280,10 @@ final class FocusModeViewModel: ObservableObject {
         let taskRemainingSeconds = todos[currentIndex...].reduce(0) {
             $0 + max(0, ($1.setTime * 60 - $1.elapsed))
         }
-
+        
         // 휴식 시간 포함
         let totalRemaining = taskRemainingSeconds + breakTotalSeconds
-
+        
         let endDate = Date().addingTimeInterval(TimeInterval(totalRemaining))
         let formatter = DateFormatter()
         formatter.dateFormat = "a h:mm"
@@ -288,5 +320,5 @@ final class FocusModeViewModel: ObservableObject {
     private func formatTime(seconds: Int) -> String {
         String(format: "%02d:%02d", seconds / 60, seconds % 60)
     }
-
+    
 }

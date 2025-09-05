@@ -12,8 +12,6 @@ struct FocusModeView: View {
     @StateObject private var viewModel: FocusModeViewModel
     @State private var selectedTab: FocusTab = .timer
     
-    @Environment(\.modelContext) private var modelContext
-    
     var body: some View {
         ZStack {
             // ✅ 전체 배경
@@ -54,14 +52,9 @@ struct FocusModeView: View {
                 
                 FocusModeFooterView(
                     expectedEndTimeString: viewModel.expectedEndTimeString,
-                    isBreakActive: viewModel.isBreakActive
-                ) {
-                    if viewModel.isBreakActive {
-                        viewModel.endBreakAndResume()             // 다시 시작하기
-                    } else {
-                        viewModel.showBreakSheet = true           // 휴식 알럿 표시
-                    }
-                }
+                    isBreakActive: viewModel.isBreakActive,
+                    onBreakButtonTapped: viewModel.endBreakAndResume
+                )
             }
             // ✅ 종료 확인 알럿
             .alert("정말 종료할까요?", isPresented: $viewModel.showEndConfirmAlert) {
