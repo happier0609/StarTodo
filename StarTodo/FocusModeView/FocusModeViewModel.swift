@@ -19,7 +19,7 @@ final class FocusModeViewModel: ObservableObject {
     @Published var currentIndex: Int = 0
     @Published var isRunning: Bool = false
     
-    private var timer: Timer?
+    private var todoTimer: Timer?
     
     // 현재 진행 중인 할 일(없을 수 있으니 Optional)
     var currentTodo: DummyTodo? {
@@ -105,7 +105,7 @@ final class FocusModeViewModel: ObservableObject {
     
     // MARK: - 초기화
     init(todoIDPairs: [(UUID, Int)], context: ModelContext) {
-        self.context = context
+        self.modelContext = context
         loadTodos(todoPairs: todoIDPairs, context: context)
     }
     
@@ -135,45 +135,50 @@ final class FocusModeViewModel: ObservableObject {
         self.currentIndex = 0
         
         if !todos.isEmpty {
-            startTimer()
+            startTodoTimer()
         }
     }
     
     // MARK: - Timer Logic
-    private func startTimer() {
+
+    /// 타이머 시작 함수
+    /// - 이미 기존 타이머가 있다면 정지하고 새로 시작
+    /// - 1초 간격으로 `onTodoTimerTick()` 호출
+    private func startTodoTimer() {
         todoTimer?.invalidate()
         todoTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             self?.onTodoTimerTick()
         }
     }
-    
+
+    /// 타이머 중지 함수
+    /// - 타이머를 정지하고 `todoTimer`를 nil로 초기화
     func stopTimer() {
-        timer?.invalidate()
-        timer = nil
+        todoTimer?.invalidate()
+        todoTimer = nil
         isRunning = false
     }
-    
-    private func updateElapsed() {
+
+    /// 일시 정지된 할 일을 다시 시작하는 함수
+    /// - 현재 인덱스가 유효하고, 완료되지 않았으며, 타이머가 동작 중이 아닐 경우에만 타이머 재시작
+    func resumeCurrentTodo() {
         guard todos.indices.contains(currentIndex) else { return }
+        guard !todos[currentIndex].isCompleted else { return }
+        guard todoTimer == nil else { return }
+
+        startTodoTimer()
+    }
+
+    /// 매초 실행되는 타이머 Tick 함수
+    /// - `elapsed`를 1초 증가시키고, 설정된 시간에 도달하면 해당 할 일을 완료 처리
+    private func onTodoTimerTick() {
+        guard todos.indices.contains(currentIndex) else { return }
+
         todos[currentIndex].elapsed += 1
-        
+
         if todos[currentIndex].elapsed >= todos[currentIndex].setTime * 60 {
             completeCurrentTodo()
         }
-    }
-    
-    func resumeCurrentTodo() {
-        // 현재 인덱스 유효성 확인
-        guard todos.indices.contains(currentIndex) else { return }
-        
-        // 이미 완료된 할 일이라면 재시작하지 않음
-        guard !todos[currentIndex].isCompleted else { return }
-        
-        // 이미 타이머가 돌고 있다면 중복 방지
-        guard todoTimer == nil else { return }
-        
-        // 타이머 시작
-        startTodoTimer()
     }
     
     // MARK: - Complete & Move to Next
@@ -199,7 +204,7 @@ final class FocusModeViewModel: ObservableObject {
         let next = todos.enumerated().first { !$0.element.isCompleted }
         if let (index, _) = next {
             currentIndex = index
-            startTimer()
+            startTodoTimer()
         } else {
             // 모든 할 일 완료됨
             isRunning = false
