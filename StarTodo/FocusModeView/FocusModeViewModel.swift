@@ -222,7 +222,7 @@ final class FocusModeViewModel: ObservableObject {
         for dummy in todos {
             if dummy.elapsed > 0 || dummy.isCompleted {
                 do {
-                    let result = try context.fetch(
+                    let result = try modelContext.fetch(
                         FetchDescriptor<Todo>(
                             predicate: #Predicate { $0.id == dummy.id }
                         )
@@ -231,7 +231,7 @@ final class FocusModeViewModel: ObservableObject {
                         todo.elapsedTime = dummy.elapsed
                         todo.isCompleted = dummy.isCompleted
                         todo.performedDate = Date()
-                        try? context.save()
+                        try? modelContext.save()
                     }
                 } catch {
                     print("⚠️ fetch 실패: \(error.localizedDescription)")
@@ -317,7 +317,7 @@ final class FocusModeViewModel: ObservableObject {
     // MARK: - 메모리 정리
     /// 메모리 누수 방지
     deinit {
-        timer?.invalidate()
+        todoTimer?.invalidate()
         breakTimer?.invalidate()
     }
     
