@@ -13,14 +13,16 @@ import SwiftData
 final class BreakSession {
     var start: Date
     var end: Date
+    var isOverdue: Bool
     
     @Relationship var session: FocusSession?
     
-    init(start: Date, end: Date) {
+    init(start: Date, end: Date, isOverdue: Bool = false) {
         self.start = start
         self.end = end
+        self.isOverdue = isOverdue
     }
-    
+
     var duration: TimeInterval {
         end.timeIntervalSince(start)
     }

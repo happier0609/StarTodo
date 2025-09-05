@@ -12,11 +12,11 @@ struct FocusModeView: View {
     @StateObject private var viewModel: FocusModeViewModel
     @State private var selectedTab: FocusTab = .timer
     
-    @Environment(\.modelContext) private var modelContext
-    
-    // ✅ 커스텀 생성자 (CoreData 제거)
-    init(dummyTodos: [DummyTodo]) {
-        _viewModel = StateObject(wrappedValue: FocusModeViewModel(dummyTodos: dummyTodos))
+    private var showEndAlertBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.showEndConfirmAlert },
+            set: { viewModel.showEndConfirmAlert = $0 }
+        )
     }
     
     var body: some View {
@@ -50,51 +50,41 @@ struct FocusModeView: View {
                     .padding()
                 
                 // 화면 전환
-                if selectedTab == .timer {
+                switch selectedTab {
+                case .timer:
                     FocusTimerView(viewModel: viewModel)
-                } else {
+                case .list:
                     FocusListView(viewModel: viewModel)
                 }
                 
                 FocusModeFooterView(
                     expectedEndTimeString: viewModel.expectedEndTimeString,
-                    isBreakActive: viewModel.isBreakActive
-                ) {
-                    if viewModel.isBreakActive {
-                        viewModel.endBreakAndResume()             // 다시 시작하기
-                    } else {
-                        viewModel.showBreakSheet = true           // 휴식 알럿 표시
-                    }
-                }
+                    isBreakActive: viewModel.isBreakActive,
+                    onRestTap: viewModel.endBreakAndResume
+                )
             }
             // ✅ 종료 확인 알럿
-            .alert("정말 종료할까요?", isPresented: $viewModel.showEndConfirmAlert) {
+            .alert("정말 종료할까요?", isPresented: showEndAlertBinding) {
                 Button("취소", role: .cancel) { }
                 Button("종료하기", role: .destructive) {
-                    viewModel.confirmEndSession()   // ← 타이머 정지 + (임시)저장 + 이동 트리거
+                    viewModel.endFocusSession()
                 }
-            } message: {
-                Text("지금까지의 진행 상태를 저장한 뒤 리포트로 이동합니다.")
             }
-            
-            //            // ✅ Report로 이동
-            //            NavigationLink(
-            //                destination: ReportView(
-            //                    viewModel: ReportViewModel(todos: viewModel.reportData),
-            //                    onComplete: {
-            //                        // 필요 시 메인으로 복귀 처리
-            //                    }
-            //                ),
-            //                isActive: $viewModel.shouldNavigateToReport
-            //            ) { EmptyView() }
-            //                .hidden()
         }
         .breakTimeAlert(
-            isPresented: $viewModel.showBreakSheet,
-            minutes: $viewModel.breakPickedMinutes
-        ) {
-            viewModel.startBreak(minutes: viewModel.breakPickedMinutes)
-        }
+            isPresented: Binding(
+                get: { viewModel.showBreakSheet },
+                set: { viewModel.showBreakSheet = $0 }
+            ),
+            minutes: Binding(
+                get: { viewModel.breakPickedMinutes },
+                set: { viewModel.breakPickedMinutes = $0 }
+            ),
+            onConfirm: {
+                viewModel.startBreak()
+            }
+        )
+        
         // ✅ 휴식 종료 오버레이
         .disabled(viewModel.showBreakEndOverlay) // 배경 인터랙션 잠금
         .overlay {
@@ -106,16 +96,7 @@ struct FocusModeView: View {
             }
         }
         .onAppear {
-            viewModel.replaceStore(SwiftDataSessionStore(context: modelContext))
+            viewModel.replaceStoreWithContext()
         }
     }
-}
-
-#Preview {
-    FocusModeView(
-        dummyTodos: [
-            DummyTodo(id: UUID(), title: "영어 단어 외우기", setTime: 25, elapsed: 0, isCompleted: false),
-            DummyTodo(id: UUID(), title: "수학 문제 풀기", setTime: 15, elapsed: 0, isCompleted: false),
-        ]
-    )
 }

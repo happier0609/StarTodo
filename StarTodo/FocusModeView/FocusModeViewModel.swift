@@ -1,8 +1,8 @@
 //
 //  FocusModeViewModel.swift
-//  JPS_3
+//  StarTodo
 //
-//  Created by ChoMinKyung on 8/2/25.
+//  Created by 조민경 on 9/2/25.
 //
 
 import Foundation
@@ -10,43 +10,19 @@ import SwiftData
 import SwiftUI
 
 @MainActor
-class FocusModeViewModel: ObservableObject {
-    // MARK: - 집중(할 일) 관련 상태
-    @Published var todos: [DummyTodo] = []
-    @Published var currentIndex: Int = 0
+final class FocusModeViewModel: ObservableObject {
     
-    // MARK: - 휴식 관련 상태
-    @Published var isBreakActive: Bool = false            // 현재 휴식 중인가?
-    @Published var showBreakSheet: Bool = false           // 휴식 시간 선택 시트 표시 여부
-    @Published var breakPickedMinutes: Int = 10           // 시트에서 고른 휴식 분(5~30분 중)
-    @Published private(set) var breakTotalSeconds: Int = 0// 휴식 총 시간(초)
-    @Published private(set) var breakElapsed: Int = 0     // 휴식 경과 시간(초)
-    @Published var showBreakEndOverlay: Bool = false        // 휴식 종료 오버레이 노출용
-    
-    @Published var breakSessions: [BreakSession] = []
-    
-    // MARK: - 이동/리포트
     @Published var shouldNavigateToReport: Bool = false
-    @Published var reportData: [DummyTodo] = []
+    @Published var showEndConfirmAlert: Bool = false
     
-    // MARK: - 내부 타이머
-    private var timer: Timer?
-    private var lastTick: Date = Date()
-    
-    // MARK: - Session 데이터 저장소
     private var store: SessionStore
     
-    // MARK: - 초기화
-    init(dummyTodos: [DummyTodo], store: SessionStore = DebugSessionStore()) {
-        self.todos = dummyTodos
-        self.store = store
-        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" {
-            startTimer()
-        }
-    }
+    // MARK: - 할 일 관련 상태
+    @Published var todos: [DummyTodo] = []
+    @Published var currentIndex: Int = 0
+    @Published var isRunning: Bool = false
     
-    // 런타임 교체용(선택)
-    func replaceStore(_ newStore: SessionStore) { self.store = newStore }
+    private var todoTimer: Timer?
     
     // 현재 진행 중인 할 일(없을 수 있으니 Optional)
     var currentTodo: DummyTodo? {
@@ -54,20 +30,258 @@ class FocusModeViewModel: ObservableObject {
         return todos[currentIndex]
     }
     
-    // MARK: - 표시용(집중/휴식 공용) 프로퍼티
+    // MARK: - 휴식 관련 상태
+    @Published var isBreakActive: Bool = false            // 현재 휴식 중인가?
+    @Published var showBreakSheet: Bool = false           // 휴식 시간 선택 시트 표시 여부
+    @Published var breakPickedMinutes: Int = 10           // 시트에서 고른 휴식 분 (5~30분)
+    @Published private(set) var breakTotalSeconds: Int = 0// 휴식 총 시간 (초)
+    @Published private(set) var breakElapsed: Int = 0     // 휴식 경과 시간 (초)
+    @Published var showBreakEndOverlay: Bool = false      // 휴식 종료 오버레이 노출 여부
     
+    @Published var breakSessions: [BreakSession] = []     // 휴식 기록
+    
+    private var breakTimer: Timer?
+    private var breakStartDate: Date?
+    
+    private let modelContext: ModelContext
+    
+    init(modelContext: ModelContext) {
+        self.modelContext = modelContext
+    }
+    
+    // MARK: - 휴식 타이머 로직
+    // 휴식 시작 시 현재 시간을 저장하고, 타이머 시작
     func startBreak() {
-        breakStartTime = Date()
         isBreakActive = true
+        breakStartDate = Date()
+        breakElapsed = 0
+        startBreakTimer()
+    }
+    
+    // 1초마다 breakElapsed를 증가시킴
+    private func startBreakTimer() {
+        breakTimer?.invalidate()
+        breakTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            self?.onBreakTimerTick()
+        }
+    }
+    
+    // 휴식이 끝났는지 확인
+    private func onBreakTimerTick() {
+        guard isBreakActive else { return }
+        
+        breakElapsed += 1
+        
+        // 선택한 시간을 넘겼는지 여부 체크 → 시각적 표시 등에 활용 가능
+        if breakElapsed == breakPickedMinutes * 60 {
+            showBreakEndOverlay = true  // "휴식 시간이 끝났어요" 알림 표시
+        }
+        
+        // 사용자가 수동으로 종료할 때까지 계속 누적됨 (타이머는 멈추지 않음)
+    }
+    
+    // 휴식 종료 시점에 BreakRecord를 만들고 기록
+    func endBreak() {
+        breakTimer?.invalidate()
+        breakTimer = nil
+        isBreakActive = false
+        showBreakEndOverlay = true
+        
+        if let start = breakStartDate {
+            let end = Date()
+            let duration = end.timeIntervalSince(start)
+            
+            let isOver = duration > Double(breakPickedMinutes * 60)
+            
+            let record = BreakSession(start: start, end: end, isOverdue: isOver)
+            modelContext.insert(record)
+            breakSessions.append(record)
+            breakTotalSeconds += Int(duration)
+        }
+    }
+    
+    // 휴식을 종료하고 할 일을 다시 시작
+    func endBreakAndResume() {
+        endBreak()                  // 기존 휴식 종료 로직
+        resumeCurrentTodo()        // 필요하다면 할 일 타이머 재시작
+    }
+    
+    // MARK: - 초기화
+    init(todoIDPairs: [(UUID, Int)], context: ModelContext, store: SessionStore) {
+        self.modelContext = context
+        self.store = store
+        loadTodos(todoPairs: todoIDPairs, context: context)
+    }
+    
+    // MARK: - Load Todos
+    private func loadTodos(todoPairs: [(UUID, Int)], context: ModelContext) {
+        var loaded: [DummyTodo] = []
+        
+        for (id, order) in todoPairs {
+            if let todo = try? context.fetch(
+                FetchDescriptor<Todo>(
+                    predicate: #Predicate { $0.id == id }
+                )
+            ).first {
+                let dummy = DummyTodo(
+                    id: todo.id,
+                    title: todo.title,
+                    setTime: todo.setTime,
+                    elapsed: 0,
+                    isCompleted: false
+                )
+                loaded.append(dummy)
+            }
+        }
+        
+        // ✅ 순서를 유지하기 위해 정렬하지 않고 그대로 할당
+        self.todos = loaded
+        self.currentIndex = 0
+        
+        if !todos.isEmpty {
+            startTodoTimer()
+        }
+    }
+    
+    /// 리스트용 정렬: 완료가 위, 나머지는 기존 순서 유지
+    var sortedTodosForListView: [DummyTodo] {
+        // ✅ 1. 완료된 항목만 필터링
+        let completed = todos.enumerated().filter { (offset, todo) in
+            todo.isCompleted
+        }
+
+        // ✅ 2. 미완료 항목 필터링
+        let remaining = todos.enumerated().filter { (offset, todo) in
+            !todo.isCompleted
+        }
+
+        // ✅ 3. 완료된 항목은 선택 순서대로 정렬
+        let sortedCompleted = completed.sorted { $0.offset < $1.offset }
+
+        // ✅ 4. 순서를 유지한 후 element만 반환
+        let result = (sortedCompleted + remaining).map { $0.element }
+
+        return result
+    }
+    
+    func selectTodo(at index: Int) {
+        guard todos.indices.contains(index) else { return }
+        currentIndex = index
+        startTodoTimer()
+    }
+    
+    // MARK: - Timer Logic
+
+    /// 타이머 시작 함수
+    /// - 이미 기존 타이머가 있다면 정지하고 새로 시작
+    /// - 1초 간격으로 `onTodoTimerTick()` 호출
+    private func startTodoTimer() {
+        todoTimer?.invalidate()
+        todoTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+            self?.onTodoTimerTick()
+        }
     }
 
-    func endBreak() {
-        guard let start = breakStartTime else { return }
-        let breakSession = BreakSession(id: UUID(), start: start, end: Date())
-        breakSessions.append(breakSession)
-        isBreakActive = false
+    /// 타이머 중지 함수
+    /// - 타이머를 정지하고 `todoTimer`를 nil로 초기화
+    func stopTimer() {
+        todoTimer?.invalidate()
+        todoTimer = nil
+        isRunning = false
+    }
+
+    /// 일시 정지된 할 일을 다시 시작하는 함수
+    /// - 현재 인덱스가 유효하고, 완료되지 않았으며, 타이머가 동작 중이 아닐 경우에만 타이머 재시작
+    func resumeCurrentTodo() {
+        guard todos.indices.contains(currentIndex) else { return }
+        guard !todos[currentIndex].isCompleted else { return }
+        guard todoTimer == nil else { return }
+
+        startTodoTimer()
+    }
+
+    /// 매초 실행되는 타이머 Tick 함수
+    /// - `elapsed`를 1초 증가시키고, 설정된 시간에 도달하면 해당 할 일을 완료 처리
+    private func onTodoTimerTick() {
+        guard todos.indices.contains(currentIndex) else { return }
+
+        todos[currentIndex].elapsed += 1
+
+        if todos[currentIndex].elapsed >= todos[currentIndex].setTime * 60 {
+            completeCurrentTodo()
+        }
     }
     
+    // MARK: - Complete & Move to Next
+    func completeCurrentTodo() {
+        markTodoAsCompleted(at: currentIndex)
+    }
+    
+    private func moveToNextTodo() {
+        let next = todos.enumerated().first { !$0.element.isCompleted }
+        if let (index, _) = next {
+            currentIndex = index
+            startTodoTimer()
+        } else {
+            // 모든 할 일 완료됨
+            isRunning = false
+        }
+    }
+    
+    func markTodoAsCompleted(at index: Int) {
+        guard todos.indices.contains(index) else { return }
+        guard !todos[index].isCompleted else { return }
+
+        withAnimation(.easeInOut(duration: 0.3)) {
+            todos[index].isCompleted = true
+        }
+
+        // 현재 항목이면 타이머 정지 후 다음 항목으로 이동
+        if index == currentIndex {
+            stopTimer()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self.moveToNextTodo()
+            }
+        }
+    }
+    
+    // MARK: - 세션 종료 처리
+    func endFocusSession() {
+        stopTimer()
+        breakTimer?.invalidate()
+        breakTimer = nil
+        isRunning = false
+        isBreakActive = false
+        
+        for dummy in todos {
+            if dummy.elapsed > 0 || dummy.isCompleted {
+                do {
+                    let result = try modelContext.fetch(
+                        FetchDescriptor<Todo>(
+                            predicate: #Predicate { $0.id == dummy.id }
+                        )
+                    )
+                    if let todo = result.first {
+                        todo.elapsedTime = dummy.elapsed
+                        todo.isCompleted = dummy.isCompleted
+                        todo.performedDate = Date()
+                        try? modelContext.save()
+                    }
+                } catch {
+                    print("⚠️ fetch 실패: \(error.localizedDescription)")
+                }
+            }
+        }
+        
+        shouldNavigateToReport = true
+    }
+    
+    func replaceStoreWithContext() {
+        let store = SwiftDataSessionStore(context: modelContext)
+        self.store = store
+    }
+    
+    // MARK: - 텍스트
     /// 헤더 문구 계산(집중/휴식 자동 분기)
     var headerStatusText: String {
         if isBreakActive {
@@ -106,9 +320,14 @@ class FocusModeViewModel: ObservableObject {
     
     /// 예상 종료 시간(집중 기준 계산. 휴식 중 표시 문구 교체는 View에서 처리 예정)
     var expectedEndTimeString: String {
-        let totalRemaining = todos[currentIndex...].reduce(0) {
+        // 할 일 기준 남은 시간 (초)
+        let taskRemainingSeconds = todos[currentIndex...].reduce(0) {
             $0 + max(0, ($1.setTime * 60 - $1.elapsed))
         }
+        
+        // 휴식 시간 포함
+        let totalRemaining = taskRemainingSeconds + breakTotalSeconds
+        
         let endDate = Date().addingTimeInterval(TimeInterval(totalRemaining))
         let formatter = DateFormatter()
         formatter.dateFormat = "a h:mm"
@@ -122,173 +341,16 @@ class FocusModeViewModel: ObservableObject {
         return seconds / 60
     }
     
-    /// 리스트용 정렬: 완료가 위, 나머지는 기존 순서 유지
-    var sortedTodosForListView: [DummyTodo] {
-        let completed = todos.enumerated()
-            .filter { $0.element.isCompleted }
-            .sorted { $0.offset < $1.offset } // 완료된 순서 유지
-        
-        let remaining = todos.enumerated()
-            .filter { !$0.element.isCompleted }
-        
-        return (completed + remaining).map { $0.element }
-    }
-    
-    // MARK: - 타이머 제어
-    func startTimer() {
-        stopTimer()
-        lastTick = Date()
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] _ in
-            self?.tick()
-        }
-    }
-    
-    func stopTimer() {
-        timer?.invalidate()
-        timer = nil
-    }
-    
-    /// 1초마다 호출되는 틱 – 휴식/집중을 분기 처리
-    private func tick() {
-        let now = Date()
-        let delta = Int(now.timeIntervalSince(lastTick))
-        lastTick = now
-        
-        // 🔹 휴식 타이머 진행
-        if isBreakActive {
-            breakElapsed += delta
-            if breakElapsed >= breakTotalSeconds {
-                handleBreakFinished()  // TODO: Step 5에서 알림/안내창 붙이기
-            }
-            return
-        }
-        
-        // 🔹 집중 타이머 진행
-        guard todos.indices.contains(currentIndex) else { return }
-        todos[currentIndex].elapsed += delta
-        
-        if todos[currentIndex].elapsed >= todos[currentIndex].setTime * 60 {
-            markCurrentTodoAsCompleted()
-        }
-    }
-    
-    // MARK: - 휴식 제어 API
-    /// 휴식 시작: 현재 집중 타이머를 멈추고 휴식 타이머로 전환
-    func startBreak(minutes: Int) {
-        stopTimer()
-        isBreakActive = true
-        breakTotalSeconds = minutes * 60
-        breakElapsed = 0
-        startTimer()
-    }
-    
-    /// 휴식 중단 후 다시 집중 재개
-    func endBreakAndResume() {
-        isBreakActive = false
-        startTimer()
-    }
-    
-    /// 휴식 종료 처리에서 오버레이 띄우기
-    private func handleBreakFinished() {
-        isBreakActive = false
-        stopTimer()
-        showBreakEndOverlay = true        // ← 오버레이 ON
-        // (버튼 누르면 endBreakAndResume()로 재개)
-    }
-    
-    // MARK: - 종료(확인/저장/이동)
-    @Published var showEndConfirmAlert: Bool = false   // 종료 확인 알럿
-    
-    private var sessionStart: Date = Date()            // 세션 시작 시각
-    private var totalBreakSecondsAccum: Int = 0        // 누적 휴식(선택)
-    
-    /// '종료하기' 버튼 탭 시: 확인 알럿 표시
-    func askEndSession() {
-        showEndConfirmAlert = true
-    }
-    
-    /// 종료 확정: 타이머 정지 → 저장 → 리포트 이동
-    func confirmEndSession() {
-        stopTimer()
-        
-        // 휴식 중이었다면 누적 후 정리
-        if isBreakActive {
-            totalBreakSecondsAccum += breakElapsed
-            isBreakActive = false
-            showBreakEndOverlay = false
-        }
-        
-        // 1) 저장 (지금은 스텁, 나중에 CoreData로 교체)
-        persistCurrentSession()
-        
-        // 2) 리포트 이동 데이터 설정
-        reportData = todos
-        shouldNavigateToReport = true
-    }
-    
-    // 종료 확정 시 호출하는 저장 함수 교체
-    private func persistCurrentSession() {
-        let record = FocusSessionRecord(
-            todos: todos,
-            startedAt: sessionStart,
-            endedAt: Date(),
-            totalBreakSeconds: totalBreakSecondsAccum
-        )
-        store.save(record)  // ← 여기!
-    }
-    
-    // MARK: - 집중(할 일) 흐름
-    func markCurrentTodoAsCompleted() {
-        guard todos.indices.contains(currentIndex) else { return }
-        todos[currentIndex].isCompleted = true
-        stopTimer()
-        
-        // 2초 후 다음 항목 이동(연출용)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2.0) {
-            self.moveToNextTodo()
-        }
-    }
-    
-    /// 특정 id의 항목을 완료 처리(리스트에서 개별 완료 시 사용)
-    func markTodoAsCompleted(id: UUID) {
-        guard let index = todos.firstIndex(where: { $0.id == id }) else { return }
-        todos[index].isCompleted = true
-        
-        // 현재 항목을 완료했다면 흐름 이어서 진행
-        if index == currentIndex {
-            moveToNextTodo()
-        }
-    }
-    
-    /// 다음 작업으로 이동: "남아있는 항목 중 가장 위"를 선택
-    func moveToNextTodo() {
-        if let nextIndex = todos.firstIndex(where: { !$0.isCompleted }) {
-            currentIndex = nextIndex
-            startTimer()
-        } else {
-            endFocusSession()
-        }
-    }
-    
-    func endFocusSession() {
-        stopTimer()
-        reportData = todos
-        shouldNavigateToReport = true
-    }
-    
-    /// 리스트에서 특정 인덱스를 눌렀을 때 해당 작업으로 이동
-    func selectTodo(at index: Int) {
-        guard index != currentIndex,
-              todos.indices.contains(index),
-              !todos[index].isCompleted else { return }
-        
-        stopTimer()
-        currentIndex = index
-        startTimer()
+    // MARK: - 메모리 정리
+    /// 메모리 누수 방지
+    deinit {
+        todoTimer?.invalidate()
+        breakTimer?.invalidate()
     }
     
     // MARK: - Util
     private func formatTime(seconds: Int) -> String {
         String(format: "%02d:%02d", seconds / 60, seconds % 60)
     }
+    
 }
