@@ -22,7 +22,7 @@ struct FocusTimerView: View {
                     isCompleted: current.isCompleted,
                     remainingTime: viewModel.remainingTimeString,
                     onComplete: {
-                        viewModel.markCurrentTodoAsCompleted()
+                        viewModel.completeCurrentTodo()
                     }
                 )
             } else {
@@ -40,15 +40,6 @@ struct FocusTimerView: View {
         }
         .animation(.easeInOut(duration: 0.25), value: viewModel.isBreakActive)
     }
-}
-
-#Preview {
-    FocusModeView(
-        dummyTodos: [
-            DummyTodo(id: UUID(), title: "영어 단어 외우기", setTime: 25, elapsed: 0, isCompleted: false),
-            DummyTodo(id: UUID(), title: "수학 문제 풀기", setTime: 15, elapsed: 0, isCompleted: false),
-        ]
-    )
 }
 
 //MARK: - 기존코드

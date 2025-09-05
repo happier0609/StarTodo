@@ -8,7 +8,6 @@
 import SwiftUI
 
 struct FocusModeHeaderView: View {
-    //    let elapsedMinutes: Int
     let statusText: String
     let onExit: () -> Void
     

@@ -143,6 +143,33 @@ final class FocusModeViewModel: ObservableObject {
         }
     }
     
+    /// 리스트용 정렬: 완료가 위, 나머지는 기존 순서 유지
+    var sortedTodosForListView: [DummyTodo] {
+        // ✅ 1. 완료된 항목만 필터링
+        let completed = todos.enumerated().filter { (offset, todo) in
+            todo.isCompleted
+        }
+
+        // ✅ 2. 미완료 항목 필터링
+        let remaining = todos.enumerated().filter { (offset, todo) in
+            !todo.isCompleted
+        }
+
+        // ✅ 3. 완료된 항목은 선택 순서대로 정렬
+        let sortedCompleted = completed.sorted { $0.offset < $1.offset }
+
+        // ✅ 4. 순서를 유지한 후 element만 반환
+        let result = (sortedCompleted + remaining).map { $0.element }
+
+        return result
+    }
+    
+    func selectTodo(at index: Int) {
+        guard todos.indices.contains(index) else { return }
+        currentIndex = index
+        startTodoTimer()
+    }
+    
     // MARK: - Timer Logic
 
     /// 타이머 시작 함수
@@ -187,21 +214,7 @@ final class FocusModeViewModel: ObservableObject {
     
     // MARK: - Complete & Move to Next
     func completeCurrentTodo() {
-        guard todos.indices.contains(currentIndex) else { return }
-        
-        // ✅ 이미 완료된 항목이면 중복 처리 방지
-        guard !todos[currentIndex].isCompleted else { return }
-        
-        // 애니메이션을 적용하고
-        withAnimation(.easeInOut(duration: 0.3)) {
-            todos[currentIndex].isCompleted = true
-            stopTimer()
-        }
-        
-        // 0.3초 후 다음 작업으로 넘어감
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-            self.moveToNextTodo()
-        }
+        markTodoAsCompleted(at: currentIndex)
     }
     
     private func moveToNextTodo() {
@@ -212,6 +225,23 @@ final class FocusModeViewModel: ObservableObject {
         } else {
             // 모든 할 일 완료됨
             isRunning = false
+        }
+    }
+    
+    func markTodoAsCompleted(at index: Int) {
+        guard todos.indices.contains(index) else { return }
+        guard !todos[index].isCompleted else { return }
+
+        withAnimation(.easeInOut(duration: 0.3)) {
+            todos[index].isCompleted = true
+        }
+
+        // 현재 항목이면 타이머 정지 후 다음 항목으로 이동
+        if index == currentIndex {
+            stopTimer()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self.moveToNextTodo()
+            }
         }
     }
     
@@ -309,18 +339,6 @@ final class FocusModeViewModel: ObservableObject {
     var elapsedTotalMinutes: Int {
         let seconds = todos.reduce(0) { $0 + $1.elapsed }
         return seconds / 60
-    }
-    
-    /// 리스트용 정렬: 완료가 위, 나머지는 기존 순서 유지
-    var sortedTodosForListView: [DummyTodo] {
-        let completed = todos.enumerated()
-            .filter { $0.element.isCompleted }
-            .sorted { $0.offset < $1.offset } // 완료된 순서 유지
-        
-        let remaining = todos.enumerated()
-            .filter { !$0.element.isCompleted }
-        
-        return (completed + remaining).map { $0.element }
     }
     
     // MARK: - 메모리 정리

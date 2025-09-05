@@ -9,24 +9,22 @@ import SwiftUI
 
 struct FocusListView: View {
     @ObservedObject var viewModel: FocusModeViewModel
-    
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 20) {
-//            // ⬇️ 휴식 중이면 안내 버블
-//            if viewModel.isBreakActive {
-//                BreakInfoBubble()
-//                    .transition(.opacity.combined(with: .move(edge: .top)))
-//                    .padding(.top, 8)
-//            }
+        let enumeratedTodos = Array(viewModel.sortedTodosForListView.enumerated())
+
+        return VStack(alignment: .leading, spacing: 20) {
             ScrollView {
                 VStack(spacing: 8) {
-                    ForEach(Array(viewModel.sortedTodosForListView.enumerated()), id: \.offset) { index, todo in
+                    ForEach(enumeratedTodos, id: \.offset) { index, todo in
+                        let isCurrent = todo.id == viewModel.currentTodo?.id
+                        
                         FocusListRowView(
                             title: todo.title,
                             isCompleted: todo.isCompleted,
-                            isCurrent: todo.id == viewModel.currentTodo?.id,
+                            isCurrent: isCurrent,
                             onComplete: {
-                                viewModel.markTodoAsCompleted(id: todo.id)
+                                viewModel.markTodoAsCompleted(at: index)
                             }
                         )
                         .onTapGesture {
@@ -40,22 +38,6 @@ struct FocusListView: View {
                 )
                 .padding(.horizontal)
             }
-            
-            Spacer()
         }
     }
-}
-
-
-#Preview {
-    FocusModeView(
-        dummyTodos: [
-            DummyTodo(id: UUID(), title: "수학 문제 풀기", setTime: 25, elapsed: 0, isCompleted: false),
-            DummyTodo(id: UUID(), title: "영어 단어 외우기", setTime: 20, elapsed: 0, isCompleted: false),
-            DummyTodo(id: UUID(), title: "울라랄라라라ㅏ", setTime: 15, elapsed: 0, isCompleted: false),
-            DummyTodo(id: UUID(), title: "우아아ㅏ아아ㅏㅇ", setTime: 15, elapsed: 0, isCompleted: false),
-            DummyTodo(id: UUID(), title: "뿌아앙ㅇㅇㅇ", setTime: 15, elapsed: 0, isCompleted: false),
-            DummyTodo(id: UUID(), title: "ㄱㄱㄱㄱㄱㄱㄱㄱ", setTime: 15, elapsed: 0, isCompleted: false)
-        ]
-    )
 }
