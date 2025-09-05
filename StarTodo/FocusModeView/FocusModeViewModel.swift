@@ -13,6 +13,9 @@ import SwiftUI
 final class FocusModeViewModel: ObservableObject {
     
     @Published var shouldNavigateToReport: Bool = false
+    @Published var showEndConfirmAlert: Bool = false
+    
+    private var store: SessionStore
     
     // MARK: - 할 일 관련 상태
     @Published var todos: [DummyTodo] = []
@@ -104,8 +107,9 @@ final class FocusModeViewModel: ObservableObject {
     }
     
     // MARK: - 초기화
-    init(todoIDPairs: [(UUID, Int)], context: ModelContext) {
+    init(todoIDPairs: [(UUID, Int)], context: ModelContext, store: SessionStore) {
         self.modelContext = context
+        self.store = store
         loadTodos(todoPairs: todoIDPairs, context: context)
     }
     
@@ -240,6 +244,11 @@ final class FocusModeViewModel: ObservableObject {
         }
         
         shouldNavigateToReport = true
+    }
+    
+    func replaceStoreWithContext() {
+        let store = SwiftDataSessionStore(context: modelContext)
+        self.store = store
     }
     
     // MARK: - 텍스트

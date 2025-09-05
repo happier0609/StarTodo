@@ -12,6 +12,13 @@ struct FocusModeView: View {
     @StateObject private var viewModel: FocusModeViewModel
     @State private var selectedTab: FocusTab = .timer
     
+    private var showEndAlertBinding: Binding<Bool> {
+        Binding(
+            get: { viewModel.showEndConfirmAlert },
+            set: { viewModel.showEndConfirmAlert = $0 }
+        )
+    }
+    
     var body: some View {
         ZStack {
             // ✅ 전체 배경
@@ -53,25 +60,31 @@ struct FocusModeView: View {
                 FocusModeFooterView(
                     expectedEndTimeString: viewModel.expectedEndTimeString,
                     isBreakActive: viewModel.isBreakActive,
-                    onBreakButtonTapped: viewModel.endBreakAndResume
+                    onRestTap: viewModel.endBreakAndResume
                 )
             }
             // ✅ 종료 확인 알럿
-            .alert("정말 종료할까요?", isPresented: $viewModel.showEndConfirmAlert) {
+            .alert("정말 종료할까요?", isPresented: showEndAlertBinding) {
                 Button("취소", role: .cancel) { }
                 Button("종료하기", role: .destructive) {
-                    viewModel.confirmEndSession()   // ← 타이머 정지 + (임시)저장 + 이동 트리거
+                    viewModel.endFocusSession()
                 }
-            } message: {
-                Text("지금까지의 진행 상태를 저장한 뒤 리포트로 이동합니다.")
             }
         }
         .breakTimeAlert(
-            isPresented: $viewModel.showBreakSheet,
-            minutes: $viewModel.breakPickedMinutes
-        ) {
-            viewModel.startBreak(minutes: viewModel.breakPickedMinutes)
-        }
+            isPresented: Binding(
+                get: { viewModel.showBreakSheet },
+                set: { viewModel.showBreakSheet = $0 }
+            ),
+            minutes: Binding(
+                get: { viewModel.breakPickedMinutes },
+                set: { viewModel.breakPickedMinutes = $0 }
+            ),
+            onConfirm: {
+                viewModel.startBreak()
+            }
+        )
+        
         // ✅ 휴식 종료 오버레이
         .disabled(viewModel.showBreakEndOverlay) // 배경 인터랙션 잠금
         .overlay {
@@ -83,7 +96,7 @@ struct FocusModeView: View {
             }
         }
         .onAppear {
-            viewModel.replaceStore(SwiftDataSessionStore(context: modelContext))
+            viewModel.replaceStoreWithContext()
         }
     }
 }
