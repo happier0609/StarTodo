@@ -35,8 +35,6 @@ struct FocusTimerView: View {
                 setTime: viewModel.displaySetMinutes,
                 elapsedTime: viewModel.displayElapsedSeconds
             )
-
-            // (필요 시) 휴식 전용 버튼/문구를 넣고 싶다면 여기 추가
         }
         .animation(.easeInOut(duration: 0.25), value: viewModel.isBreakActive)
     }
