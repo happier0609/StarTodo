@@ -12,39 +12,39 @@ import SwiftUI
 @MainActor
 final class FocusModeViewModel: ObservableObject {
     
-    @Published var shouldNavigateToReport: Bool = false
-    @Published var showEndConfirmAlert: Bool = false
-    
-    private var store: SessionStore
-    
+    @Published var shouldNavigateToReport: Bool = false   // ReportView로 이동 여부
+    @Published var showEndConfirmAlert: Bool = false      // 세션 종료 확인 알림 표시
+
+    // MARK: - 세션 저장 및 관계 연결용
+    var focusSession: FocusSession?                      // 현재 포커스 세션 (휴식 기록과 연결됨)
+    private let modelContext: ModelContext               // SwiftData 저장 컨텍스트
+    private var store: SessionStore                      // 세션 저장소 (임시/SwiftData/디버그용 등)
+
     // MARK: - 할 일 관련 상태
-    @Published var todos: [DummyTodo] = []
-    @Published var currentIndex: Int = 0
-    @Published var isRunning: Bool = false
-    
-    private var todoTimer: Timer?
-    
-    // 현재 진행 중인 할 일(없을 수 있으니 Optional)
+    @Published var todos: [DummyTodo] = []               // 할 일 리스트
+    @Published var currentIndex: Int = 0                 // 현재 인덱스
+    @Published var isRunning: Bool = false               // 타이머 실행 중 여부
+    private var todoTimer: Timer?                        // 할 일 타이머
+
+    // 현재 진행 중인 할 일 (인덱스 유효성 검사 포함)
     var currentTodo: DummyTodo? {
         guard todos.indices.contains(currentIndex) else { return nil }
         return todos[currentIndex]
     }
-    
+
     // MARK: - 휴식 관련 상태
-    @Published var isBreakActive: Bool = false            // 현재 휴식 중인가?
-    @Published var showBreakSheet: Bool = false           // 휴식 시간 선택 시트 표시 여부
-    @Published var breakPickedMinutes: Int = 10           // 시트에서 고른 휴식 분 (5~30분)
-    @Published private(set) var breakTotalSeconds: Int = 0// 휴식 총 시간 (초)
+    @Published var isBreakActive: Bool = false            // 현재 휴식 중 여부
+    @Published var showBreakSheet: Bool = false           // 휴식 시간 선택 시트 노출 여부
+    @Published var breakPickedMinutes: Int = 10           // 선택한 휴식 시간 (분 단위, 5~30)
+    @Published private(set) var breakTotalSeconds: Int = 0// 총 휴식 시간 (초)
     @Published private(set) var breakElapsed: Int = 0     // 휴식 경과 시간 (초)
-    @Published var showBreakEndOverlay: Bool = false      // 휴식 종료 오버레이 노출 여부
-    
-    @Published var breakSessions: [BreakSession] = []     // 휴식 기록
-    
-    private var breakTimer: Timer?
-    private var breakStartDate: Date?
-    
-    private let modelContext: ModelContext
-    
+    @Published var showBreakEndOverlay: Bool = false      // 휴식 종료 오버레이 표시 여부
+    @Published var breakSessions: [BreakSession] = []     // 휴식 기록 (SwiftData 모델)
+
+    private var breakTimer: Timer?                        // 휴식용 타이머
+    private var breakStartDate: Date?                     // 휴식 시작 시각
+
+    // MARK: - 초기화
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
     }
@@ -86,15 +86,21 @@ final class FocusModeViewModel: ObservableObject {
         breakTimer = nil
         isBreakActive = false
         showBreakEndOverlay = true
-        
+
         if let start = breakStartDate {
             let end = Date()
             let duration = end.timeIntervalSince(start)
-            
             let isOver = duration > Double(breakPickedMinutes * 60)
-            
+
             let record = BreakSession(start: start, end: end, isOverdue: isOver)
+
+            // ✅ focusSession 연결
+            record.session = focusSession
+
+            // ✅ SwiftData에 저장
             modelContext.insert(record)
+
+            // ✅ 현재 세션의 속성 갱신
             breakSessions.append(record)
             breakTotalSeconds += Int(duration)
         }
