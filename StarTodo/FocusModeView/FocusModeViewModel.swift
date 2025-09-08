@@ -16,7 +16,7 @@ final class FocusModeViewModel: ObservableObject {
     @Published var showEndConfirmAlert: Bool = false      // 세션 종료 확인 알림 표시
 
     // MARK: - 세션 저장 및 관계 연결용
-    var focusSession: FocusSession?                      // 현재 포커스 세션 (휴식 기록과 연결됨)
+    @Published var focusSession: FocusSession? = nil                      // 현재 포커스 세션 (휴식 기록과 연결됨)
     private let modelContext: ModelContext               // SwiftData 저장 컨텍스트
     private var store: SessionStore                      // 세션 저장소 (임시/SwiftData/디버그용 등)
 
@@ -182,6 +182,8 @@ final class FocusModeViewModel: ObservableObject {
     /// - 이미 기존 타이머가 있다면 정지하고 새로 시작
     /// - 1초 간격으로 `onTodoTimerTick()` 호출
     private func startTodoTimer() {
+        startFocusSessionIfNeeded() // ✅ 집중 세션이 없다면 생성
+        
         todoTimer?.invalidate()
         todoTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             self?.onTodoTimerTick()
@@ -215,6 +217,18 @@ final class FocusModeViewModel: ObservableObject {
 
         if todos[currentIndex].elapsed >= todos[currentIndex].setTime * 60 {
             completeCurrentTodo()
+        }
+    }
+    
+    /// 집중 세션(FocusSession)을 초기화하는 함수
+    /// - 세션이 아직 생성되지 않았다면, 현재 시각을 시작 시점으로 하는 FocusSession을 생성
+    /// - 생성된 세션은 SwiftData의 modelContext에 삽입되고, 뷰모델의 focusSession 프로퍼티에 저장됨
+    /// - 집중모드의 시작을 기록하고, 이후 휴식 기록 등의 메타데이터를 연결하기 위한 준비 단계
+    func startFocusSessionIfNeeded() {
+        if focusSession == nil {
+            let session = FocusSession(startedAt: Date(), endedAt: Date(), totalBreakSeconds: 0)
+            modelContext.insert(session)
+            focusSession = session
         }
     }
     
