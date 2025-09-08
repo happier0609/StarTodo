@@ -31,9 +31,9 @@ struct ReportView: View {
 
             // ✅ 리스트 뷰
             ReportListView(
-                todos: viewModel.todos,                          // [Todo]
-                getComment: viewModel.timeDescription(for:),     // (Todo) -> String?
-                isCompleted: { $0.isCompleted }                  // 완료 여부
+                todos: viewModel.todos,
+                getComment: viewModel.timeDescription(for:),
+                isCompleted: { $0.isCompleted }
             )
             .frame(maxHeight: 400)
 
