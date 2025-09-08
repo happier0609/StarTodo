@@ -78,7 +78,3 @@ struct FocusSettingView: View {
         }
     }
 }
-
-//#Preview {
-//    MainView()
-//}
