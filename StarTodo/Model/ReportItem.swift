@@ -15,6 +15,7 @@ struct ReportItem: Identifiable {
     let elapsedSeconds: Int
     let isCompleted: Bool
     let order: Int
+    var performedDate: Date?
 
     // 선택적으로 정렬 등에 활용할 수 있음
     var isPerformed: Bool {
