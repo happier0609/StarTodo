@@ -12,13 +12,6 @@ struct FocusModeView: View {
     @StateObject private var viewModel: FocusModeViewModel
     @State private var selectedTab: FocusTab = .timer
     
-    private var showEndAlertBinding: Binding<Bool> {
-        Binding(
-            get: { viewModel.showEndConfirmAlert },
-            set: { viewModel.showEndConfirmAlert = $0 }
-        )
-    }
-    
     var body: some View {
         ZStack {
             // ✅ 전체 배경
@@ -28,8 +21,8 @@ struct FocusModeView: View {
             VStack {
                 // 상단 종료 버튼 + 타이틀
                 FocusModeHeaderView(
-                    statusText: viewModel.headerStatusText,          // ← 추가한 계산 프로퍼티
-                    onExit: { viewModel.endFocusSession() }
+                    statusText: viewModel.headerStatusText,
+                    viewModel: viewModel
                 )
                 
                 NavigationLink(
@@ -62,13 +55,6 @@ struct FocusModeView: View {
                     isBreakActive: viewModel.isBreakActive,
                     onRestTap: viewModel.endBreakAndResume
                 )
-            }
-            // ✅ 종료 확인 알럿
-            .alert("정말 종료할까요?", isPresented: showEndAlertBinding) {
-                Button("취소", role: .cancel) { }
-                Button("종료하기", role: .destructive) {
-                    viewModel.endFocusSession()
-                }
             }
         }
         .breakTimeAlert(
