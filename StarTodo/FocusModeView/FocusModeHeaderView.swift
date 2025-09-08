@@ -9,13 +9,13 @@ import SwiftUI
 
 struct FocusModeHeaderView: View {
     let statusText: String
-    let onExit: () -> Void
+    @StateObject private var viewModel: FocusModeViewModel
     
     var body: some View {
         VStack(spacing: 30) {
             HStack {
                 Spacer()
-                Button("종료하기") { onExit() }  // ← 여기만 호출
+                Button("종료하기") { viewModel.endFocusSession() }
                     .foregroundColor(Color("Cool300"))
                     .typo(.textSMEmphasized)
             }
