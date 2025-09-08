@@ -12,39 +12,39 @@ import SwiftUI
 @MainActor
 final class FocusModeViewModel: ObservableObject {
     
-    @Published var shouldNavigateToReport: Bool = false
-    @Published var showEndConfirmAlert: Bool = false
+    @Published var shouldNavigateToReport: Bool = false   // ReportView로 이동 여부
+    @Published var showEndConfirmAlert: Bool = false      // 세션 종료 확인 알림 표시
     
-    private var store: SessionStore
+    // MARK: - 세션 저장 및 관계 연결용
+    @Published var focusSession: FocusSession? = nil                      // 현재 포커스 세션 (휴식 기록과 연결됨)
+    private let modelContext: ModelContext               // SwiftData 저장 컨텍스트
+    private var store: SessionStore                      // 세션 저장소 (임시/SwiftData/디버그용 등)
     
     // MARK: - 할 일 관련 상태
-    @Published var todos: [DummyTodo] = []
-    @Published var currentIndex: Int = 0
-    @Published var isRunning: Bool = false
+    @Published var todos: [DummyTodo] = []               // 할 일 리스트
+    @Published var currentIndex: Int = 0                 // 현재 인덱스
+    @Published var isRunning: Bool = false               // 타이머 실행 중 여부
+    private var todoTimer: Timer?                        // 할 일 타이머
     
-    private var todoTimer: Timer?
-    
-    // 현재 진행 중인 할 일(없을 수 있으니 Optional)
+    // 현재 진행 중인 할 일 (인덱스 유효성 검사 포함)
     var currentTodo: DummyTodo? {
         guard todos.indices.contains(currentIndex) else { return nil }
         return todos[currentIndex]
     }
     
     // MARK: - 휴식 관련 상태
-    @Published var isBreakActive: Bool = false            // 현재 휴식 중인가?
-    @Published var showBreakSheet: Bool = false           // 휴식 시간 선택 시트 표시 여부
-    @Published var breakPickedMinutes: Int = 10           // 시트에서 고른 휴식 분 (5~30분)
-    @Published private(set) var breakTotalSeconds: Int = 0// 휴식 총 시간 (초)
+    @Published var isBreakActive: Bool = false            // 현재 휴식 중 여부
+    @Published var showBreakSheet: Bool = false           // 휴식 시간 선택 시트 노출 여부
+    @Published var breakPickedMinutes: Int = 10           // 선택한 휴식 시간 (분 단위, 5~30)
+    @Published private(set) var breakTotalSeconds: Int = 0// 총 휴식 시간 (초)
     @Published private(set) var breakElapsed: Int = 0     // 휴식 경과 시간 (초)
-    @Published var showBreakEndOverlay: Bool = false      // 휴식 종료 오버레이 노출 여부
+    @Published var showBreakEndOverlay: Bool = false      // 휴식 종료 오버레이 표시 여부
+    @Published var breakSessions: [BreakSession] = []     // 휴식 기록 (SwiftData 모델)
     
-    @Published var breakSessions: [BreakSession] = []     // 휴식 기록
+    private var breakTimer: Timer?                        // 휴식용 타이머
+    private var breakStartDate: Date?                     // 휴식 시작 시각
     
-    private var breakTimer: Timer?
-    private var breakStartDate: Date?
-    
-    private let modelContext: ModelContext
-    
+    // MARK: - 초기화
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
     }
@@ -90,11 +90,17 @@ final class FocusModeViewModel: ObservableObject {
         if let start = breakStartDate {
             let end = Date()
             let duration = end.timeIntervalSince(start)
-            
             let isOver = duration > Double(breakPickedMinutes * 60)
             
             let record = BreakSession(start: start, end: end, isOverdue: isOver)
+            
+            // ✅ focusSession 연결
+            record.session = focusSession
+            
+            // ✅ SwiftData에 저장
             modelContext.insert(record)
+            
+            // ✅ 현재 세션의 속성 갱신
             breakSessions.append(record)
             breakTotalSeconds += Int(duration)
         }
@@ -149,18 +155,18 @@ final class FocusModeViewModel: ObservableObject {
         let completed = todos.enumerated().filter { (offset, todo) in
             todo.isCompleted
         }
-
+        
         // ✅ 2. 미완료 항목 필터링
         let remaining = todos.enumerated().filter { (offset, todo) in
             !todo.isCompleted
         }
-
+        
         // ✅ 3. 완료된 항목은 선택 순서대로 정렬
         let sortedCompleted = completed.sorted { $0.offset < $1.offset }
-
+        
         // ✅ 4. 순서를 유지한 후 element만 반환
         let result = (sortedCompleted + remaining).map { $0.element }
-
+        
         return result
     }
     
@@ -171,17 +177,19 @@ final class FocusModeViewModel: ObservableObject {
     }
     
     // MARK: - Timer Logic
-
+    
     /// 타이머 시작 함수
     /// - 이미 기존 타이머가 있다면 정지하고 새로 시작
     /// - 1초 간격으로 `onTodoTimerTick()` 호출
     private func startTodoTimer() {
+        startFocusSessionIfNeeded() // ✅ 집중 세션이 없다면 생성
+        
         todoTimer?.invalidate()
         todoTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             self?.onTodoTimerTick()
         }
     }
-
+    
     /// 타이머 중지 함수
     /// - 타이머를 정지하고 `todoTimer`를 nil로 초기화
     func stopTimer() {
@@ -189,26 +197,38 @@ final class FocusModeViewModel: ObservableObject {
         todoTimer = nil
         isRunning = false
     }
-
+    
     /// 일시 정지된 할 일을 다시 시작하는 함수
     /// - 현재 인덱스가 유효하고, 완료되지 않았으며, 타이머가 동작 중이 아닐 경우에만 타이머 재시작
     func resumeCurrentTodo() {
         guard todos.indices.contains(currentIndex) else { return }
         guard !todos[currentIndex].isCompleted else { return }
         guard todoTimer == nil else { return }
-
+        
         startTodoTimer()
     }
-
+    
     /// 매초 실행되는 타이머 Tick 함수
     /// - `elapsed`를 1초 증가시키고, 설정된 시간에 도달하면 해당 할 일을 완료 처리
     private func onTodoTimerTick() {
         guard todos.indices.contains(currentIndex) else { return }
-
+        
         todos[currentIndex].elapsed += 1
-
+        
         if todos[currentIndex].elapsed >= todos[currentIndex].setTime * 60 {
             completeCurrentTodo()
+        }
+    }
+    
+    /// 집중 세션(FocusSession)을 초기화하는 함수
+    /// - 세션이 아직 생성되지 않았다면, 현재 시각을 시작 시점으로 하는 FocusSession을 생성
+    /// - 생성된 세션은 SwiftData의 modelContext에 삽입되고, 뷰모델의 focusSession 프로퍼티에 저장됨
+    /// - 집중모드의 시작을 기록하고, 이후 휴식 기록 등의 메타데이터를 연결하기 위한 준비 단계
+    func startFocusSessionIfNeeded() {
+        if focusSession == nil {
+            let session = FocusSession(startedAt: Date(), endedAt: Date(), totalBreakSeconds: 0)
+            modelContext.insert(session)
+            focusSession = session
         }
     }
     
@@ -231,11 +251,11 @@ final class FocusModeViewModel: ObservableObject {
     func markTodoAsCompleted(at index: Int) {
         guard todos.indices.contains(index) else { return }
         guard !todos[index].isCompleted else { return }
-
+        
         withAnimation(.easeInOut(duration: 0.3)) {
             todos[index].isCompleted = true
         }
-
+        
         // 현재 항목이면 타이머 정지 후 다음 항목으로 이동
         if index == currentIndex {
             stopTimer()
@@ -265,12 +285,24 @@ final class FocusModeViewModel: ObservableObject {
                         todo.elapsedTime = dummy.elapsed
                         todo.isCompleted = dummy.isCompleted
                         todo.performedDate = Date()
-                        try? modelContext.save()
                     }
                 } catch {
                     print("⚠️ fetch 실패: \(error.localizedDescription)")
                 }
             }
+        }
+        // ✅ FocusSession 종료 처리
+        if var session = focusSession {
+            session.endedAt = Date()
+            session.totalBreakSeconds = breakTotalSeconds
+            modelContext.insert(session)
+            focusSession = session
+        }
+        
+        do {
+            try modelContext.save()
+        } catch {
+            print("⚠️ 저장 실패: \(error.localizedDescription)")
         }
         
         shouldNavigateToReport = true

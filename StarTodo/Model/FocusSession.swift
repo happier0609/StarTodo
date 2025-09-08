@@ -15,7 +15,8 @@ final class FocusSession {
     var totalBreakSeconds: Int
 
     @Relationship(deleteRule: .cascade) var items: [FocusItem] = []
-    @Relationship(deleteRule: .cascade) var breaks: [BreakSession] = []
+    @Relationship(deleteRule: .cascade, inverse: \BreakSession.session)
+    var breaks: [BreakSession] = []
 
     init(startedAt: Date, endedAt: Date, totalBreakSeconds: Int = 0) {
         self.startedAt = startedAt
