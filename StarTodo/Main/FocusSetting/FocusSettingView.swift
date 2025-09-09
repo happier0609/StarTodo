@@ -21,60 +21,62 @@ struct FocusSettingView: View {
                     FocusSettingEmptyView()
                 } else {
                     VStack(spacing: 16) {
-                        // ✅ SwiftData 모델(Todo) 사용
-                        ForEach(focusSettingVM.focusParents, id: \.id) { parent in
-                            let children = parent.children
-                            let selectedCount = children.filter { child in
-                                focusSettingVM.isSelected(child.id)
-                            }.count
-                            
-                            FocusGroupCardView(
-                                parent: parent,
-                                children: children,
-                                isExpanded: focusSettingVM.isExpanded(parent),
-                                selectedChildCount: selectedCount,
-                                totalChildCount: children.count,
-                                isSelected: focusSettingVM.isSelected(parent.id),
-                                onToggleExpand: {
-                                    focusSettingVM.toggleExpanded(for: parent)
-                                },
-                                onParentTap: {
-                                    focusSettingVM.toggleSelection(for: parent)
-                                },
-                                onChildTap: { child in
-                                    focusSettingVM.toggleChild(child)
-                                }
-                            )
-                        }
+                        // TODO: 네비게이션, 라우터
+//                        // ✅ SwiftData 모델(Todo) 사용
+//                        ForEach(focusSettingVM.focusParents, id: \.id) { parent in
+//                            let children = parent.children
+//                            let selectedCount = children.filter { child in
+//                                focusSettingVM.isSelected(child.id)
+//                            }.count
+//                            
+//                            FocusGroupCardView(
+//                                parent: parent,
+//                                children: children,
+//                                isExpanded: focusSettingVM.isExpanded(parent),
+//                                selectedChildCount: selectedCount,
+//                                totalChildCount: children.count,
+//                                isSelected: focusSettingVM.isSelected(parent.id),
+//                                onToggleExpand: {
+//                                    focusSettingVM.toggleExpanded(for: parent)
+//                                },
+//                                onParentTap: {
+//                                    focusSettingVM.toggleSelection(for: parent)
+//                                },
+//                                onChildTap: { child in
+//                                    focusSettingVM.toggleChild(child)
+//                                }
+//                            )
+//                        }
                     }
                     .padding(.horizontal)
                     .padding(.top)
                 }
             }
 
-            // ✅ 선택수/액션도 뷰모델의 실제 이름으로 교체
-            FocusStartButton(
-                selectedCount: focusSettingVM.selectedIDs.count,
-                action: {
-                    // 선택된 항목을 뷰모델에서 꺼내기
-                    let picked = focusSettingVM.pickedTodos(from: focusSettingVM.focusParents)
-                    // MainVM에도 반영(필요 시)
-                    mainVM.selectedIDs = picked.map(\.id)
-                    isNavigatingToTimer = true
-                }
-            )
+            // TODO: 네비게이션, 라우터
+//            // ✅ 선택수/액션도 뷰모델의 실제 이름으로 교체
+//            FocusStartButton(
+//                selectedCount: focusSettingVM.selectedIDs.count,
+//                action: {
+//                    // 선택된 항목을 뷰모델에서 꺼내기
+//                    let picked = focusSettingVM.pickedTodos(from: focusSettingVM.focusParents)
+//                    // MainVM에도 반영(필요 시)
+//                    mainVM.selectedIDs = picked.map(\.id)
+//                    isNavigatingToTimer = true
+//                }
+//            )
             .padding(.bottom, 24)
 
-            NavigationLink(
-                destination: TimerSettingView()
-                    .environmentObject(mainVM),
-                isActive: $isNavigatingToTimer
-            ) { EmptyView() }
-            .hidden()
+//            NavigationLink(
+//                destination: TimerSettingView()
+//                    .environmentObject(mainVM),
+//                isActive: $isNavigatingToTimer
+//            ) { EmptyView() }
+//            .hidden()
         }
         .onAppear {
-            // ✅ Start 탭에서 보여줄 "루트 Todo"만 전달
-            focusSettingVM.loadFrom(mainVM.todoItems)
+//            // ✅ Start 탭에서 보여줄 "루트 Todo"만 전달
+//            focusSettingVM.loadFrom(mainVM.todoItems)
         }
     }
 }
