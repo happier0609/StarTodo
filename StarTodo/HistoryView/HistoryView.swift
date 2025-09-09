@@ -9,6 +9,14 @@ import SwiftUI
 
 struct HistoryView: View {
     var body: some View {
-        Text("HistoryView")
+        VStack(spacing: 0) {
+            HistoryHeaderView()
+            HistoryListView()
+        }
+        .padding()
     }
+}
+
+#Preview {
+    HistoryView()
 }
