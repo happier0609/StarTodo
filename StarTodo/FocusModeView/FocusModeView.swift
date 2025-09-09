@@ -11,6 +11,7 @@ import SwiftData
 struct FocusModeView: View {
     @StateObject private var viewModel: FocusModeViewModel
     @State private var selectedTab: FocusTab = .timer
+    @State private var completedSession: FocusSession? = nil
     
     var body: some View {
         ZStack {
@@ -26,12 +27,18 @@ struct FocusModeView: View {
                 )
                 
                 NavigationLink(
-                    destination: ReportView(
-                        viewModel: ReportViewModel(), // 필요 시 데이터 전달
-                        onComplete: {
-                            // 메인 뷰로 돌아가기 등 처리
+                    destination: {
+                        if let session = viewModel.savedSession {
+                            ReportView(
+                                viewModel: ReportViewModel(session: session),
+                                onComplete: {
+                                    // 예: 메인 화면으로 돌아가기
+                                }
+                            )
+                        } else {
+                            EmptyView()
                         }
-                    ),
+                    },
                     isActive: $viewModel.shouldNavigateToReport
                 ) {
                     EmptyView()
