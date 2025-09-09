@@ -13,7 +13,9 @@ struct DummyTodo: Identifiable, Equatable {
     let setTime: Int        // 단위: 분
     var elapsed: Int        // 단위: 초
     var isCompleted: Bool
-
+    var setSeconds: Int
+    var order: Int
+    
     func markedAsCompleted() -> DummyTodo {
         var copy = self
         copy.isCompleted = true

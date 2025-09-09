@@ -17,6 +17,7 @@ final class FocusModeViewModel: ObservableObject {
     
     // MARK: - 세션 저장 및 관계 연결용
     @Published var focusSession: FocusSession? = nil                      // 현재 포커스 세션 (휴식 기록과 연결됨)
+    @Published var savedSession: FocusSession? = nil
     private let modelContext: ModelContext               // SwiftData 저장 컨텍스트
     private var store: SessionStore                      // 세션 저장소 (임시/SwiftData/디버그용 등)
     
@@ -47,6 +48,7 @@ final class FocusModeViewModel: ObservableObject {
     // MARK: - 초기화
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
+        self.store = SwiftDataSessionStore(context: modelContext) // 또는 디버그용 store
     }
     
     // MARK: - 휴식 타이머 로직
@@ -134,7 +136,9 @@ final class FocusModeViewModel: ObservableObject {
                     title: todo.title,
                     setTime: todo.setTime,
                     elapsed: 0,
-                    isCompleted: false
+                    isCompleted: false,
+                    setSeconds: todo.setTime,
+                    order: order
                 )
                 loaded.append(dummy)
             }
@@ -273,39 +277,33 @@ final class FocusModeViewModel: ObservableObject {
         isRunning = false
         isBreakActive = false
         
-        for dummy in todos {
-            if dummy.elapsed > 0 || dummy.isCompleted {
-                do {
-                    let result = try modelContext.fetch(
-                        FetchDescriptor<Todo>(
-                            predicate: #Predicate { $0.id == dummy.id }
-                        )
-                    )
-                    if let todo = result.first {
-                        todo.elapsedTime = dummy.elapsed
-                        todo.isCompleted = dummy.isCompleted
-                        todo.performedDate = Date()
-                    }
-                } catch {
-                    print("⚠️ fetch 실패: \(error.localizedDescription)")
-                }
-            }
-        }
-        // ✅ FocusSession 종료 처리
         if var session = focusSession {
             session.endedAt = Date()
             session.totalBreakSeconds = breakTotalSeconds
+            
+            session.items = todos.map { todo in
+                FocusItem(
+                    title: todo.title,
+                    setSeconds: todo.setSeconds,
+                    elapsedSeconds: todo.elapsed,
+                    isCompleted: todo.isCompleted,
+                    order: todo.order
+                )
+            }
+            
+            session.breaks = breakSessions
+            
             modelContext.insert(session)
-            focusSession = session
+            savedSession = session
+            
+            do {
+                try modelContext.save()
+            } catch {
+                print("⚠️ 저장 실패: \(error.localizedDescription)")
+            }
+            
+            shouldNavigateToReport = true
         }
-        
-        do {
-            try modelContext.save()
-        } catch {
-            print("⚠️ 저장 실패: \(error.localizedDescription)")
-        }
-        
-        shouldNavigateToReport = true
     }
     
     func replaceStoreWithContext() {
