@@ -19,14 +19,14 @@ struct HistoryCardView: View {
             HStack(spacing: 6) {
                 ForEach(0..<min(completedCount, 10), id: \.self) { _ in
                     Circle()
-                        .fill(.white)
+                        .fill(Color("Primary200"))
                         .frame(width: 10, height: 10)
-                        .shadow(color: .white.opacity(0.8), radius: 1)
+                        .shadow(color: Color("Primary200").opacity(0.8), radius: 1)
                 }
                 if completedCount > 5 {
                     Text("+\(completedCount - 5)")
                         .font(.caption2)
-                        .foregroundColor(.white)
+                        .foregroundColor(Color("Info300"))
                 }
             }
             
@@ -36,16 +36,16 @@ struct HistoryCardView: View {
                 Spacer()
                 Text("\(completedCount)개 완료")
             }
-            .font(.subheadline)
-            .fontWeight(.semibold)
+            .typo(.captionMDRegular)
+            .foregroundColor(Color("Cool1100"))
             
             // 3. 날짜 (덜 강조)
             Text(dateText)
-                .font(.caption)
-                .foregroundColor(.secondary)
+                .typo(.captionMDRegular)
+                .foregroundColor(Color("Cool300"))
         }
         .padding()
-        .background(Color.blue.opacity(0.8))
+        .background(Color("BgLight"))
         .foregroundColor(.white)
         .cornerRadius(16)
     }
@@ -53,6 +53,4 @@ struct HistoryCardView: View {
 
 #Preview {
     HistoryCardView(focusMinutes: 75, completedCount: 7, dateText: "9월 8일 (월)")
-        .padding()
-        .background(Color("BgDark"))
-}
+        .padding()}
