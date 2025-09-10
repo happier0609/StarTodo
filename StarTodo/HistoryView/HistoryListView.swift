@@ -24,18 +24,26 @@ struct HistoryListView: View {
 }
 
 #Preview {
-    let previewSession = FocusSession(
+    let session1 = FocusSession(
         startedAt: Date().addingTimeInterval(-3600),
         endedAt: Date(),
         totalBreakSeconds: 0
     )
-    previewSession.items = [
-        FocusItem(title: "할일1", setSeconds: 0, elapsedSeconds: 0, isCompleted: true, order: 0),
-        FocusItem(title: "할일2", setSeconds: 0, elapsedSeconds: 0, isCompleted: true, order: 1),
-        FocusItem(title: "할일3", setSeconds: 0, elapsedSeconds: 0, isCompleted: false, order: 2)
+    session1.items = [
+        FocusItem(title: "할일1", setSeconds: 600, elapsedSeconds: 600, isCompleted: true, order: 0),
+        FocusItem(title: "할일2", setSeconds: 900, elapsedSeconds: 900, isCompleted: true, order: 1)
     ]
     
-    let viewModel = HistoryViewModel.preview([previewSession, previewSession])
+    let session2 = FocusSession(
+        startedAt: Date().addingTimeInterval(-7200),
+        endedAt: Date().addingTimeInterval(-3600),
+        totalBreakSeconds: 120
+    )
+    session2.items = [
+        FocusItem(title: "할일3", setSeconds: 600, elapsedSeconds: 500, isCompleted: false, order: 0)
+    ]
     
-    HistoryListView(viewModel: viewModel)
+    let viewModel = HistoryViewModel.preview([session1, session2])
+    
+    return HistoryListView(viewModel: viewModel)
 }

@@ -11,7 +11,7 @@ struct HistoryView: View {
     var body: some View {
         VStack(spacing: 0) {
             HistoryHeaderView()
-            HistoryListView()
+//            HistoryListView()
         }
         .padding()
     }
