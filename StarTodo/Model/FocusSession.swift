@@ -8,6 +8,7 @@
 import Foundation
 import SwiftData
 
+// ✅ 그냥 기본 init만 사용해도 충분!
 @Model
 final class FocusSession {
     var startedAt: Date
