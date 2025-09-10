@@ -12,7 +12,7 @@ struct HistoryListView: View {
         ScrollView {
             VStack(spacing: 16) {
                 ForEach(0..<5) { index in
-                    HistoryCardView()
+//                    HistoryCardView()
                 }
             }
         }

@@ -73,13 +73,13 @@ struct TimerSettingView: View {
             }
             .padding(.horizontal)
 
-            // ✅ NavigationLink → FocusModeView 연결
-            NavigationLink(
-                destination: FocusModeView(todoIDPairs: viewModel.todosWithTime),
-                isActive: $navigateToFocus,
-                label: { EmptyView() }
-            )
-            .hidden()
+//            // ✅ NavigationLink → FocusModeView 연결
+//            NavigationLink(
+//                destination: FocusModeView(todoIDPairs: viewModel.todosWithTime),
+//                isActive: $navigateToFocus,
+//                label: { EmptyView() }
+//            )
+//            .hidden()
         }
         .padding(.top)
         .navigationBarTitleDisplayMode(.inline)

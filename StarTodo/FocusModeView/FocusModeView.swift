@@ -26,24 +26,24 @@ struct FocusModeView: View {
                     viewModel: viewModel
                 )
                 
-                NavigationLink(
-                    destination: {
-                        if let session = viewModel.savedSession {
-                            ReportView(
-                                viewModel: ReportViewModel(session: session),
-                                onComplete: {
-                                    // 예: 메인 화면으로 돌아가기
-                                }
-                            )
-                        } else {
-                            EmptyView()
-                        }
-                    },
-                    isActive: $viewModel.shouldNavigateToReport
-                ) {
-                    EmptyView()
-                }
-                .hidden()
+//                NavigationLink(
+//                    destination: {
+//                        if let session = viewModel.savedSession {
+//                            ReportView(
+//                                viewModel: ReportViewModel(session: session),
+//                                onComplete: {
+//                                    // 예: 메인 화면으로 돌아가기
+//                                }
+//                            )
+//                        } else {
+//                            EmptyView()
+//                        }
+//                    },
+//                    isActive: $viewModel.shouldNavigateToReport
+//                ) {
+//                    EmptyView()
+//                }
+//                .hidden()
                 
                 // 세그먼티드 컨트롤
                 CustomSegmentedControl(selectedTab: $selectedTab)

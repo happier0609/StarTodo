@@ -17,8 +17,9 @@ import SwiftData
 @MainActor
 final class HistoryViewModel: ObservableObject {
     @Published var sessions: [FocusSession] = []
+    @Published var cardViewDataList: [HistoryCardViewData] = []
     private let context: ModelContext
-
+    
     // MARK: - 초기화
     
     init(context: ModelContext) {
@@ -27,7 +28,7 @@ final class HistoryViewModel: ObservableObject {
     }
     
     // MARK: - 세션 불러오기
-
+    
     func loadSessions() {
         // 임시 예시 (나중에 predicate로 날짜별 정렬도 가능)
         let descriptor = FetchDescriptor<FocusSession>(
@@ -35,9 +36,11 @@ final class HistoryViewModel: ObservableObject {
         )
         do {
             sessions = try context.fetch(descriptor)
+            cardViewDataList = sessions.map { HistoryCardViewData(session: $0) }
         } catch {
             print("⚠️ 세션 불러오기 실패: \(error.localizedDescription)")
             sessions = []
+            cardViewDataList = []
         }
     }
 }
