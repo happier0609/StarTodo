@@ -10,6 +10,7 @@ import SwiftData
 
 @Model
 final class FocusSession {
+    @Attribute(.unique) var id: UUID
     var startedAt: Date
     var endedAt: Date
     var totalBreakSeconds: Int
@@ -18,7 +19,8 @@ final class FocusSession {
     @Relationship(deleteRule: .cascade, inverse: \BreakSession.session)
     var breaks: [BreakSession] = []
 
-    init(startedAt: Date, endedAt: Date, totalBreakSeconds: Int = 0) {
+    init(id: UUID = UUID(), startedAt: Date, endedAt: Date, totalBreakSeconds: Int = 0) {
+        self.id = id
         self.startedAt = startedAt
         self.endedAt = endedAt
         self.totalBreakSeconds = totalBreakSeconds

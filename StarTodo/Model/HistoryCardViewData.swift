@@ -9,12 +9,15 @@ import Foundation
 
 /// HistoryCardView -> UI 표시용 데이터 변환
 
-struct HistoryCardViewData {
+struct HistoryCardViewData: Identifiable {
+    let id: UUID  // Identifiable을 위한 ID
     let focusMinutes: Int
     let completedCount: Int
     let dateText: String
-    
+
     init(session: FocusSession) {
+        self.id = session.id  // FocusSession에 UUID가 있어야 함 (앞서 추가한 부분)
+        
         // 집중 시간 (분)
         let seconds = Int(session.endedAt.timeIntervalSince(session.startedAt))
         self.focusMinutes = seconds / 60

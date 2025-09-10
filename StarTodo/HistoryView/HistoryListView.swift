@@ -13,9 +13,10 @@ struct HistoryListView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                ForEach(viewModel.sessions, id: \.self) { session in
-                    let data = HistoryCardViewData(session: session)
-                    HistoryCardView(data: data)
+                VStack(spacing: 16) {
+                    ForEach(viewModel.cardViewDataList) { data in
+                        HistoryCardView(data: data)
+                    }
                 }
             }
             .padding()
