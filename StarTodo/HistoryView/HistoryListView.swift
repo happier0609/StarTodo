@@ -17,22 +17,21 @@ struct HistoryListView: View {
                     VStack(alignment: .leading, spacing: 24) {
                         // 🔷 연도 타이틀 (예: "2025년")
                         Text(yearSection.title)
-                            .font(.title2)
-                            .bold()
-                            .padding(.top, 8)
+                            .typo(.textLGEmphasized)
                         
                         ForEach(yearSection.months) { monthSection in
                             VStack(alignment: .leading, spacing: 16) {
                                 // 🔹 월 타이틀 (예: "9월")
                                 Text(monthSection.title)
-                                    .font(.title3)
-                                    .bold()
+                                    .typo(.titleMDemphasized)
                                 
                                 ForEach(monthSection.sessions) { data in
                                     HistoryCardView(data: data)
                                 }
                             }
                         }
+                        Divider()  // ✨ 연도 구분선
+                            .padding(.top, 8)
                     }
                 }
             }
@@ -42,26 +41,54 @@ struct HistoryListView: View {
 }
 
 #Preview {
-    // MARK: - 📅 2025년 세션들
-    let session2025_09 = FocusSession(
+    // MARK: - 📅 2025년 9월 세션 (2개)
+    let session2025_09_1 = FocusSession(
         startedAt: Calendar.current.date(from: DateComponents(year: 2025, month: 9, day: 10, hour: 10))!,
         endedAt: Calendar.current.date(from: DateComponents(year: 2025, month: 9, day: 10, hour: 11))!,
         totalBreakSeconds: 0
     )
-    session2025_09.items = [
+    session2025_09_1.items = [
         FocusItem(title: "9월 할일1", setSeconds: 600, elapsedSeconds: 600, isCompleted: true, order: 0),
         FocusItem(title: "9월 할일2", setSeconds: 900, elapsedSeconds: 900, isCompleted: true, order: 1)
     ]
     
-    let session2025_08 = FocusSession(
+    let session2025_09_2 = FocusSession(
+        startedAt: Calendar.current.date(from: DateComponents(year: 2025, month: 9, day: 5, hour: 14))!,
+        endedAt: Calendar.current.date(from: DateComponents(year: 2025, month: 9, day: 5, hour: 15))!,
+        totalBreakSeconds: 120
+    )
+    session2025_09_2.items = [
+        FocusItem(title: "9월 할일3", setSeconds: 600, elapsedSeconds: 500, isCompleted: false, order: 0)
+    ]
+    
+    // MARK: - 📅 2025년 8월 세션 (3개)
+    let session2025_08_1 = FocusSession(
         startedAt: Calendar.current.date(from: DateComponents(year: 2025, month: 8, day: 25, hour: 14))!,
         endedAt: Calendar.current.date(from: DateComponents(year: 2025, month: 8, day: 25, hour: 15))!,
         totalBreakSeconds: 300
     )
-    session2025_08.items = [
+    session2025_08_1.items = [
         FocusItem(title: "8월 할일1", setSeconds: 600, elapsedSeconds: 500, isCompleted: false, order: 0)
     ]
-
+    
+    let session2025_08_2 = FocusSession(
+        startedAt: Calendar.current.date(from: DateComponents(year: 2025, month: 8, day: 20, hour: 10))!,
+        endedAt: Calendar.current.date(from: DateComponents(year: 2025, month: 8, day: 20, hour: 11))!,
+        totalBreakSeconds: 0
+    )
+    session2025_08_2.items = [
+        FocusItem(title: "8월 할일2", setSeconds: 1200, elapsedSeconds: 1100, isCompleted: true, order: 0)
+    ]
+    
+    let session2025_08_3 = FocusSession(
+        startedAt: Calendar.current.date(from: DateComponents(year: 2025, month: 8, day: 10, hour: 16))!,
+        endedAt: Calendar.current.date(from: DateComponents(year: 2025, month: 8, day: 10, hour: 17))!,
+        totalBreakSeconds: 60
+    )
+    session2025_08_3.items = [
+        FocusItem(title: "8월 할일3", setSeconds: 900, elapsedSeconds: 900, isCompleted: true, order: 0)
+    ]
+    
     // MARK: - 📅 2024년 세션들
     let session2024_12 = FocusSession(
         startedAt: Calendar.current.date(from: DateComponents(year: 2024, month: 12, day: 5, hour: 9))!,
@@ -81,9 +108,14 @@ struct HistoryListView: View {
         FocusItem(title: "11월 할일1", setSeconds: 900, elapsedSeconds: 600, isCompleted: false, order: 0),
         FocusItem(title: "11월 할일2", setSeconds: 600, elapsedSeconds: 600, isCompleted: true, order: 1)
     ]
-
+    
     // MARK: - ViewModel 구성
-    let allSessions = [session2025_09, session2025_08, session2024_12, session2024_11]
+    let allSessions = [
+        session2025_09_1, session2025_09_2,
+        session2025_08_1, session2025_08_2, session2025_08_3,
+        session2024_12, session2024_11
+    ]
+    
     let viewModel = HistoryViewModel.preview(allSessions)
     
     return HistoryListView(viewModel: viewModel)
