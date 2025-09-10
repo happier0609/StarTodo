@@ -59,6 +59,13 @@ final class HistoryViewModel: ObservableObject {
     }
 }
 
+// MARK: - Section을 위한 모델
+struct MonthSection: Identifiable {
+    let id: String              // 예: "2025-09"
+    let title: String           // 예: "2025년 9월"
+    let sessions: [HistoryCardViewData]
+}
+
 // MARK: - 💡 Preview 지원
 extension HistoryViewModel {
     
