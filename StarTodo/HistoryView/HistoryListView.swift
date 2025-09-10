@@ -12,22 +12,28 @@ struct HistoryListView: View {
     
     var body: some View {
         ScrollView {
-            VStack(spacing: 16) {
-                VStack(spacing: 16) {
-                    ForEach(viewModel.cardViewDataList) { data in
+            if viewModel.cardViewDataList.isEmpty {
+                Text("기록이 없습니다")
+                    .foregroundStyle(.secondary)
+                    .padding()
+            } else {
+                LazyVStack(spacing: 16) {
+                    ForEach(viewModel.cardViewDataList, id: \.id) { data in
                         HistoryCardView(data: data)
                     }
                 }
+                .padding()
             }
-            .padding()
         }
     }
 }
 
 #Preview {
+    let base = Date()
+    
     let session1 = FocusSession(
-        startedAt: Date().addingTimeInterval(-3600),
-        endedAt: Date(),
+        startedAt: base.addingTimeInterval(-3600),
+        endedAt: base,
         totalBreakSeconds: 0
     )
     session1.items = [
@@ -36,8 +42,8 @@ struct HistoryListView: View {
     ]
     
     let session2 = FocusSession(
-        startedAt: Date().addingTimeInterval(-7200),
-        endedAt: Date().addingTimeInterval(-3600),
+        startedAt: base.addingTimeInterval(-7200),
+        endedAt: base.addingTimeInterval(-3600),
         totalBreakSeconds: 120
     )
     session2.items = [
