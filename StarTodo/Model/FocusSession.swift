@@ -8,9 +8,9 @@
 import Foundation
 import SwiftData
 
+// ✅ 그냥 기본 init만 사용해도 충분!
 @Model
 final class FocusSession {
-    @Attribute(.unique) var id: UUID
     var startedAt: Date
     var endedAt: Date
     var totalBreakSeconds: Int
@@ -19,8 +19,7 @@ final class FocusSession {
     @Relationship(deleteRule: .cascade, inverse: \BreakSession.session)
     var breaks: [BreakSession] = []
 
-    init(id: UUID = UUID(), startedAt: Date, endedAt: Date, totalBreakSeconds: Int = 0) {
-        self.id = id
+    init(startedAt: Date, endedAt: Date, totalBreakSeconds: Int = 0) {
         self.startedAt = startedAt
         self.endedAt = endedAt
         self.totalBreakSeconds = totalBreakSeconds

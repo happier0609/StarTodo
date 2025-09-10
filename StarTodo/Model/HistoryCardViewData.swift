@@ -6,17 +6,18 @@
 //
 
 import Foundation
+import SwiftData
 
 /// HistoryCardView -> UI 표시용 데이터 변환
 
 struct HistoryCardViewData: Identifiable {
-    let id: UUID  // Identifiable을 위한 ID
+    let id: PersistentIdentifier  // SwiftData 모델의 id 타입
     let focusMinutes: Int
     let completedCount: Int
     let dateText: String
 
     init(session: FocusSession) {
-        self.id = session.id  // FocusSession에 UUID가 있어야 함 (앞서 추가한 부분)
+        self.id = session.persistentModelID   // SwiftData 모델 고유 식별자
         
         // 집중 시간 (분)
         let seconds = Int(session.endedAt.timeIntervalSince(session.startedAt))
