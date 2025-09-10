@@ -21,79 +21,113 @@ import SwiftData
 final class HistoryViewModel: ObservableObject {
     
     // MARK: - Published Properties
-
+    
     /// 원본 FocusSession 목록
     @Published var sessions: [FocusSession] = []
-
+    
     /// 뷰에 표시할 카드용 데이터 목록 (미사용 가능성 있음)
     @Published var cardViewDataList: [HistoryCardViewData] = []
-
-    /// 월 단위로 그룹화된 세션 카드 뷰 데이터
-    @Published var groupedSessions: [MonthSection] = []
-
+    
+    /// 년, 월 단위로 그룹화된 세션 카드 뷰 데이터
+    @Published var groupedByYear: [YearSection] = []
+    @Published var groupedByMonth: [MonthSection] = []
+    
     // MARK: - Private Properties
-
+    
     /// SwiftData의 ModelContext (의존성 주입 방식)
     private let context: ModelContext
-
+    
     // MARK: - 초기화
-
+    
     /// 기본 생성자
     init(context: ModelContext) {
         self.context = context
         loadSessions()
     }
-
+    
     // MARK: - 세션 불러오기
-
+    
     /// 저장된 집중 세션을 최신순으로 불러오고,
     /// HistoryCardViewData로 가공한 후 월별 섹션으로 그룹화
     func loadSessions() {
         let descriptor = FetchDescriptor<FocusSession>(
             sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
         )
-        
+
         do {
             // 1. 세션 불러오기
             sessions = try context.fetch(descriptor)
-            
+
             // 2. 카드 뷰 데이터로 변환
             let cardDataList = sessions.map { HistoryCardViewData(session: $0) }
             self.cardViewDataList = cardDataList
-            
-            // 3. 월 단위로 그룹핑
-            self.groupedSessions = Dictionary(grouping: cardDataList) { data in
+
+            // 3. 연/월 단위 키로 그룹핑 (💡 튜플 대신 Hashable struct 사용)
+            let monthGroups = Dictionary(grouping: cardDataList) { data -> YearMonthKey in
                 let components = Calendar.current.dateComponents([.year, .month], from: data.date)
-                return String(format: "%04d-%02d", components.year ?? 0, components.month ?? 0)  // "2025-09"
+                let year = String(format: "%04d", components.year ?? 0)
+                let month = String(format: "%02d", components.month ?? 0)
+                let monthTitle = "\(components.month ?? 0)월"
+                return YearMonthKey(year: year, id: "\(year)-\(month)", title: monthTitle)
             }
-            .sorted(by: { $0.key > $1.key }) // 최신 월부터 정렬
-            .map { key, dataList in
-                let formatter = DateFormatter()
-                formatter.locale = Locale(identifier: "ko_KR")
-                formatter.dateFormat = "yyyy년 M월"
-                let firstDate = dataList.first?.date ?? Date()
-                return MonthSection(
-                    id: key,
-                    title: formatter.string(from: firstDate),
-                    sessions: dataList
-                )
-            }
+
+            // 4. 연도 기준으로 1차 그룹화
+            let grouped = Dictionary(grouping: monthGroups) { $0.key.year }
+
+            // 5. 최종 정렬 및 가공된 섹션 구성
+            self.groupedByYear = grouped
+                .sorted { $0.key > $1.key } // 연도 최신순
+                .map { year, monthEntries in
+                    let months: [MonthSection] = monthEntries
+                        .map { entry in
+                            let key = entry.key       // YearMonthKey
+                            let dataList = entry.value
+                            return MonthSection(
+                                id: key.id,          // "2025-09"
+                                title: key.title,    // "9월"
+                                sessions: dataList
+                            )
+                        }
+                        .sorted { $0.id > $1.id } // 월 최신순 정렬
+
+                    return YearSection(
+                        id: year,
+                        title: "\(year)년",
+                        months: months
+                    )
+                }
+
         } catch {
             print("⚠️ 세션 불러오기 실패: \(error.localizedDescription)")
             sessions = []
-            cardViewDataList = []
-            groupedSessions = []
+            groupedByYear = []
         }
     }
 }
 
 // MARK: - Section을 위한 모델
 
+/// 📦 연 단위로 나눈 집중 세션 그룹
+struct YearSection: Identifiable {
+    let id: String         // "2025"
+    let title: String      // "2025년"
+    let months: [MonthSection]
+}
+
 /// 📦 월 단위로 나눈 집중 세션 그룹
 struct MonthSection: Identifiable {
     let id: String              // 예: "2025-09" (연-월)
     let title: String           // 예: "2025년 9월"
     let sessions: [HistoryCardViewData]
+}
+
+// MARK: - 내부 모델 키 정의
+
+/// 📦 연도+월 정보를 나타내는 키 구조체
+private struct YearMonthKey: Hashable {
+    let year: String       // 예: "2025"
+    let id: String         // 예: "2025-09"
+    let title: String      // 예: "9월"
 }
 
 // MARK: - 💡 Preview 지원
@@ -108,28 +142,46 @@ extension HistoryViewModel {
             let dummyContext = ModelContext(try ModelContainer(for: FocusSession.self))
             let viewModel = HistoryViewModel(context: dummyContext)
             viewModel.sessions = sessions
-
+            
             let cardDataList = sessions.map { HistoryCardViewData(session: $0) }
             viewModel.cardViewDataList = cardDataList
-
-            // 섹션 생성도 포함
-            viewModel.groupedSessions = Dictionary(grouping: cardDataList) { data in
+            
+            // 👉 월 단위로 먼저 그룹핑
+            let monthGroups = Dictionary(grouping: cardDataList) { data -> YearMonthKey in
                 let components = Calendar.current.dateComponents([.year, .month], from: data.date)
-                return String(format: "%04d-%02d", components.year ?? 0, components.month ?? 0)
+                let year = String(format: "%04d", components.year ?? 0)
+                let monthNum = String(format: "%02d", components.month ?? 0)
+                let monthTitle = "\(components.month ?? 0)월"
+                
+                return YearMonthKey(year: year, id: "\(year)-\(monthNum)", title: monthTitle)
             }
-            .sorted(by: { $0.key > $1.key })
-            .map { key, dataList in
-                let formatter = DateFormatter()
-                formatter.locale = Locale(identifier: "ko_KR")
-                formatter.dateFormat = "yyyy년 M월"
-                let firstDate = dataList.first?.date ?? Date()
-                return MonthSection(
-                    id: key,
-                    title: formatter.string(from: firstDate),
-                    sessions: dataList
-                )
-            }
+            
+            // 👉 연도 단위로 다시 그룹핑
+            let grouped = Dictionary(grouping: monthGroups) { $0.key.year }
 
+            // 👉 최종적으로 연 → 월 구조의 groupedByYear 구성
+            viewModel.groupedByYear = grouped
+                .sorted { $0.key > $1.key }
+                .map { year, monthEntries in
+                    let months: [MonthSection] = monthEntries
+                        .map { entry in
+                            let key = entry.key
+                            let dataList = entry.value
+                            return MonthSection(
+                                id: key.id,
+                                title: key.title,
+                                sessions: dataList
+                            )
+                        }
+                        .sorted { $0.id > $1.id }
+
+                    return YearSection(
+                        id: year,
+                        title: "\(year)년",
+                        months: months
+                    )
+                }
+            
             return viewModel
         } catch {
             fatalError("❌ Preview용 ModelContainer 생성 실패: \(error)")
