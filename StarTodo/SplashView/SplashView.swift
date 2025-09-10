@@ -41,7 +41,7 @@ struct SplashView: View {
                 showAppName = true
             }
             
-            DispatchQueue.main.asyncAfter(deadline: .now() + 4) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
                 navigateToMain = true
             }
         }

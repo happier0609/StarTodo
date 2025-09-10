@@ -42,9 +42,9 @@ struct StarFieldView: View {
                     Star(
                         x: CGFloat.random(in: 0..<geo.size.width),
                         y: CGFloat.random(in: 0..<geo.size.height),
-                        size: CGFloat.random(in: 1...2),
+                        size: CGFloat.random(in: 3...10),
                         speed: CGFloat.random(in: 0.5...1.5),
-                        opacity: Double.random(in: 0.3...1.0)
+                        opacity: Double.random(in: 0.6...1.0)
                     )
                 }
             }
@@ -58,4 +58,9 @@ struct Star {
     var size: CGFloat
     var speed: CGFloat
     var opacity: Double
+}
+
+
+#Preview {
+    SplashView()
 }
