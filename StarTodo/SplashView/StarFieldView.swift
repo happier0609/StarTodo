@@ -38,11 +38,11 @@ struct StarFieldView: View {
             }
             .background(Color("BgDark"))
             .onAppear {
-                stars = (0..<200).map { _ in
+                stars = (0..<100).map { _ in
                     Star(
                         x: CGFloat.random(in: 0..<geo.size.width),
                         y: CGFloat.random(in: 0..<geo.size.height),
-                        size: CGFloat.random(in: 3...10),
+                        size: CGFloat.random(in: 2...6),
                         speed: CGFloat.random(in: 0.5...1.5),
                         opacity: Double.random(in: 0.6...1.0)
                     )
