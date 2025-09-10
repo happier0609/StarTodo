@@ -23,8 +23,8 @@ struct HistoryCardView: View {
                         .frame(width: 10, height: 10)
                         .shadow(color: Color("Primary200").opacity(0.8), radius: 1)
                 }
-                if completedCount > 5 {
-                    Text("+\(completedCount - 5)")
+                if completedCount > 10 {
+                    Text("+\(completedCount - 10)")
                         .font(.caption2)
                         .foregroundColor(Color("Info300"))
                 }
@@ -52,5 +52,5 @@ struct HistoryCardView: View {
 }
 
 #Preview {
-    HistoryCardView(focusMinutes: 75, completedCount: 7, dateText: "9월 8일 (월)")
+    HistoryCardView(focusMinutes: 75, completedCount: 13, dateText: "9월 8일 (월)")
         .padding()}
