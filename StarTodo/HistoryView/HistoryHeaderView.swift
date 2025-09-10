@@ -9,15 +9,18 @@ import SwiftUI
 
 struct HistoryHeaderView: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("📊 지난 집중 기록")
-                .font(.title2)
-                .bold()
+        VStack(spacing: 4) {
+            Image("List")
+                .resizable()
+                .scaledToFit()
+                .frame(height: 24)
+            Text("지난 집중 기록")
+                .typo(.textLGEmphasized)
+                .foregroundColor(Color("Cool1100"))
             Text("최근 완료한 집중 세션을 확인해보세요")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .typo(.textLGEmphasized)
+                .foregroundColor(Color("Cool1100"))
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
