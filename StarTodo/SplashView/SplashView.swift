@@ -46,7 +46,7 @@ struct SplashView: View {
             }
         }
         .fullScreenCover(isPresented: $navigateToMain) {
-            ContentView()
+            RootView()
         }
     }
     
