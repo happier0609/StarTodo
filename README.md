@@ -9,17 +9,27 @@ Swift로 만든 iOS 앱 프로젝트입니다.
 
 - ✅ 할 일 목록 추가/삭제
 - ✅ 타이머 기능으로 집중 모드
-- ✅ 앱 내 데이터 저장 (UserDefaults 혹은 Core Data 등)
+- ✅ 앱 내 데이터 저장 (SwiftData)
 
 ---
 
-## 📷 스크린샷
+## 🧱 구조 요약
 
-| 메인 화면 | 할 일 추가 화면 |
-|-----------|----------------|
-| ![main](images/main.png) | ![add](images/add.png) |
-
-※ `images/` 폴더에 스크린샷 넣고 링크하면 좋아요!
+SplashView (2-3초)
+    ↓ fullScreenCover
+RootView (TabView)
+    ├── MainView (Tab)
+    │   ├── AddListView (세그먼트 1)
+    │   └── FocusSettingView (세그먼트 2)
+    │       ↓ NavigationLink
+    │     TimerSettingView
+    │       ↓ NavigationLink or fullScreenCover
+    │     FocusModeView (세그먼트: Timer, List)
+    │       ↓ NavigationLink or sheet
+    │     ReportView
+    │       ↓ NavigationLink or dismiss()
+    │     MainView로 복귀
+    └── HistoryView (Tab)
 
 ---
 
