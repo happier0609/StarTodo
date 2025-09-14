@@ -46,7 +46,7 @@ struct MainView: View {
                 FocusSettingView()
                     .environmentObject(FocusSettingViewModel())
                     .environmentObject(viewModel)
-                    .environmentObject(mainCoordinator)
+                    .environmentObject(MainCoordinator.shared) // ✅ 인스턴스를 넘김
             case .todo:
                 AddListView()
             }
