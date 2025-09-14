@@ -8,14 +8,14 @@
 import SwiftUI
 
 struct TimerSettingView: View {
+    @EnvironmentObject var coordinator: MainCoordinator
     @State private var viewModel: TimerSettingViewModel
-    @State private var navigateToFocus = false
-
-    // ✅ 생성자에서 ViewModel 주입
+    
+    // 생성자에서 ViewModel 주입
     init(selectedIDs: [UUID], allTodos: [Todo]) {
         _viewModel = State(initialValue: TimerSettingViewModel(selectedTodoIDs: selectedIDs, allTodos: allTodos))
     }
-
+    
     var body: some View {
         VStack(spacing: 4) {
             Text("목록을 확인하고")
@@ -25,14 +25,14 @@ struct TimerSettingView: View {
                 .typo(.textLGEmphasized)
                 .foregroundColor(Color("Cool1100"))
         }
-
+        
         VStack(spacing: 24) {
             ScrollView {
                 VStack(spacing: 12) {
                     // ✅ 선택된 Todo 목록 표시
                     ForEach(viewModel.displayedTodos, id: \.id) { todo in
                         let parentTitle = todo.parent?.title
-
+                        
                         TimerItemRowView(
                             item: todo,
                             parentTitle: parentTitle,
@@ -43,13 +43,13 @@ struct TimerSettingView: View {
                 }
                 .padding(.horizontal)
             }
-
+            
             // ✅ 총 시간 표시
             let totalMinutes = viewModel.totalMinutes
             let hour = totalMinutes / 60
             let minute = totalMinutes % 60
             let timeString = (hour > 0 ? "\(hour)시간 " : "") + "\(minute)분"
-
+            
             HStack(spacing: 0) {
                 Text("\(timeString)")
                     .typo(.textMDEmphasized)
@@ -58,10 +58,11 @@ struct TimerSettingView: View {
                     .typo(.textMDRegular)
                     .foregroundColor(Color("Cool1100"))
             }
-
+            
             // ✅ 시작 버튼
             Button(action: {
-                navigateToFocus = true
+                let todoIDs = viewModel.todosWithTime.map { $0.0 }
+                coordinator.push(.focusMode(todoIDs: todoIDs))
             }) {
                 Text("이대로 시작하기")
                     .typo(.textMDEmphasized)
@@ -72,14 +73,6 @@ struct TimerSettingView: View {
                     .cornerRadius(12)
             }
             .padding(.horizontal)
-
-//            // ✅ NavigationLink → FocusModeView 연결
-//            NavigationLink(
-//                destination: FocusModeView(todoIDPairs: viewModel.todosWithTime),
-//                isActive: $navigateToFocus,
-//                label: { EmptyView() }
-//            )
-//            .hidden()
         }
         .padding(.top)
         .navigationBarTitleDisplayMode(.inline)
