@@ -9,9 +9,14 @@ import SwiftUI
 import SwiftData
 
 struct FocusModeView: View {
+    @EnvironmentObject var coordinator: MainCoordinator
     @StateObject private var viewModel: FocusModeViewModel
     @State private var selectedTab: FocusTab = .timer
-    @State private var completedSession: FocusSession? = nil
+    
+    // 커스텀 생성자에서 ViewModel 주입
+    init(todoIDs: [UUID]) {
+        _viewModel = StateObject(wrappedValue: FocusModeViewModel(todoIDs: todoIDs, context: context))
+    }
     
     var body: some View {
         ZStack {
@@ -25,26 +30,6 @@ struct FocusModeView: View {
                     statusText: viewModel.headerStatusText,
                     viewModel: viewModel
                 )
-                
-//                NavigationLink(
-//                    destination: {
-//                        if let session = viewModel.savedSession {
-//                            ReportView(
-//                                viewModel: ReportViewModel(session: session),
-//                                onComplete: {
-//                                    // 예: 메인 화면으로 돌아가기
-//                                }
-//                            )
-//                        } else {
-//                            EmptyView()
-//                        }
-//                    },
-//                    isActive: $viewModel.shouldNavigateToReport
-//                ) {
-//                    EmptyView()
-//                }
-//                .hidden()
-                
                 // 세그먼티드 컨트롤
                 CustomSegmentedControl(selectedTab: $selectedTab)
                     .padding()
@@ -88,6 +73,14 @@ struct FocusModeView: View {
                 .transition(.opacity)
             }
         }
+        
+        // ✅ 세션이 완료되었을 때 Coordinator로 이동
+        .onChange(of: viewModel.savedSession) { session in
+            if let session {
+                coordinator.push(.report(sessionID: session.id))
+            }
+        }
+        
         .onAppear {
             viewModel.replaceStoreWithContext()
         }
