@@ -7,27 +7,26 @@
 
 import SwiftUI
 
-enum AppScreen: Hashable {
-    case main
+enum MainScreen: Hashable {
     case focusSetting
-    case timerSetting(todoIDs: [UUID])
+    case timerSetting(selectedIDs: [UUID], allTodos: [Todo])
     case focusMode(todoIDs: [UUID])
     case report(sessionID: UUID)
 }
 
-class AppCoordinator: ObservableObject {
+class MainCoordinator: ObservableObject {
     @Published var path = NavigationPath()
-    
-    func push(_ screen: AppScreen) {
+
+    func push(_ screen: MainScreen) {
         path.append(screen)
     }
-    
+
     func pop() {
         if !path.isEmpty {
             path.removeLast()
         }
     }
-    
+
     func popToRoot() {
         path.removeLast(path.count)
     }

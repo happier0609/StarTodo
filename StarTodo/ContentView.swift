@@ -33,22 +33,11 @@ enum TabBarType: Int, CaseIterable, Identifiable {
         case .history: return "NullMy"
         }
     }
-
-    @ViewBuilder
-    func view(appCoordinator: AppCoordinator) -> some View {
-        switch self {
-        case .main:
-            MainView()
-                .environmentObject(appCoordinator.mainCoordinator)
-
-        case .history:
-            HistoryView()
-        }
-    }
 }
 
 struct ContentView: View {
-    @StateObject private var appCoordinator = AppCoordinator()
+    @State private var selectedTab: TabBarType = .main
+    @StateObject private var mainCoordinator = MainCoordinator()
 
     init() {
         let appearance = UITabBarAppearance()
@@ -60,39 +49,44 @@ struct ContentView: View {
     }
 
     var body: some View {
-        TabView(selection: $appCoordinator.selectedTab) {
-            ForEach(TabBarType.allCases) { tab in
-                NavigationStack(path: binding(for: tab)) {
-                    tab.view(appCoordinator: appCoordinator)
-                        .navigationDestination(for: MainScreen.self) { screen in
-                            switch screen {
-                            case .focusSetting:
-                                FocusSettingView()
-                            case .timerSetting(let ids):
-                                TimerSettingView(todoIDs: ids)
-                            case .focusMode(let ids):
-                                FocusModeView(todoIDs: ids)
-                            case .report(let sessionID):
-                                ReportView(sessionID: sessionID)
-                            }
-                        }
-                }
-                .tabItem {
-                    Image(appCoordinator.selectedTab == tab ? tab.selectedImageName : tab.unselectedImageName)
-                    Text(tab.title)
-                }
-                .tag(tab)
-            }
-        }
-    }
+        TabView(selection: $selectedTab) {
+            // ✅ Main 탭: NavigationStack + Coordinator 적용
+            NavigationStack(path: $mainCoordinator.path) {
+                MainView()
+                    .environmentObject(mainCoordinator)
+                    .navigationDestination(for: MainScreen.self) { screen in
+                        switch screen {
+                        case .focusSetting:
+                            FocusSettingView()
+                                .environmentObject(mainCoordinator)
 
-    // 탭에 따라 해당 코디네이터의 path를 바인딩
-    func binding(for tab: TabBarType) -> Binding<NavigationPath> {
-        switch tab {
-        case .main:
-            return $appCoordinator.mainCoordinator.path
-        case .history:
-            return $appCoordinator.historyCoordinator.path
+                        case .timerSetting(let selectedIDs, let allTodos):
+                            TimerSettingView(selectedIDs: selectedIDs, allTodos: allTodos)
+                                .environmentObject(mainCoordinator)
+
+                        case .focusMode(let todoIDs):
+                            FocusModeView(todoIDs: todoIDs)
+                                .environmentObject(mainCoordinator)
+
+                        case .report(let sessionID):
+                            ReportView(sessionID: sessionID)
+                                .environmentObject(mainCoordinator)
+                        }
+                    }
+            }
+            .tabItem {
+                Image(selectedTab == .main ? "Star" : "NullStar")
+                Text("목록")
+            }
+            .tag(TabBarType.main)
+
+            // ❌ History 탭: 기존 방식 유지
+            HistoryView()
+                .tabItem {
+                    Image(selectedTab == .history ? "My" : "NullMy")
+                    Text("히스토리")
+                }
+                .tag(TabBarType.history)
         }
     }
 }
