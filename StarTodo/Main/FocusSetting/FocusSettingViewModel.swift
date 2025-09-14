@@ -32,7 +32,7 @@ final class FocusSettingViewModel: ObservableObject {
     
     // MARK: - ✅ 집중 모드 진입용 데이터
     
-    /// 집중 모드에 진입할 때 사용할 최종 할 일 목록 (selectedTodos와 동일할 수도 있음)
+    /// 집중 모드에 진입할 때 사용할 최종 할 일 목록
     @Published var selectedFocusTodos: [Todo] = []
 
     
@@ -107,7 +107,7 @@ final class FocusSettingViewModel: ObservableObject {
     
     // MARK: - 👶 자식 항목 선택/해제
 
-    /// 자식 할 일을 선택하거나 해제할 때 사용하는 함수
+    /// 자식 할 일을 선택하거나 해제하는 함수
     func toggleChildSelection(_ child: Todo, _ select: Bool) {
         if select {
             if !selectedIDs.contains(child.id) { selectedIDs.append(child.id) }
@@ -132,10 +132,22 @@ final class FocusSettingViewModel: ObservableObject {
     }
 
     
+    // MARK: - 🆕 선택된 자식 항목만 반환하는 함수
+
+    /// ✅ 부모 항목들로부터 선택된 자식 할 일만 모아 리턴하는 함수
+    /// - 파라미터: 상위 할 일 목록 (focusParents)
+    /// - 리턴: 선택된 자식 할 일들의 배열
+    func pickedTodos(from parents: [Todo]) -> [Todo] {
+        parents.flatMap { parent in
+            parent.children.filter { isSelected($0.id) }
+        }
+    }
+
+    
     // MARK: - 🚀 집중 모드 진입 준비
 
-    /// 현재 선택된 항목들을 기반으로 집중 모드에 사용할 할 일 목록 설정
+    /// ✅ 위의 pickedTodos() 함수를 활용해 집중 모드 대상 할 일들을 설정
     func prepareFocusTarget() {
-        selectedFocusTodos = selectedTodos.filter { selectedIDs.contains($0.id) }
+        selectedFocusTodos = pickedTodos(from: focusParents)
     }
 }
