@@ -14,8 +14,14 @@ struct FocusModeView: View {
     @State private var selectedTab: FocusTab = .timer
     
     // 커스텀 생성자에서 ViewModel 주입
-    init(todoIDs: [UUID]) {
-        _viewModel = StateObject(wrappedValue: FocusModeViewModel(todoIDs: todoIDs, context: context))
+    init(input: FocusTodoInput, context: ModelContext) {
+        _viewModel = StateObject(
+            wrappedValue: FocusModeViewModel(
+                todoIDPairs: input.todoIDPairs,
+                context: context,
+                store: SwiftDataSessionStore(context: context)
+            )
+        )
     }
     
     var body: some View {
