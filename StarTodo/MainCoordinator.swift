@@ -14,7 +14,14 @@ enum MainScreen: Hashable {
     case report(sessionID: UUID)
 }
 
-class MainCoordinator: ObservableObject {
+final class MainCoordinator: ObservableObject {
+    // 싱글톤 인스턴스
+    static let shared = MainCoordinator()
+    
+    // 외부에서 생성 막기
+    private init() {}
+
+    // 네비게이션 경로
     @Published var path = NavigationPath()
 
     func push(_ screen: MainScreen) {

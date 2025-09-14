@@ -16,6 +16,7 @@ enum MainTabType: String, CaseIterable {
 struct MainView: View {
     @State private var selectedTab: MainTabType = .todo
     @EnvironmentObject var viewModel: MainViewModel
+    @EnvironmentObject var coordinator: MainCoordinator
     
     var body: some View {
         VStack(spacing: 0) {

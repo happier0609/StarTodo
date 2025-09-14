@@ -37,7 +37,7 @@ enum TabBarType: Int, CaseIterable, Identifiable {
 
 struct ContentView: View {
     @State private var selectedTab: TabBarType = .main
-    @StateObject private var mainCoordinator = MainCoordinator()
+    @ObservedObject private var mainCoordinator = MainCoordinator.shared
 
     init() {
         let appearance = UITabBarAppearance()
@@ -53,7 +53,7 @@ struct ContentView: View {
             // ✅ Main 탭: NavigationStack + Coordinator 적용
             NavigationStack(path: $mainCoordinator.path) {
                 MainView()
-                    .environmentObject(mainCoordinator)
+                    .environmentObject(MainCoordinator.shared)
                     .navigationDestination(for: MainScreen.self) { screen in
                         switch screen {
                         case .focusSetting:
