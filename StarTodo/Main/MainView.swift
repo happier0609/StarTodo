@@ -45,7 +45,8 @@ struct MainView: View {
             case .start:
                 FocusSettingView()
                     .environmentObject(FocusSettingViewModel())
-                    .environmentObject(viewModel)   // ← 이건 FocusSettingView가 MainViewModel을 쓰면 유지
+                    .environmentObject(viewModel)
+                    .environmentObject(mainCoordinator)
             case .todo:
                 AddListView()
             }

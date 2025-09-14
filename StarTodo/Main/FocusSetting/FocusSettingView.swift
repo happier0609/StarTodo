@@ -11,7 +11,7 @@ import Foundation
 struct FocusSettingView: View {
     @EnvironmentObject var focusSettingVM: FocusSettingViewModel
     @EnvironmentObject var mainVM: MainViewModel
-    @State private var isNavigatingToTimer = false
+    @EnvironmentObject var coordinator: MainCoordinator
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -21,7 +21,6 @@ struct FocusSettingView: View {
                     FocusSettingEmptyView()
                 } else {
                     VStack(spacing: 16) {
-                        // TODO: 네비게이션, 라우터
 //                        // ✅ SwiftData 모델(Todo) 사용
 //                        ForEach(focusSettingVM.focusParents, id: \.id) { parent in
 //                            let children = parent.children
@@ -54,25 +53,20 @@ struct FocusSettingView: View {
             }
 
             // TODO: 네비게이션, 라우터
-//            // ✅ 선택수/액션도 뷰모델의 실제 이름으로 교체
-//            FocusStartButton(
-//                selectedCount: focusSettingVM.selectedIDs.count,
-//                action: {
-//                    // 선택된 항목을 뷰모델에서 꺼내기
-//                    let picked = focusSettingVM.pickedTodos(from: focusSettingVM.focusParents)
-//                    // MainVM에도 반영(필요 시)
-//                    mainVM.selectedIDs = picked.map(\.id)
-//                    isNavigatingToTimer = true
-//                }
-//            )
-            .padding(.bottom, 24)
+            FocusStartButton(
+                selectedCount: focusSettingVM.selectedIDs.count,
+                action: {
+                    let picked = focusSettingVM.pickedTodos(from: focusSettingVM.focusParents)
+                    mainVM.selectedIDs = picked.map(\.id)
 
-//            NavigationLink(
-//                destination: TimerSettingView()
-//                    .environmentObject(mainVM),
-//                isActive: $isNavigatingToTimer
-//            ) { EmptyView() }
-//            .hidden()
+                    // ✅ coordinator로 화면 전환
+                    coordinator.push(.timerSetting(
+                        selectedIDs: picked.map(\.id),
+                        allTodos: picked
+                    ))
+                }
+            )
+            .padding(.bottom, 24)
         }
         .onAppear {
 //            // ✅ Start 탭에서 보여줄 "루트 Todo"만 전달
