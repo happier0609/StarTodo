@@ -61,8 +61,10 @@ struct TimerSettingView: View {
             
             // ✅ 시작 버튼
             Button(action: {
-                let todoIDs = viewModel.todosWithTime.map { $0.0 }
-                coordinator.push(.focusMode(todoIDs: todoIDs))
+                let idPairs: [(UUID, Int)] = viewModel.todosWithTime.enumerated().map { ($0.element.0, $0.offset) }
+                let input = FocusTodoInput(todoIDPairs: idPairs)
+
+                coordinator.push(.focusMode(input: input))
             }) {
                 Text("이대로 시작하기")
                     .typo(.textMDEmphasized)
