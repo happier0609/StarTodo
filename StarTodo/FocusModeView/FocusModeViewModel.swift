@@ -51,6 +51,12 @@ final class FocusModeViewModel: ObservableObject {
         self.store = SwiftDataSessionStore(context: modelContext) // 또는 디버그용 store
     }
     
+    // 커스텀 생성자
+    convenience init(todoIDs: [UUID], context: ModelContext) {
+        let pairs = todoIDs.enumerated().map { ($0.element, $0.offset) }
+        self.init(todoIDPairs: pairs, context: context, store: SwiftDataSessionStore(context: context))
+    }
+    
     // MARK: - 휴식 타이머 로직
     // 휴식 시작 시 현재 시간을 저장하고, 타이머 시작
     func startBreak() {

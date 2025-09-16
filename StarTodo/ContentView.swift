@@ -33,19 +33,11 @@ enum TabBarType: Int, CaseIterable, Identifiable {
         case .history: return "NullMy"
         }
     }
-
-    @ViewBuilder
-    var view: some View {
-        switch self {
-        case .main: MainView()
-        case .history: HistoryView()
-        }
-    }
 }
-
 
 struct ContentView: View {
     @State private var selectedTab: TabBarType = .main
+    @ObservedObject private var mainCoordinator = MainCoordinator.shared
 
     init() {
         let appearance = UITabBarAppearance()
@@ -57,17 +49,44 @@ struct ContentView: View {
     }
 
     var body: some View {
-        NavigationStack {
-            TabView(selection: $selectedTab) {
-                ForEach(TabBarType.allCases) { tab in
-                    tab.view
-                        .tabItem {
-                            Image(selectedTab == tab ? tab.selectedImageName : tab.unselectedImageName)
-                            Text(tab.title)
+        TabView(selection: $selectedTab) {
+            // ✅ Main 탭: NavigationStack + Coordinator 적용
+            NavigationStack(path: $mainCoordinator.path) {
+                MainView()
+                    .environmentObject(MainCoordinator.shared)
+                    .navigationDestination(for: MainScreen.self) { screen in
+                        switch screen {
+                        case .focusSetting:
+                            FocusSettingView()
+                                .environmentObject(mainCoordinator)
+
+                        case .timerSetting(let selectedIDs, let allTodos):
+                            TimerSettingView(selectedIDs: selectedIDs, allTodos: allTodos)
+                                .environmentObject(mainCoordinator)
+
+                        case .focusMode(let todoIDs):
+                            FocusModeView(todoIDs: todoIDs)
+                                .environmentObject(mainCoordinator)
+
+                        case .report(let sessionID):
+                            ReportView(sessionID: sessionID)
+                                .environmentObject(mainCoordinator)
                         }
-                        .tag(tab)
-                }
+                    }
             }
+            .tabItem {
+                Image(selectedTab == .main ? "Star" : "NullStar")
+                Text("목록")
+            }
+            .tag(TabBarType.main)
+
+            // ❌ History 탭: 기존 방식 유지
+            HistoryView()
+                .tabItem {
+                    Image(selectedTab == .history ? "My" : "NullMy")
+                    Text("히스토리")
+                }
+                .tag(TabBarType.history)
         }
     }
 }

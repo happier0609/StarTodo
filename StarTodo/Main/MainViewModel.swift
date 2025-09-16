@@ -12,25 +12,33 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-// 앱의 주요 페이지 흐름 정의
-enum AppPage {
-    case todoList
+// 메인 페이지 흐름 정의
+enum MainPage {
+    case addTodo
     case focusSetting
-    case focusTimerSetting
-    case report
 }
 
 @MainActor
 final class MainViewModel: ObservableObject {
 
     // MARK: - 앱 전체 상태 관리
-    @Published var todoEntities: [Todo] = []       // 전체 할 일 목록
-    @Published var currentPage: AppPage = .todoList // 현재 앱 화면 상태 (탭 or 단계)
+    
+    /// 전체 할 일 목록 (SwiftData에서 불러온 후 UI에 표시)
+    @Published var todoEntities: [Todo] = []
 
-    // 완료 리셋 기준 시각 (ex. 새벽 5시)
+    /// 현재 앱 화면 상태 (탭 또는 단계)
+    @Published var currentPage: MainPage = .addTodo
+
+    /// FocusSettingView에서 선택한 Todo의 UUID 목록
+    /// - TimerSettingView 등에서 사용하기 위한 공유 상태 (Coordinator 패턴과 연계 가능)
+    @Published var selectedIDs: [UUID] = []
+
+    /// 완료 기준 시간 (ex. 새벽 5시 기준으로 하루 단위 리셋)
     @AppStorage("resetHour") var resetHour: Int = 5
 
+
     // MARK: - SwiftData 관련
+
     private let context: ModelContext
 
     init(context: ModelContext) {
@@ -39,6 +47,7 @@ final class MainViewModel: ObservableObject {
     }
 
     // MARK: - Fetch 로직
+
     func fetchTodos() {
         do {
             // 1. 전체 할 일 Fetch (정렬 없음)
@@ -61,6 +70,7 @@ final class MainViewModel: ObservableObject {
     }
 
     // MARK: - 리셋 기준 시각 계산
+
     var completionResetTime: Date {
         var comp = Calendar.current.dateComponents([.year, .month, .day], from: .now)
         comp.hour = resetHour
@@ -68,6 +78,7 @@ final class MainViewModel: ObservableObject {
     }
 
     // MARK: - Save (삽입/수정/삭제 후 호출)
+
     func saveContextAndRefresh() {
         do {
             try context.save()

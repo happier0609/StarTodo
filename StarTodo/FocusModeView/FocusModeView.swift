@@ -9,13 +9,32 @@ import SwiftUI
 import SwiftData
 
 struct FocusModeView: View {
+    // 외부에서 주입되는 Coordinator (탭 이동 등 앱 전체 흐름 제어용)
+    @EnvironmentObject var coordinator: MainCoordinator
+
+    // FocusModeView 전용 ViewModel. @StateObject로 소유권을 가짐 (한 번만 초기화됨)
     @StateObject private var viewModel: FocusModeViewModel
+
+    // 탭 선택 상태 (타이머 탭 / 목록 탭)
     @State private var selectedTab: FocusTab = .timer
-    @State private var completedSession: FocusSession? = nil
+
+    // ✅ 커스텀 init 생성자 (외부에서 FocusTodoInput과 context를 받아 ViewModel 초기화)
+    init(input: FocusTodoInput, context: ModelContext? = nil) {
+        
+        // context가 전달되지 않으면 defaultContext 사용 (환경에서 못 가져올 수도 있으므로)
+        let ctx = context ?? defaultContext
+
+        // ✅ @StateObject는 생성자에서 직접 접근 불가 → _viewModel(wrappedValue:)로 초기화해야 함!
+        _viewModel = StateObject(wrappedValue: FocusModeViewModel(
+            todoIDPairs: input.todoIDPairs, // Focus할 할 일 목록
+            context: ctx,                   // SwiftData 컨텍스트 (ModelContext)
+            store: SwiftDataSessionStore(context: ctx) // 커스텀 세션 저장소
+        ))
+    }
     
     var body: some View {
         ZStack {
-            // ✅ 전체 배경
+            // 전체 배경
             Color("BgDark")
                 .ignoresSafeArea()
             
@@ -25,26 +44,6 @@ struct FocusModeView: View {
                     statusText: viewModel.headerStatusText,
                     viewModel: viewModel
                 )
-                
-//                NavigationLink(
-//                    destination: {
-//                        if let session = viewModel.savedSession {
-//                            ReportView(
-//                                viewModel: ReportViewModel(session: session),
-//                                onComplete: {
-//                                    // 예: 메인 화면으로 돌아가기
-//                                }
-//                            )
-//                        } else {
-//                            EmptyView()
-//                        }
-//                    },
-//                    isActive: $viewModel.shouldNavigateToReport
-//                ) {
-//                    EmptyView()
-//                }
-//                .hidden()
-                
                 // 세그먼티드 컨트롤
                 CustomSegmentedControl(selectedTab: $selectedTab)
                     .padding()
@@ -88,8 +87,24 @@ struct FocusModeView: View {
                 .transition(.opacity)
             }
         }
+        
+        // ✅ 세션이 완료되었을 때 Coordinator로 이동
+        .onChange(of: viewModel.savedSession, perform: { (session: FocusSession?) in
+            if let session {
+                coordinator.push(.report(sessionID: session.id))
+            }
+        })
+        
         .onAppear {
             viewModel.replaceStoreWithContext()
         }
     }
 }
+
+//#Preview {
+//    FocusModeView(
+//        input: FocusTodoInput(todoIDPairs: previewPairs),
+//        context: previewContext
+//    )
+//    .environmentObject(MainCoordinator())
+//}

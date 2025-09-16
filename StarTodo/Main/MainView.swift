@@ -16,6 +16,7 @@ enum MainTabType: String, CaseIterable {
 struct MainView: View {
     @State private var selectedTab: MainTabType = .todo
     @EnvironmentObject var viewModel: MainViewModel
+    @EnvironmentObject var coordinator: MainCoordinator
     
     var body: some View {
         VStack(spacing: 0) {
@@ -45,7 +46,8 @@ struct MainView: View {
             case .start:
                 FocusSettingView()
                     .environmentObject(FocusSettingViewModel())
-                    .environmentObject(viewModel)   // ← 이건 FocusSettingView가 MainViewModel을 쓰면 유지
+                    .environmentObject(viewModel)
+                    .environmentObject(MainCoordinator.shared) // ✅ 인스턴스를 넘김
             case .todo:
                 AddListView()
             }
