@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 // MARK: - FocusModeView에 넘길 데이터 구조
 /// FocusModeView로 넘어가는 데이터의 구조화된 모델
@@ -31,7 +32,7 @@ enum MainScreen: Hashable {
     case focusSetting
     case timerSetting(selectedIDs: [UUID], allTodos: [Todo])
     case focusMode(input: FocusTodoInput)
-    case report(sessionID: UUID)
+    case report(sessionID: PersistentIdentifier)
 }
 
 // MARK: - Coordinator
