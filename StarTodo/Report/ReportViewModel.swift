@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import SwiftData
 
 /// 집중 모드 종료 후 리포트 화면에서 사용하는 ViewModel (SwiftData 버전)
 @MainActor
@@ -149,5 +150,30 @@ final class ReportViewModel: ObservableObject {
         } else {
             return nil
         }
+    }
+}
+
+extension ReportViewModel {
+    
+    /// `PersistentIdentifier` 기반으로 SwiftData에서 FocusSession을 불러와 ViewModel을 초기화
+    convenience init(sessionID: PersistentIdentifier) {
+        
+        // 1. SwiftData 컨텍스트 사용 (앱 전체에서 공유되는 기본 컨텍스트)
+        let context = defaultContext
+
+        // 2. 주어진 ID와 일치하는 FocusSession을 찾기 위한 FetchDescriptor 정의
+        let descriptor = FetchDescriptor<FocusSession>(
+            predicate: #Predicate { $0.persistentModelID == sessionID },
+            sortBy: [] // 정렬 필요 없음 (ID는 유일함)
+        )
+
+        // 3. 해당 FocusSession을 fetch (결과는 배열 → 첫 번째 요소 사용)
+        guard let session = try? context.fetch(descriptor).first else {
+            // 에러 처리: ID에 해당하는 FocusSession을 찾지 못한 경우 앱 크래시
+            fatalError("⚠️ 해당 ID의 FocusSession을 찾을 수 없습니다.")
+        }
+
+        // 4. 기존 생성자 호출 (session 기반)
+        self.init(session: session)
     }
 }
