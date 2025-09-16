@@ -15,8 +15,8 @@ let defaultContext: ModelContext = {
         // FocusSession, FocusItem, BreakSession 모델들을 위한 SwiftData 컨테이너 생성
         let container = try ModelContainer(
             for: FocusSession.self,
-                 FocusItem.self,
-                 BreakSession.self
+            FocusItem.self,
+            BreakSession.self
         )
         // 해당 컨테이너로부터 ModelContext 생성 및 반환
         return ModelContext(container)

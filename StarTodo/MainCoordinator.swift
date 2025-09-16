@@ -13,11 +13,11 @@ import SwiftData
 /// - todoIDPairs: 할일의 UUID와 순서 정보
 struct FocusTodoInput: Hashable {
     let todoIDPairs: [(UUID, Int)]
-
+    
     static func == (lhs: FocusTodoInput, rhs: FocusTodoInput) -> Bool {
         lhs.todoIDPairs.elementsEqual(rhs.todoIDPairs, by: { $0.0 == $1.0 && $0.1 == $1.1 })
     }
-
+    
     func hash(into hasher: inout Hasher) {
         for pair in todoIDPairs {
             hasher.combine(pair.0)
@@ -44,7 +44,7 @@ final class MainCoordinator: ObservableObject {
     
     // ✅ 외부에서 생성 막기 (싱글톤 패턴)
     private init() {}
-
+    
     // ✅ NavigationStack 경로 관리
     @Published var path = NavigationPath()
     
@@ -52,14 +52,14 @@ final class MainCoordinator: ObservableObject {
     func push(_ screen: MainScreen) {
         path.append(screen)
     }
-
+    
     // ✅ 이전 화면으로 pop
     func pop() {
         if !path.isEmpty {
             path.removeLast()
         }
     }
-
+    
     // ✅ 처음 화면으로 pop
     func popToRoot() {
         path.removeLast(path.count)
