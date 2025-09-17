@@ -89,11 +89,11 @@ struct FocusModeView: View {
         }
         
         // ✅ 세션이 완료되었을 때 Coordinator로 이동
-        .onChange(of: viewModel.savedSession, perform: { (session: FocusSession?) in
-            if let session {
+        .onChange(of: viewModel.savedSession) {
+            if let session = viewModel.savedSession {
                 coordinator.push(.report(sessionID: session.id))
             }
-        })
+        }
         
         .onAppear {
             viewModel.replaceStoreWithContext()
