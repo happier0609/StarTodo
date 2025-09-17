@@ -130,5 +130,11 @@ extension AddListViewModel {
 
             context.insert(parent)
         }
+        
+        do {
+            try context.save()
+        } catch {
+            print("저장 실패: \(error.localizedDescription)")
+        }
     }
 }
