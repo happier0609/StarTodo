@@ -14,7 +14,6 @@ struct StarFieldView: View {
         GeometryReader { geo in
             TimelineView(.animation) { timeline in
                 Canvas { context, size in
-                    let now = timeline.date.timeIntervalSinceReferenceDate
 
                     for index in stars.indices {
                         // 별의 위치 업데이트

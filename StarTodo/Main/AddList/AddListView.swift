@@ -115,5 +115,6 @@ struct AddListView: View {
 }
 
 #Preview {
-    MainView()
+    AddListView()
+        .environmentObject(MainCoordinator.preview())
 }

@@ -70,7 +70,9 @@ final class FocusModeViewModel: ObservableObject {
     private func startBreakTimer() {
         breakTimer?.invalidate()
         breakTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            self?.onBreakTimerTick()
+            Task { @MainActor in
+                self?.onBreakTimerTick()
+            }
         }
     }
     
@@ -196,7 +198,9 @@ final class FocusModeViewModel: ObservableObject {
         
         todoTimer?.invalidate()
         todoTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
-            self?.onTodoTimerTick()
+            Task { @MainActor in
+                self?.onTodoTimerTick()
+            }
         }
     }
     
@@ -283,7 +287,7 @@ final class FocusModeViewModel: ObservableObject {
         isRunning = false
         isBreakActive = false
         
-        if var session = focusSession {
+        if let session = focusSession {
             session.endedAt = Date()
             session.totalBreakSeconds = breakTotalSeconds
             

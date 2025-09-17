@@ -89,11 +89,11 @@ struct FocusModeView: View {
         }
         
         // ✅ 세션이 완료되었을 때 Coordinator로 이동
-        .onChange(of: viewModel.savedSession, perform: { (session: FocusSession?) in
-            if let session {
+        .onChange(of: viewModel.savedSession) {
+            if let session = viewModel.savedSession {
                 coordinator.push(.report(sessionID: session.id))
             }
-        })
+        }
         
         .onAppear {
             viewModel.replaceStoreWithContext()
@@ -101,10 +101,11 @@ struct FocusModeView: View {
     }
 }
 
-//#Preview {
-//    FocusModeView(
-//        input: FocusTodoInput(todoIDPairs: previewPairs),
-//        context: previewContext
-//    )
-//    .environmentObject(MainCoordinator())
-//}
+#Preview {
+    let context = try! ModelContainer(for: FocusSession.self).mainContext
+    let input = FocusTodoInput(todoIDPairs: [
+        (UUID(), 1500), (UUID(), 900)
+    ])
+    return FocusModeView(input: input, context: context)
+        .environmentObject(MainCoordinator.preview())
+}

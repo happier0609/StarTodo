@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct ReportView: View {
     @EnvironmentObject private var coordinator: MainCoordinator
@@ -58,5 +59,32 @@ struct ReportView: View {
         .padding()
         .background(Color("BgDark"))
         .foregroundColor(.white)
+    }
+}
+
+#Preview {
+    do {
+        let context = try defaultContext
+
+        // 1. 더미 FocusSession 생성
+        let dummySession = FocusSession(
+            startedAt: .now.addingTimeInterval(-1800),
+            endedAt: .now,
+            totalBreakSeconds: 600
+        )
+        context.insert(dummySession)
+
+        // 2. ID 추출
+        let id = dummySession.persistentModelID
+
+        return ReportView(
+            viewModel: ReportViewModel(sessionID: id),
+            onComplete: {}
+        )
+        .environmentObject(MainCoordinator.preview())
+        
+    } catch {
+        // 에러 발생 시 Text View 반환
+        return Text("프리뷰 실패: \(error.localizedDescription)")
     }
 }
