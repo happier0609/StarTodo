@@ -12,41 +12,52 @@ struct SplashView: View {
     @State private var offsetY: CGFloat = 0
     @State private var navigateToMain = false
     
+    @EnvironmentObject private var viewModel: MainViewModel
+    @EnvironmentObject private var coordinator: MainCoordinator
+    
+    @State private var isDone = false
+    
     var body: some View {
-        ZStack {
-            StarFieldView()
-            
-            VStack(spacing: 30) {
-                Image("Kapi")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .frame(height: 120)
-                    .offset(y: offsetY)
-                    .onAppear {
-                        startFloatingAnimation()
-                    }
+        if isDone {
+            MainView()
+                .environmentObject(viewModel)
+                .environmentObject(coordinator)
+        } else {
+            ZStack {
+                StarFieldView()
                 
-//                if showAppName {
-//                    Text("StarTodo")
-//                        .typo(.titleLGEmphasized)
-//                        .foregroundColor(Color("BgLight"))
-//                        .transition(.opacity)
-//                        .animation(.easeIn(duration: 1.0), value: showAppName)
-//                }
+                VStack(spacing: 30) {
+                    Image("Kapi")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(height: 120)
+                        .offset(y: offsetY)
+                        .onAppear {
+                            startFloatingAnimation()
+                        }
+                    
+                    //                if showAppName {
+                    //                    Text("StarTodo")
+                    //                        .typo(.titleLGEmphasized)
+                    //                        .foregroundColor(Color("BgLight"))
+                    //                        .transition(.opacity)
+                    //                        .animation(.easeIn(duration: 1.0), value: showAppName)
+                    //                }
+                }
             }
-        }
-        .onAppear {
-            offsetY = -10
-            withAnimation(.easeIn(duration: 1.0).delay(0.3)) {
-                showAppName = true
+            .onAppear {
+                offsetY = -10
+                withAnimation(.easeIn(duration: 1.0).delay(0.3)) {
+                    showAppName = true
+                }
+                
+                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                    navigateToMain = true
+                }
             }
-            
-            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-                navigateToMain = true
+            .fullScreenCover(isPresented: $navigateToMain) {
+                RootView()
             }
-        }
-        .fullScreenCover(isPresented: $navigateToMain) {
-            RootView()
         }
     }
     
