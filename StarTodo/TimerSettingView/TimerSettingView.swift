@@ -88,3 +88,19 @@ struct TimerSettingView: View {
         }
     }
 }
+
+#Preview {
+    let dummyTodos = [
+        DummyTodo(id: UUID(), title: "할 일 1", setTime: 25, elapsed: 0, isCompleted: false, setSeconds: 1500, order: 0),
+        DummyTodo(id: UUID(), title: "할 일 2", setTime: 15, elapsed: 0, isCompleted: false, setSeconds: 900, order: 1)
+    ]
+    
+    let selectedIDs = dummyTodos.map { $0.id }
+    let allTodos = dummyTodos.map { Todo(id: $0.id, title: $0.title, setTime: $0.setTime, order: $0.order) }
+    
+    return TimerSettingView(
+        selectedIDs: selectedIDs,
+        allTodos: allTodos
+    )
+    .environmentObject(MainCoordinator.preview())
+}

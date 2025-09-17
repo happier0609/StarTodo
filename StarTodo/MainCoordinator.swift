@@ -65,3 +65,12 @@ final class MainCoordinator: ObservableObject {
         path.removeLast(path.count)
     }
 }
+
+// MARK: - Preview 전용 이니셜라이저
+#if DEBUG
+extension MainCoordinator {
+    static func preview() -> MainCoordinator {
+        return MainCoordinator()
+    }
+}
+#endif

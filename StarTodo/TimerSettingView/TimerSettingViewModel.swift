@@ -77,3 +77,18 @@ class TimerSettingViewModel {
     }
 }
 
+#if DEBUG
+extension TimerSettingViewModel {
+    static func preview(previewTodos: [DummyTodo]) -> TimerSettingViewModel {
+        // DummyTodo → Todo 로 매핑하는 로직 필요 (PreviewTodo를 SwiftData Todo로 변환할 수 없다면, 임시 MockTodoModel을 써도 됨)
+        let selectedIDs = previewTodos.map { $0.id }
+        
+        // 더미 Todo로 SwiftData 없이 작동하도록 가짜 Todo 객체를 만든다고 가정
+        let allTodos = previewTodos.map {
+            Todo(id: $0.id, title: $0.title, setTime: $0.setTime, order: $0.order)
+        }
+
+        return TimerSettingViewModel(selectedTodoIDs: selectedIDs, allTodos: allTodos)
+    }
+}
+#endif

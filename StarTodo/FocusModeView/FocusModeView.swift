@@ -101,10 +101,11 @@ struct FocusModeView: View {
     }
 }
 
-//#Preview {
-//    FocusModeView(
-//        input: FocusTodoInput(todoIDPairs: previewPairs),
-//        context: previewContext
-//    )
-//    .environmentObject(MainCoordinator())
-//}
+#Preview {
+    let context = try! ModelContainer(for: FocusSession.self).mainContext
+    let input = FocusTodoInput(todoIDPairs: [
+        (UUID(), 1500), (UUID(), 900)
+    ])
+    return FocusModeView(input: input, context: context)
+        .environmentObject(MainCoordinator.preview())
+}
