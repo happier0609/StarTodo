@@ -53,13 +53,4 @@ final class Todo {
     // MARK: - 편의(기존 코드 호환용)
     // 편의
     var childrenArray: [Todo] { children.sorted { $0.order < $1.order } }
-    
-//    // ✅ 정렬 프리셋을 모델에 고정 (SwiftData.SortDescriptor 사용)
-//    static let defaultSort: [Foundation.SortDescriptor<Todo>] = [
-//            Foundation.SortDescriptor(\Todo.isCompleted, order: .forward),
-//            Foundation.SortDescriptor(\Todo.order,       order: .forward),
-//            Foundation.SortDescriptor(\Todo.createdAt,   order: .forward),
-//        ]
-//
-//        static let rootsPredicate: Foundation.Predicate<Todo> = #Predicate<Todo> { $0.parent == nil }
 }

@@ -10,10 +10,13 @@ import SwiftData
 
 @main
 struct StarTodoApp: App {
+    @StateObject private var coordinator = MainCoordinator.shared
+
     var body: some Scene {
         WindowGroup {
             SplashView()
+                .environmentObject(coordinator)
         }
-        .modelContainer(for: [Todo.self, FocusSession.self, FocusItem.self])
+        .modelContainer(for: [Todo.self, FocusSession.self, FocusItem.self, BreakSession.self])
     }
 }

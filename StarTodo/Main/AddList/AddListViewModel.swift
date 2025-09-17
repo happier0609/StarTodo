@@ -14,19 +14,18 @@ import SwiftData
 
 @MainActor
 final class AddListViewModel: ObservableObject {
-    
-    // MARK: - 쿼리 (부모 할 일만)
-    @Query(filter: #Predicate<Todo> { $0.parent == nil })
-    var parents: [Todo]
+
+    // MARK: - 수동 관리할 부모 Todo 목록
+    @Published var parents: [Todo] = []
 
     // MARK: - 상태
     @Published var showModal: Bool = false
     @Published var editingParent: Todo? = nil
-    
+
     @Published var showAlert: Bool = false
     @Published var parentToDelete: Todo? = nil
 
-    // MARK: - 분류된 할 일 목록
+    // MARK: - 오늘 할 일 / 이전 할 일 필터링
     var todayParents: [Todo] {
         parents.filter { Calendar.current.isDateInToday($0.createdAt) }
             .sorted(by: sortingRule)
@@ -37,10 +36,34 @@ final class AddListViewModel: ObservableObject {
             .sorted(by: sortingRule)
     }
 
+    /// 할 일 정렬 기준: 완료여부 → order → 생성시간
     private func sortingRule(a: Todo, b: Todo) -> Bool {
         let left = (a.isCompleted ? 1 : 0, a.order, a.createdAt)
         let right = (b.isCompleted ? 1 : 0, b.order, b.createdAt)
         return left < right
+    }
+
+    // MARK: - 부모 할 일 fetch (모달 닫힌 후 등 수동 호출)
+    func fetchParents(with context: ModelContext) {
+        do {
+            // 모든 Todo를 가져온 후 수동으로 필터링 + 정렬
+            let allTodos = try context.fetch(FetchDescriptor<Todo>())
+            let parents = allTodos
+                .filter { $0.parent == nil }
+                .sorted {
+                    if $0.isCompleted != $1.isCompleted {
+                        return !$0.isCompleted && $1.isCompleted
+                    }
+                    if $0.order != $1.order {
+                        return $0.order < $1.order
+                    }
+                    return $0.createdAt < $1.createdAt
+                }
+            
+            self.parents = parents
+        } catch {
+            print("❌ 부모 할 일 불러오기 실패: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - 삭제 경고 호출
@@ -52,6 +75,7 @@ final class AddListViewModel: ObservableObject {
     // MARK: - 삭제 수행
     func delete(parent: Todo, in context: ModelContext) {
         context.delete(parent)
+        fetchParents(with: context) // 삭제 후 목록 갱신
     }
 
     // MARK: - 순서 재배치
@@ -61,12 +85,14 @@ final class AddListViewModel: ObservableObject {
         for (i, t) in items.enumerated() {
             t.order = i
         }
+        fetchParents(with: context) // 재정렬 후 목록 갱신
     }
 }
 
-
-/// 모달용
+// MARK: - 모달 저장 로직 (신규 추가 또는 편집)
 extension AddListViewModel {
+    
+    /// 부모 Todo를 저장 (추가 또는 수정)
     func saveTodo(
         editingParent: Todo?,
         title: String,
@@ -74,61 +100,95 @@ extension AddListViewModel {
         context: ModelContext
     ) {
         if let todo = editingParent {
-            // 수정
-            todo.title = title
-
-            let existing = todo.children
-            let existingTitles = Set(existing.map(\.title))
-            let newTitleSet = Set(children)
-
-            // 삭제될 자식
-            for child in existing where !newTitleSet.contains(child.title) {
-                context.delete(child)
-            }
-
-            // 새로 추가될 자식
-            let toAdd = children.filter { !existingTitles.contains($0) }
-            let startOrder = (todo.children.map(\.order).max() ?? -1) + 1
-            for (offset, raw) in toAdd.enumerated() {
-                let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !t.isEmpty else { continue }
-                let child = Todo(title: t,
-                                 isCompleted: false,
-                                 setTime: todo.setTime,
-                                 elapsedTime: 0,
-                                 createdAt: .now,
-                                 performedDate: nil,
-                                 order: startOrder + offset,
-                                 parent: todo)
-                todo.children.append(child)
-            }
+            updateTodo(todo, with: title, children: children, context: context)
         } else {
-            // 추가
-            let nextOrder = (parents.map(\.order).max() ?? -1) + 1
-            let parent = Todo(title: title,
-                              isCompleted: false,
-                              setTime: 25,
-                              elapsedTime: 0,
-                              createdAt: .now,
-                              performedDate: nil,
-                              order: nextOrder,
-                              parent: nil)
-
-            for (i, raw) in children.enumerated() {
-                let t = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !t.isEmpty else { continue }
-                let child = Todo(title: t,
-                                 isCompleted: false,
-                                 setTime: 25,
-                                 elapsedTime: 0,
-                                 createdAt: .now,
-                                 performedDate: nil,
-                                 order: i,
-                                 parent: parent)
-                parent.children.append(child)
-            }
-
-            context.insert(parent)
+            createTodo(with: title, children: children, context: context)
         }
+
+        do {
+            try context.save()
+            fetchParents(with: context)
+        } catch {
+            print("❌ 저장 실패: \(error.localizedDescription)")
+        }
+    }
+
+    /// 기존 Todo 수정
+    private func updateTodo(
+        _ todo: Todo,
+        with title: String,
+        children: [String],
+        context: ModelContext
+    ) {
+        todo.title = title
+
+        let existingChildren = todo.children
+        let existingTitles = Set(existingChildren.map(\.title))
+        let newTitles = Set(children)
+
+        // ⛔️ 기존에는 없고, 새 목록에도 없는 → 삭제 대상
+        for child in existingChildren where !newTitles.contains(child.title) {
+            context.delete(child)
+        }
+
+        // ✅ 새로 추가될 자식만 필터링
+        let toAdd = children.filter { !existingTitles.contains($0) }
+        let startOrder = (todo.children.map(\.order).max() ?? -1) + 1
+
+        for (offset, raw) in toAdd.enumerated() {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+
+            let child = Todo(
+                title: trimmed,
+                isCompleted: false,
+                setTime: todo.setTime,
+                elapsedTime: 0,
+                createdAt: .now,
+                performedDate: nil,
+                order: startOrder + offset,
+                parent: todo
+            )
+            todo.children.append(child)
+        }
+    }
+
+    /// 새로운 Todo 생성
+    private func createTodo(
+        with title: String,
+        children: [String],
+        context: ModelContext
+    ) {
+        let nextOrder = (parents.map(\.order).max() ?? -1) + 1
+
+        let parent = Todo(
+            title: title,
+            isCompleted: false,
+            setTime: 25,
+            elapsedTime: 0,
+            createdAt: .now,
+            performedDate: nil,
+            order: nextOrder,
+            parent: nil
+        )
+
+        for (i, raw) in children.enumerated() {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { continue }
+
+            let child = Todo(
+                title: trimmed,
+                isCompleted: false,
+                setTime: 25,
+                elapsedTime: 0,
+                createdAt: .now,
+                performedDate: nil,
+                order: i,
+                parent: parent
+            )
+            parent.children.append(child)
+        }
+
+        context.insert(parent)
     }
 }
