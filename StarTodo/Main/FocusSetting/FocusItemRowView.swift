@@ -19,7 +19,7 @@ struct FocusItemRowView: View {
     }
     
     var body: some View {
-        Text(todo.title ?? "")
+        Text(todo.title)
             .typo(.textMDRegular)
             .padding()
             .frame(maxWidth: .infinity, alignment: .leading)

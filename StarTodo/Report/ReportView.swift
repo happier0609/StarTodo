@@ -64,7 +64,7 @@ struct ReportView: View {
 
 #Preview {
     do {
-        let context = defaultContext
+        let context = try defaultContext
 
         // 1. 더미 FocusSession 생성
         let dummySession = FocusSession(
