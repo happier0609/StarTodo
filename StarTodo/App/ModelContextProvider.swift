@@ -5,6 +5,7 @@
 //  Created by 조민경 on 9/15/25.
 //
 
+import SwiftUI
 import SwiftData
 
 /// SwiftData 기본 컨텍스트 제공자
@@ -26,3 +27,17 @@ let defaultContext: ModelContext = {
         fatalError("💥 ModelContainer 생성 실패: \(error)")
     }
 }()
+
+/// ModelContext를 하위 뷰에 넘겨주는 Wrapper View
+struct ModelContextProvider<Content: View>: View {
+    @Environment(\.modelContext) private var context
+    let content: (ModelContext) -> Content
+
+    init(@ViewBuilder content: @escaping (ModelContext) -> Content) {
+        self.content = content
+    }
+
+    var body: some View {
+        content(context)
+    }
+}

@@ -14,8 +14,12 @@ struct StarTodoApp: App {
 
     var body: some Scene {
         WindowGroup {
-            SplashView()
-                .environmentObject(coordinator)
+            ModelContextProvider { context in
+                RootView()
+                    .environment(\.modelContext, context)
+                    .environmentObject(coordinator)
+                    .environmentObject(MainViewModel(context: context)) // ✅ 여기서 context 주입
+            }
         }
         .modelContainer(for: [Todo.self, FocusSession.self, FocusItem.self, BreakSession.self])
     }
