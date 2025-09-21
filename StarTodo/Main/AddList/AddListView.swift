@@ -52,14 +52,22 @@ struct AddListView: View {
 
             addButton
         }
+        // ✨ 핵심: View가 나타날 때마다 데이터 fetch
+        .onAppear {
+            viewModel.fetchParents(with: context)
+        }
+        // ✨ ScenePhase 변화 감지 (백그라운드에서 돌아올 때도 갱신)
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+            viewModel.fetchParents(with: context)
+        }
         .sheet(isPresented: $viewModel.showModal) {
             AddTaskModalView(
                 isPresented: $viewModel.showModal,
                 editingParent: viewModel.editingParent
             )
             .environmentObject(viewModel)
-            .presentationDetents([.medium, .large]) // 핵심! 모달 높이 설정
-            .presentationDragIndicator(.visible)    // 위쪽 드래그 표시
+            .presentationDetents([.medium, .large])
+            .presentationDragIndicator(.visible)
         }
         .alert("정말 삭제할까요?", isPresented: $viewModel.showAlert, presenting: viewModel.parentToDelete) { parent in
             Button("삭제", role: .destructive) {
@@ -89,7 +97,20 @@ struct AddListView: View {
                     parent: parent,
                     children: parent.children.sorted(by: { $0.order < $1.order }),
                     onToggle: { todo in
-                        try? context.save()
+                        todo.isCompleted.toggle()
+                        if todo.isCompleted {
+                            todo.performedDate = Date()
+                        } else {
+                            todo.performedDate = nil
+                        }
+                        
+                        do {
+                            try context.save()
+                            // ✨ 완료 상태 변경 시에도 목록 갱신
+                            viewModel.fetchParents(with: context)
+                        } catch {
+                            print("❌ 완료 상태 저장 실패: \(error.localizedDescription)")
+                        }
                     },
                     onLongPressEdit: { _ in
                         viewModel.editingParent = parent
@@ -97,17 +118,6 @@ struct AddListView: View {
                     }
                 )
                 .contentShape(Rectangle())
-                .swipeActions(edge: .trailing, allowsFullSwipe: false) {
-                    Button(role: .destructive) {
-                        if parent.children.isEmpty {
-                            viewModel.delete(parent: parent, in: context)
-                        } else {
-                            viewModel.showDeleteAlert(for: parent)
-                        }
-                    } label: {
-                        Label("삭제", systemImage: "trash")
-                    }
-                }
             }
         }
         .padding(.horizontal)

@@ -5,7 +5,6 @@
 //  Created by 조민경 on 9/1/25.
 //
 
-
 /// 역할: 할 일 목록 필터링 (오늘/이전), 삭제, 추가/편집 모달
 
 import Foundation
@@ -43,26 +42,53 @@ final class AddListViewModel: ObservableObject {
         return left < right
     }
 
-    // MARK: - 부모 할 일 fetch (모달 닫힌 후 등 수동 호출)
+    // MARK: - ✨ 부모 Todo 목록 갱신 (핵심 메서드)
     func fetchParents(with context: ModelContext) {
         do {
-            // 모든 Todo를 가져온 후 수동으로 필터링 + 정렬
-            let allTodos = try context.fetch(FetchDescriptor<Todo>())
-            let parents = allTodos
-                .filter { $0.parent == nil }
-                .sorted {
-                    if $0.isCompleted != $1.isCompleted {
-                        return !$0.isCompleted && $1.isCompleted
-                    }
-                    if $0.order != $1.order {
-                        return $0.order < $1.order
-                    }
-                    return $0.createdAt < $1.createdAt
+            // SwiftData에서는 정렬을 직접 처리하는 것이 더 안정적
+            let descriptor = FetchDescriptor<Todo>(
+                predicate: #Predicate { todo in
+                    todo.parent == nil
                 }
+            )
+            let fetchedTodos = try context.fetch(descriptor)
             
-            self.parents = parents
+            // 수동으로 정렬 적용
+            parents = fetchedTodos.sorted { a, b in
+                // 1. 완료 여부 (미완료가 먼저)
+                if a.isCompleted != b.isCompleted {
+                    return !a.isCompleted && b.isCompleted
+                }
+                // 2. order 순서
+                if a.order != b.order {
+                    return a.order < b.order
+                }
+                // 3. 생성 시간
+                return a.createdAt < b.createdAt
+            }
         } catch {
-            print("❌ 부모 할 일 불러오기 실패: \(error.localizedDescription)")
+            print("❌ Todo fetch 실패: \(error.localizedDescription)")
+            parents = []
+        }
+    }
+
+    // MARK: - 부모 할 일 fetch (async 버전 - 필요시 사용)
+    func fetchParentTodos(context: ModelContext) async throws -> [Todo] {
+        let descriptor = FetchDescriptor<Todo>(
+            predicate: #Predicate { todo in
+                todo.parent == nil
+            }
+        )
+        let fetchedTodos = try context.fetch(descriptor)
+        
+        return fetchedTodos.sorted { a, b in
+            if a.isCompleted != b.isCompleted {
+                return !a.isCompleted && b.isCompleted
+            }
+            if a.order != b.order {
+                return a.order < b.order
+            }
+            return a.createdAt < b.createdAt
         }
     }
 
@@ -75,7 +101,12 @@ final class AddListViewModel: ObservableObject {
     // MARK: - 삭제 수행
     func delete(parent: Todo, in context: ModelContext) {
         context.delete(parent)
-        fetchParents(with: context) // 삭제 후 목록 갱신
+        do {
+            try context.save()
+            fetchParents(with: context) // 삭제 후 목록 갱신
+        } catch {
+            print("❌ 삭제 저장 실패: \(error.localizedDescription)")
+        }
     }
 
     // MARK: - 순서 재배치
@@ -85,7 +116,12 @@ final class AddListViewModel: ObservableObject {
         for (i, t) in items.enumerated() {
             t.order = i
         }
-        fetchParents(with: context) // 재정렬 후 목록 갱신
+        do {
+            try context.save()
+            fetchParents(with: context) // 재정렬 후 목록 갱신
+        } catch {
+            print("❌ 재정렬 저장 실패: \(error.localizedDescription)")
+        }
     }
 }
 

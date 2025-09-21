@@ -17,6 +17,7 @@ struct MainView: View {
     @State private var selectedTab: MainTabType = .todo
     @EnvironmentObject var mainVM: MainViewModel
     @EnvironmentObject var coordinator: MainCoordinator
+    @Environment(\.modelContext) private var context
     
     var body: some View {
         VStack(spacing: 0) {
