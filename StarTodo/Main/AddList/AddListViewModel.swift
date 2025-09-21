@@ -43,28 +43,29 @@ final class AddListViewModel: ObservableObject {
         return left < right
     }
 
-    // MARK: - 부모 할 일 fetch (모달 닫힌 후 등 수동 호출)
-    func fetchParents(with context: ModelContext) {
-        do {
-            // 모든 Todo를 가져온 후 수동으로 필터링 + 정렬
-            let allTodos = try context.fetch(FetchDescriptor<Todo>())
-            let parents = allTodos
-                .filter { $0.parent == nil }
-                .sorted {
-                    if $0.isCompleted != $1.isCompleted {
-                        return !$0.isCompleted && $1.isCompleted
-                    }
-                    if $0.order != $1.order {
-                        return $0.order < $1.order
-                    }
-                    return $0.createdAt < $1.createdAt
-                }
-            
-            self.parents = parents
-        } catch {
-            print("❌ 부모 할 일 불러오기 실패: \(error.localizedDescription)")
+    // MARK: - 부모 할 일 fetch (SwiftData 쿼리 기반으로 필터링 및 정렬)
+    func fetchParentTodos(context: ModelContext) {
+            // 1. predicate 설정: 상위 할 일만 필터링 (parent == nil)
+            let predicate = #Predicate<Todo> { $0.parent == nil }
+
+            // 2. 정렬 조건: 미완료 → 완료 → order → createdAt
+            let descriptor = FetchDescriptor<Todo>(
+                predicate: predicate,
+                sortBy: [
+                    \Todo.isCompleted,
+                    \Todo.order,
+                    \Todo.createdAt
+                ]
+            )
+
+            do {
+                // 3. fetch 시 명시적으로 타입 지정
+                let result: [Todo] = try context.fetch(descriptor)
+                self.parents = result
+            } catch {
+                print("❌ 할 일 목록 불러오기 실패: \(error)")
+            }
         }
-    }
 
     // MARK: - 삭제 경고 호출
     func showDeleteAlert(for parent: Todo) {
