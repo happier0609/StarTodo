@@ -48,6 +48,33 @@ final class FocusSettingViewModel: ObservableObject {
     func loadFrom(_ todos: [Todo]) {
         focusParents = todos.filter { $0.parent == nil && !$0.isCompleted }
     }
+    
+    // MARK: - 완료되지 않은 할 일 불러오기
+    func fetchUncompletedParents(with context: ModelContext) {
+        do {
+            let descriptor = FetchDescriptor<Todo>(
+                predicate: #Predicate { todo in
+                    todo.parent == nil && !todo.isCompleted
+                }
+            )
+
+            let fetched = try context.fetch(descriptor)
+
+            // 정렬 기준은 AddListViewModel과 동일
+            let sorted = fetched.sorted { a, b in
+                let left = (a.isCompleted ? 1 : 0, a.order, a.createdAt)
+                let right = (b.isCompleted ? 1 : 0, b.order, b.createdAt)
+                return left < right
+            }
+
+            // 예: published 속성으로 정의한 변수에 저장
+            self.focusParents = sorted
+
+        } catch {
+            print("❌ FocusSettingViewModel fetch 실패: \(error.localizedDescription)")
+            self.focusParents = []
+        }
+    }
 
     
     // MARK: - ✅ 선택 여부 확인
