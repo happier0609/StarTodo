@@ -19,7 +19,7 @@ final class FocusModeViewModel: ObservableObject {
     // MARK: - 세션 저장 및 관계 연결용
     @Published var focusSession: FocusSession? = nil     // 현재 진행 중인 세션
     @Published var savedSession: FocusSession? = nil     // 저장 완료된 세션 (ReportView 전달용)
-    private let modelContext: ModelContext               // SwiftData 컨텍스트
+    private(set) var modelContext: ModelContext          // var로 변경 가능하도록 따로 저장
     private var store: SessionStore                      // 세션 저장소 (SwiftData 기반)
     
     // MARK: - ⏱️ 할 일 관련 상태 (Todo모델 사용)
@@ -338,9 +338,15 @@ final class FocusModeViewModel: ObservableObject {
         }
     }
     
+    // 👇 context를 바꿔주는 함수 수정
     func replaceStoreWithContext(newContext: ModelContext) {
-        let store = SwiftDataSessionStore(context: newContext)
-        self.store = store
+        self.modelContext = newContext
+        self.store = SwiftDataSessionStore(context: newContext)
+    }
+
+    // 👇 외부에서 다시 데이터를 로드하도록 공개 함수 추가
+    func reloadTodos(todoPairs: [(UUID, Int)]) {
+        loadTodos(todoPairs: todoPairs, context: modelContext)
     }
     
     // MARK: - ✅ Todo 완료 처리

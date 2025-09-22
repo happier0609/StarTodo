@@ -15,9 +15,10 @@ struct FocusModeView: View {
     @State private var selectedTab: FocusTab = .timer
 
     /// FocusTodoInput을 받아 ViewModel을 초기화하는 생성자
+    @State private var input: FocusTodoInput
+    
     init(input: FocusTodoInput) {
-        print("\n✅ FocusModeView 초기화 시작")
-        print("받은 데이터: \(input.todoIDPairs)")
+        _input = State(initialValue: input)  // ✅ State로 보관
 
         // 기본 context로 임시 store를 생성 (onAppear에서 실제 context로 교체)
         _viewModel = StateObject(wrappedValue: FocusModeViewModel(
@@ -96,20 +97,14 @@ struct FocusModeView: View {
                 coordinator.push(.report(sessionID: session.id))
             }
         }
-        // ✅ 뷰가 나타날 때 store와 context를 실제 환경에 맞게 교체
         .onAppear {
-            print("\n✅ FocusModeView 나타남")
+            print("FocusModeView 나타남")
+            
+            // 👉 실제 context로 교체
+            viewModel.replaceStoreWithContext(newContext: context)
 
-            // 실제 SwiftData context로 ViewModel 교체
-            updateViewModelContext()
-
-            // 디버깅용 로깅
-            print("현재 로드된 할 일 개수: \(viewModel.todos.count)")
-            for (index, todo) in viewModel.todos.enumerated() {
-                let setMinutes = viewModel.todoTimeSettings[todo.id] ?? 0
-                let timeText = setMinutes > 0 ? "\(setMinutes)분" : "시간 없음"
-                print("  \(index): \(todo.title) - \(timeText)")
-            }
+            // 👉 context가 바뀌었으므로 다시 todos를 불러와야 함
+            viewModel.reloadTodos(todoPairs: input.todoIDPairs)
         }
     }
 
