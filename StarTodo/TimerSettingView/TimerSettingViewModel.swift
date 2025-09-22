@@ -13,8 +13,7 @@ class TimerSettingViewModel {
     
     // MARK: - 입력 데이터
     
-    /// FocusSettingView에서 전달된 UUID 목록
-    /// 집중모드에 포함될 Todo 항목의 ID들 (순서 유지됨)
+    /// FocusSettingView에서 전달된 UUID 목록 (순서 유지)
     var selectedTodoIDs: [UUID]
     
     /// 전체 Todo 목록 (ID 기준으로 필터링함)
@@ -23,23 +22,30 @@ class TimerSettingViewModel {
     // MARK: - 사용자 입력 상태
     
     /// 각 Todo에 대해 사용자가 설정한 집중 시간 (분 단위)
-    /// 예: [todoID1: 25, todoID2: nil] → 시간 미설정도 nil로 표현 가능
+    /// nil = 시간 설정 없음, Int = 설정된 시간(분)
     var selectedTimes: [UUID: Int?] = [:]
     
     
     // MARK: - 초기화
     
-    /// 생성자: 선택된 Todo ID 목록과 전체 Todo 리스트를 받아 초기화함
-    /// - selectedTodoIDs: 집중모드에 포함될 Todo의 UUID 리스트 (순서 유지)
-    /// - allTodos: 전체 Todo 리스트
+    /// 생성자: 선택된 Todo ID 목록과 전체 Todo 리스트를 받아 초기화
     init(selectedTodoIDs: [UUID], allTodos: [Todo]) {
         self.selectedTodoIDs = selectedTodoIDs
         self.allTodos = allTodos
         
-        // 초기값 설정: 선택된 각 Todo ID에 대해 시간은 기본적으로 nil
+        // 초기값 설정: 선택된 각 Todo ID에 대해 원래 setTime을 기본값으로 설정
         for id in selectedTodoIDs {
-            selectedTimes[id] = nil
+            if let todo = allTodos.first(where: { $0.id == id }) {
+                // 원래 Todo의 setTime이 0이면 nil(시간 없음), 아니면 그 값 사용
+                selectedTimes[id] = todo.setTime > 0 ? todo.setTime : nil
+            } else {
+                selectedTimes[id] = nil  // 찾을 수 없으면 시간 없음
+            }
         }
+        
+        print("TimerSettingViewModel 초기화")
+        print("선택된 Todo IDs: \(selectedTodoIDs)")
+        print("초기 시간 설정: \(selectedTimes)")
     }
     
     
@@ -53,16 +59,33 @@ class TimerSettingViewModel {
     }
     
     /// 현재까지 설정된 모든 집중 시간을 합산한 총 예상 시간 (분 단위)
+    /// 시간이 설정되지 않은(nil) 항목은 제외
     var totalMinutes: Int {
         selectedTimes.values.compactMap { $0 }.reduce(0, +)
     }
     
-    /// 시간 설정이 완료된 Todo 목록 (UUID + 시간) → FocusModeView로 전달 가능
+    /// 시간 설정이 있는 Todo 목록 (UUID + 시간) → FocusModeView로 전달
+    /// 시간이 없음(nil)인 경우 0으로 전달
     var todosWithTime: [(UUID, Int)] {
-        selectedTimes.compactMap { (id, time) in
-            guard let time = time else { return nil }
-            return (id, time)
+        selectedTodoIDs.map { id in
+            // selectedTimes[id]는 Int?? 타입
+            // 첫 번째 ?는 Dictionary lookup, 두 번째 ?는 저장된 Int? 값
+            if let storedValue = selectedTimes[id] {
+                return (id, storedValue ?? 0)  // storedValue가 nil이면 0
+            } else {
+                return (id, 0)  // 키가 없으면 0
+            }
         }
+    }
+    
+    /// 시간이 설정된 Todo의 개수
+    var todosWithTimeCount: Int {
+        selectedTimes.values.compactMap { $0 }.count
+    }
+    
+    /// 시간이 설정되지 않은 Todo의 개수
+    var todosWithoutTimeCount: Int {
+        selectedTodoIDs.count - todosWithTimeCount
     }
     
     
@@ -71,24 +94,15 @@ class TimerSettingViewModel {
     /// 특정 Todo에 대해 시간 설정 값을 변경
     /// - Parameters:
     ///   - id: 설정 대상 Todo의 UUID
-    ///   - time: 설정할 시간 (nil이면 '없음')
+    ///   - time: 설정할 시간 (nil이면 '시간 없음')
     func setTime(for id: UUID, to time: Int?) {
         selectedTimes[id] = time
+        print("시간 설정 변경: \(id) -> \(time?.description ?? "시간 없음")")
+    }
+    
+    /// 특정 Todo의 시간 설정을 '없음'으로 변경
+    func clearTime(for id: UUID) {
+        selectedTimes[id] = nil
+        print("시간 설정 제거: \(id)")
     }
 }
-
-#if DEBUG
-extension TimerSettingViewModel {
-    static func preview(previewTodos: [DummyTodo]) -> TimerSettingViewModel {
-        // DummyTodo → Todo 로 매핑하는 로직 필요 (PreviewTodo를 SwiftData Todo로 변환할 수 없다면, 임시 MockTodoModel을 써도 됨)
-        let selectedIDs = previewTodos.map { $0.id }
-        
-        // 더미 Todo로 SwiftData 없이 작동하도록 가짜 Todo 객체를 만든다고 가정
-        let allTodos = previewTodos.map {
-            Todo(id: $0.id, title: $0.title, setTime: $0.setTime, order: $0.order)
-        }
-
-        return TimerSettingViewModel(selectedTodoIDs: selectedIDs, allTodos: allTodos)
-    }
-}
-#endif
