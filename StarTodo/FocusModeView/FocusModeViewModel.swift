@@ -338,8 +338,8 @@ final class FocusModeViewModel: ObservableObject {
         }
     }
     
-    func replaceStoreWithContext() {
-        let store = SwiftDataSessionStore(context: modelContext)
+    func replaceStoreWithContext(newContext: ModelContext) {
+        let store = SwiftDataSessionStore(context: newContext)
         self.store = store
     }
     
