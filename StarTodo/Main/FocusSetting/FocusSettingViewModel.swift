@@ -36,10 +36,27 @@ final class FocusSettingViewModel: ObservableObject {
     @Published var selectedFocusTodos: [Todo] = []
 
     
-    // MARK: - 📁 부모 할 일 목록
+    // MARK: - 📁 부모 할 일 목록 (AddListViewModel 패턴 적용)
     
-    /// UI에서 표시할 "상위 할 일" 목록 (자식 포함)
+    /// UI에서 표시할 "상위 할 일" 목록 (자식 포함) - 수동 관리
     @Published var focusParents: [Todo] = []
+    
+    // MARK: - 🔄 확장/접기 상태 관리
+    @Published var expandedParentIDs: Set<UUID> = []
+    
+    /// 특정 부모가 확장되어 있는지 확인
+    func isExpanded(_ parent: Todo) -> Bool {
+        expandedParentIDs.contains(parent.id)
+    }
+    
+    /// 부모의 확장/접기 상태 토글
+    func toggleExpanded(for parent: Todo) {
+        if expandedParentIDs.contains(parent.id) {
+            expandedParentIDs.remove(parent.id)
+        } else {
+            expandedParentIDs.insert(parent.id)
+        }
+    }
 
     
     // MARK: - 🔄 MainViewModel로부터 할 일 받아오기
@@ -47,6 +64,36 @@ final class FocusSettingViewModel: ObservableObject {
     /// MainViewModel에서 전달된 할 일 중, 완료되지 않은 상위 항목만 저장
     func loadFrom(_ todos: [Todo]) {
         focusParents = todos.filter { $0.parent == nil && !$0.isCompleted }
+    }
+    
+    // MARK: - ✨ 완료되지 않은 할 일 불러오기 (AddListViewModel 패턴 적용)
+    func fetchUncompletedParents(with context: ModelContext) {
+        do {
+            // SwiftData에서는 정렬을 직접 처리하는 것이 더 안정적
+            let descriptor = FetchDescriptor<Todo>(
+                predicate: #Predicate { todo in
+                    todo.parent == nil && !todo.isCompleted
+                }
+            )
+            let fetchedTodos = try context.fetch(descriptor)
+            
+            // 수동으로 정렬 적용 (AddListViewModel과 동일한 로직)
+            focusParents = fetchedTodos.sorted { a, b in
+                // 1. 완료 여부 (미완료가 먼저) - 이미 !isCompleted로 필터링했으므로 생략 가능
+                // 2. order 순서
+                if a.order != b.order {
+                    return a.order < b.order
+                }
+                // 3. 생성 시간
+                return a.createdAt < b.createdAt
+            }
+            
+            print("✅ FocusSettingViewModel: \(focusParents.count)개의 미완료 부모 할 일을 불러왔습니다.")
+            
+        } catch {
+            print("❌ FocusSettingViewModel fetch 실패: \(error.localizedDescription)")
+            focusParents = []
+        }
     }
 
     
@@ -65,16 +112,37 @@ final class FocusSettingViewModel: ObservableObject {
     
     // MARK: - 🔁 선택/해제 토글
 
-    /// 할 일을 선택하거나 해제하는 함수
+    /// 할 일을 선택하거나 해제하는 함수 (부모는 자식과 함께 처리)
     func toggleSelection(of todo: Todo) {
-        if isSelected(todo) {
-            // 선택 해제
-            selectedTodos.removeAll { $0.id == todo.id }
-            selectedIDs.removeAll { $0 == todo.id }
+        if todo.parent == nil {
+            // 부모 할 일인 경우: 자식들과 함께 토글
+            let isCurrentlySelected = isSelected(todo)
+            let allChildren = todo.children
+            
+            if isCurrentlySelected {
+                // 부모와 모든 자식 선택 해제
+                selectedIDs.removeAll { id in
+                    id == todo.id || allChildren.contains { $0.id == id }
+                }
+                selectedTodos.removeAll { selectedTodo in
+                    selectedTodo.id == todo.id || allChildren.contains { $0.id == selectedTodo.id }
+                }
+            } else {
+                // 부모와 모든 자식 선택
+                let newIDs = [todo.id] + allChildren.map(\.id)
+                let newTodos = [todo] + allChildren
+                
+                // 중복 제거하면서 추가
+                for id in newIDs where !selectedIDs.contains(id) {
+                    selectedIDs.append(id)
+                }
+                for newTodo in newTodos where !selectedTodos.contains(where: { $0.id == newTodo.id }) {
+                    selectedTodos.append(newTodo)
+                }
+            }
         } else {
-            // 선택 추가
-            selectedTodos.append(todo)
-            selectedIDs.append(todo.id)
+            // 자식 할 일인 경우: 개별 토글
+            toggleChildSelection(todo, !isSelected(todo))
         }
     }
 
