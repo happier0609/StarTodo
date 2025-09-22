@@ -12,22 +12,23 @@ import SwiftUI
 @MainActor
 final class FocusModeViewModel: ObservableObject {
     
-    @Published var shouldNavigateToReport: Bool = false
-    @Published var showEndConfirmAlert: Bool = false
+    // MARK: - 📍 네비게이션 및 종료 제어 상태
+    @Published var shouldNavigateToReport: Bool = false  // ReportView로 전환할지 여부
+    @Published var showEndConfirmAlert: Bool = false     // "종료하시겠어요?" 알림
     
     // MARK: - 세션 저장 및 관계 연결용
-    @Published var focusSession: FocusSession? = nil
-    @Published var savedSession: FocusSession? = nil
-    private let modelContext: ModelContext
-    private var store: SessionStore
+    @Published var focusSession: FocusSession? = nil     // 현재 진행 중인 세션
+    @Published var savedSession: FocusSession? = nil     // 저장 완료된 세션 (ReportView 전달용)
+    private let modelContext: ModelContext               // SwiftData 컨텍스트
+    private var store: SessionStore                      // 세션 저장소 (SwiftData 기반)
     
-    // MARK: - 할 일 관련 상태 (Todo 모델 직접 사용)
-    @Published var todos: [Todo] = []                // SwiftData Todo 모델 직접 사용
-    @Published var todoTimeSettings: [UUID: Int] = [:] // 각 Todo의 설정 시간 (분)
-    @Published var todoElapsed: [UUID: Int] = [:]    // 각 Todo의 경과 시간 (초)
-    @Published var currentIndex: Int = 0
-    @Published var isRunning: Bool = false
-    private var todoTimer: Timer?
+    // MARK: - ⏱️ 할 일 관련 상태 (Todo모델 사용)
+    @Published var todos: [Todo] = []                    // 집중 대상 Todo 목록
+    @Published var todoTimeSettings: [UUID: Int] = [:]   // 각 Todo의 설정 시간 (분)
+    @Published var todoElapsed: [UUID: Int] = [:]        // 각 Todo의 경과 시간 (초)
+    @Published var currentIndex: Int = 0                 // 현재 진행 중인 Todo 인덱스
+    @Published var isRunning: Bool = false               // 현재 타이머 작동 여부
+    private var todoTimer: Timer?                        // Todo 타이머
     
     // 현재 진행 중인 할 일
     var currentTodo: Todo? {
@@ -60,17 +61,20 @@ final class FocusModeViewModel: ObservableObject {
     private var breakStartDate: Date?
     
     // MARK: - 초기화
+    
+    /// 일반 생성자 (Coordinator 패턴 등에서 직접 호출될 수 있음)
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
         self.store = SwiftDataSessionStore(context: modelContext)
     }
     
+    /// TimerSettingView에서 전달된 UUID 배열로부터 생성
     convenience init(todoIDs: [UUID], context: ModelContext) {
         let pairs = todoIDs.enumerated().map { (offset, id) in (id, 25) }
         self.init(todoIDPairs: pairs, context: context, store: SwiftDataSessionStore(context: context))
     }
     
-    // MARK: - 메인 초기화
+    /// FocusSettingView → TimerSettingView → FocusModeView 데이터 흐름 대응
     init(todoIDPairs: [(UUID, Int)], context: ModelContext, store: SessionStore) {
         self.modelContext = context
         self.store = store
@@ -78,11 +82,13 @@ final class FocusModeViewModel: ObservableObject {
         print("FocusModeViewModel 초기화 시작")
         print("전달받은 데이터: \(todoIDPairs)")
         
+        // 전달된 UUID + 시간 정보로 할 일 로드
         loadTodos(todoPairs: todoIDPairs, context: context)
     }
     
-    // MARK: - Load Todos (기존 Todo 모델 사용)
+    // MARK: - 📦 Todos 불러오기 및 초기화
     private func loadTodos(todoPairs: [(UUID, Int)], context: ModelContext) {
+        // SwiftData에서 각 Todo를 로드하고, 설정된 시간과 초기 경과 시간을 초기화
         var loadedTodos: [Todo] = []
         
         print("Todo 로딩 시작...")
@@ -129,7 +135,7 @@ final class FocusModeViewModel: ObservableObject {
         }
     }
     
-    // MARK: - 휴식 로직
+    // MARK: - ☕️ 휴식 로직 (시작, 종료, 기록)
     func startBreak() {
         print("휴식 시작: \(breakPickedMinutes)분")
         isBreakActive = true
@@ -192,8 +198,10 @@ final class FocusModeViewModel: ObservableObject {
         resumeCurrentTodo()
     }
     
-    // MARK: - 정렬된 할 일 목록
+    // MARK: - 🔃 정렬된 목록 (ListView에서 사용)
     var sortedTodosForListView: [Todo] {
+        // 완료된 Todo는 위에, 남은 Todo는 아래에 정렬하여 반환
+        
         let completed = todos.enumerated().filter { (_, todo) in
             todoElapsed[todo.id, default: 0] >= (todoTimeSettings[todo.id, default: 0] * 60)
         }
@@ -208,6 +216,7 @@ final class FocusModeViewModel: ObservableObject {
         return result
     }
     
+    // MARK: - 📌 할 일 선택 (리스트 클릭 시)
     func selectTodo(at index: Int) {
         guard todos.indices.contains(index) else { return }
         print("할 일 선택: \(index) - \(todos[index].title)")
@@ -218,7 +227,7 @@ final class FocusModeViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Timer Logic
+    // MARK: - ⏱️ 타이머 로직
     private func startTodoTimer() {
         guard !isBreakActive else {
             print("휴식 중이므로 할 일 타이머를 시작하지 않습니다.")
@@ -271,6 +280,7 @@ final class FocusModeViewModel: ObservableObject {
     }
     
     private func isCurrentTodoCompleted() -> Bool {
+        // 해당 Todo가 완료되었는지 확인 (시간 기준)
         guard let todo = currentTodo else { return true }
         let elapsed = todoElapsed[todo.id, default: 0]
         let setSeconds = todoTimeSettings[todo.id, default: 0] * 60
@@ -281,6 +291,7 @@ final class FocusModeViewModel: ObservableObject {
         return elapsed >= setSeconds
     }
     
+    // MARK: - 집중 세션 시작 및 저장
     func startFocusSessionIfNeeded() {
         if focusSession == nil {
             let session = FocusSession(startedAt: Date(), endedAt: Date(), totalBreakSeconds: 0)
@@ -290,45 +301,7 @@ final class FocusModeViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Complete & Move to Next
-    func completeCurrentTodo() {
-        markTodoAsCompleted(at: currentIndex)
-    }
-    
-    private func moveToNextTodo() {
-        let next = todos.enumerated().first { (_, todo) in
-            !isCurrentTodoCompleted()
-        }
-        
-        if let (index, _) = next {
-            currentIndex = index
-            print("다음 할 일로 이동: \(todos[index].title)")
-            startTodoTimer()
-        } else {
-            print("모든 할 일 완료!")
-            isRunning = false
-            endFocusSession()
-        }
-    }
-    
-    func markTodoAsCompleted(at index: Int) {
-        guard todos.indices.contains(index) else { return }
-        let todo = todos[index]
-        
-        // 시간이 설정된 경우만 강제 완료 처리
-        if let setMinutes = todoTimeSettings[todo.id], setMinutes > 0 {
-            todoElapsed[todo.id] = setMinutes * 60
-        }
-        
-        if index == currentIndex {
-            stopTimer()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                self.moveToNextTodo()
-            }
-        }
-    }
-    
-    // MARK: - 세션 종료
+    // 세션 종료
     func endFocusSession() {
         print("집중 세션 종료")
         stopTimer()
@@ -370,7 +343,45 @@ final class FocusModeViewModel: ObservableObject {
         self.store = store
     }
     
-    // MARK: - 텍스트 표시용
+    // MARK: - ✅ Todo 완료 처리
+    func completeCurrentTodo() {
+        markTodoAsCompleted(at: currentIndex)
+    }
+    
+    private func moveToNextTodo() {
+        let next = todos.enumerated().first { (_, todo) in
+            !isCurrentTodoCompleted()
+        }
+        
+        if let (index, _) = next {
+            currentIndex = index
+            print("다음 할 일로 이동: \(todos[index].title)")
+            startTodoTimer()
+        } else {
+            print("모든 할 일 완료!")
+            isRunning = false
+            endFocusSession()
+        }
+    }
+    
+    func markTodoAsCompleted(at index: Int) {
+        guard todos.indices.contains(index) else { return }
+        let todo = todos[index]
+        
+        // 시간이 설정된 경우만 강제 완료 처리
+        if let setMinutes = todoTimeSettings[todo.id], setMinutes > 0 {
+            todoElapsed[todo.id] = setMinutes * 60
+        }
+        
+        if index == currentIndex {
+            stopTimer()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self.moveToNextTodo()
+            }
+        }
+    }
+    
+    // MARK: - 💬 UI 표시용 텍스트
     var headerStatusText: String {
         if isBreakActive {
             let m = max(0, breakElapsed / 60)
@@ -423,12 +434,14 @@ final class FocusModeViewModel: ObservableObject {
         return totalSeconds / 60
     }
     
+    // MARK: - 🧹 메모리 정리
     deinit {
         print("FocusModeViewModel deinit")
         todoTimer?.invalidate()
         breakTimer?.invalidate()
     }
     
+    // MARK: - 유틸리티
     private func formatTime(seconds: Int) -> String {
         String(format: "%02d:%02d", seconds / 60, seconds % 60)
     }
