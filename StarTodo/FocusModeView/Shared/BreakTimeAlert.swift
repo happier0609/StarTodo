@@ -17,7 +17,7 @@ struct BreakTimeAlert: View {
     var body: some View {
         ZStack {
             // Dim
-            Color("Dark").opacity(0.4)
+            Color("BgDark").opacity(0.4)
                 .ignoresSafeArea()
                 .transition(.opacity)
                 .onTapGesture {} // 바깥 탭으로 닫히지 않게 (닫히게 하려면 isPresented = false)
@@ -26,12 +26,12 @@ struct BreakTimeAlert: View {
             VStack(spacing: 16) {
                 Text("잠깐 쉴까요?")
                     .typo(.titleMDemphasized)
-                    .foregroundColor(Color("White"))
+                    .foregroundColor(Color("App.White"))
                 
                 Text("쉬는 시간을 설정해보세요.\n탐사를 다시 시작해야 할 때 알려드릴게요!")
                     .typo(.textSMRegular)
                     .multilineTextAlignment(.center)
-                    .foregroundColor(Color("White"))
+                    .foregroundColor(Color("App.White"))
                 
                 // ▼ 버튼형 타임 피커
                 MinutePickerChip(minutes: $minutes)
@@ -54,7 +54,7 @@ struct BreakTimeAlert: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                             .background(Color("Primary500"))
-                            .foregroundColor(.white)
+                            .foregroundColor(Color("App.White"))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                     
@@ -67,7 +67,7 @@ struct BreakTimeAlert: View {
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
                             .background(Color("Cool900"))
-                            .foregroundColor(.white)
+                            .foregroundColor(Color("App.White"))
                             .clipShape(RoundedRectangle(cornerRadius: 12))
                     }
                 }

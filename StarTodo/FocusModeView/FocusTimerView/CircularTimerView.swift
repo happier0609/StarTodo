@@ -25,7 +25,7 @@ struct CircularTimerView: View {
             // ⚪️ 흰색 원: 진행률 (항상 전체 원 기준)
             Circle()
                 .trim(from: 0, to: progressRatio)
-                .stroke(Color.white, style: StrokeStyle(lineWidth: 6, lineCap: .round))
+                .stroke(Color("App.White"), style: StrokeStyle(lineWidth: 6, lineCap: .round))
                 .frame(width: baseSize, height: baseSize)
                 .rotationEffect(.degrees(-90))
 
@@ -39,10 +39,10 @@ struct CircularTimerView: View {
                 let y = center.y + radius * sin(CGFloat(angle.radians))
 
                 Circle()
-                    .fill(Color.white)
+                    .fill(Color("App.White"))
                     .frame(width: 14, height: 14)
                     .position(x: x, y: y)
-                    .shadow(color: Color.white.opacity(0.8), radius: 6)
+                    .shadow(color: Color("App.White").opacity(0.8), radius: 6)
             }
 
             // 🐻 캐릭터 이미지

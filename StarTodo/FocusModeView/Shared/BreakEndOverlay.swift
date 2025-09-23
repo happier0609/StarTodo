@@ -19,7 +19,7 @@ struct BreakEndOverlay: View {
             VStack(spacing: 16) {
                 Text("휴식 시간 종료!")
                     .font(.title).bold()
-                    .foregroundColor(.white)
+                    .foregroundColor(Color("App.White"))
 
                 Button(action: onReturn) {
                     HStack(spacing: 8) {
@@ -30,7 +30,7 @@ struct BreakEndOverlay: View {
                     .padding(.vertical, 14)
                     .padding(.horizontal, 22)
                     .background(Color("Primary500"))
-                    .foregroundColor(.white)
+                    .foregroundColor(Color("App.White"))
                     .clipShape(Capsule())
                 }
             }
