@@ -35,6 +35,21 @@ enum MainScreen: Hashable {
     case report(sessionID: PersistentIdentifier)
 }
 
+// MARK: - Fullscreen 전용 화면 전환 enum
+enum FullScreenCoverRoute: Identifiable, Hashable {
+    case focusMode(input: FocusTodoInput)
+    case report(sessionID: PersistentIdentifier)
+
+    var id: String {
+        switch self {
+        case .focusMode(let input):
+            return "focusMode_\(input.hashValue)"
+        case .report(let id):
+            return "report_\(id.hashValue)"
+        }
+    }
+}
+
 // MARK: - Coordinator
 /// MainView 전용 Coordinator (FocusSettingView ~ ReportView 관리)
 final class MainCoordinator: ObservableObject {
