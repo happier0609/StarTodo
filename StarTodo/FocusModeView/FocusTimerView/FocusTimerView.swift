@@ -19,7 +19,7 @@ struct FocusTimerView: View {
             } else if let current = viewModel.currentTodo {
                 FocusTimerHeaderView(
                     title: current.title,
-                    isCompleted: current.isCompleted,
+                    isCompleted: viewModel.isCurrentTodoCompleted,
                     remainingTime: viewModel.remainingTimeString,
                     onComplete: {
                         viewModel.completeCurrentTodo()
@@ -30,7 +30,7 @@ struct FocusTimerView: View {
                     .foregroundColor(Color("Cool300"))
             }
 
-            // ⬇️ 원형 타이머: 휴식/집중 공용 표시 값 사용
+            // 원형 타이머: 휴식/집중 공용 표시 값 사용
             CircularTimerView(
                 setTime: viewModel.displaySetMinutes,
                 elapsedTime: viewModel.displayElapsedSeconds
@@ -40,45 +40,20 @@ struct FocusTimerView: View {
     }
 }
 
-//MARK: - 기존코드
-
-//import SwiftUI
-//
-//struct FocusTimerView: View {
-//    @ObservedObject var viewModel: FocusModeViewModel
-//
-//    var body: some View {
-//        VStack(spacing: 20) {
-//            FocusTimerHeaderView(
-//                title: viewModel.currentTodo.todo.wrappedTitle,
-//                isCompleted: viewModel.currentTodo.isCompleted,
-//                remainingTime: viewModel.remainingTimeString,
-//                onComplete: {
-//                    viewModel.markCurrentTodoAsCompleted()
-//                }
-//            )
-//
-//            // 타이머 뷰 (원형)
-//            CircularTimerView(
-//                setTime: viewModel.currentTodo.setTime,
-//                elapsedTime: viewModel.currentTodo.elapsed
-//            )
-//
-//            // 잠깐 쉬기 버튼
-//            Button(action: {
-//                viewModel.showBreakSheet = true
-//            }) {
-//                Label("잠깐 쉬기", systemImage: "rocket")
-//            }
-//            .disabled(viewModel.isBreakActive)
-//
-//            // 예상 종료 시간
-//            Text("예상 종료 시간 \(viewModel.expectedEndTimeString)")
-//                .font(.footnote)
-//                .foregroundColor(.blue)
-//        }
-//        .sheet(isPresented: $viewModel.showBreakSheet) {
-////            BreakSettingSheet(viewModel: viewModel)
-//        }
-//    }
-//}
+// 디버깅을 위한 추가 정보 표시 (개발 중에만)
+#if DEBUG
+extension FocusTimerView {
+    private var debugInfo: some View {
+        VStack {
+            if let todo = viewModel.currentTodo {
+                Text("디버그: \(todo.title)")
+                Text("설정 시간: \(viewModel.currentSetMinutes)분")
+                Text("경과 시간: \(viewModel.currentElapsedSeconds)초")
+                Text("완료 상태: \(viewModel.isCurrentTodoCompleted ? "완료" : "진행중")")
+            }
+        }
+        .font(.caption)
+        .foregroundColor(.yellow)
+    }
+}
+#endif

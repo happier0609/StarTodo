@@ -47,6 +47,12 @@ final class FocusModeViewModel: ObservableObject {
         return todoElapsed[todo.id] ?? 0
     }
     
+    // 현재 할 일의 완료 여부 (bool)
+    var isCurrentTodoCompleted: Bool {
+        guard currentIndex < todos.count else { return false }
+        return todos[currentIndex].isCompleted
+    }
+    
     // MARK: - 휴식 관련 상태
     @Published var isBreakActive: Bool = false
     @Published var showBreakSheet: Bool = false
@@ -127,11 +133,6 @@ final class FocusModeViewModel: ObservableObject {
         } else {
             print("로드된 할 일이 없어서 타이머를 시작하지 않습니다.")
         }
-    }
-    
-    
-    func reloadTodos(todoPairs: [(UUID, Int)]) {
-        loadTodos(todoPairs: todoPairs, context: modelContext)
     }
     
     // MARK: - 휴식 로직
@@ -273,17 +274,6 @@ final class FocusModeViewModel: ObservableObject {
             print("할 일 완료: \(todo.title)")
             completeCurrentTodo()
         }
-    }
-    
-    private func isCurrentTodoCompleted() -> Bool {
-        guard let todo = currentTodo else { return true }
-        let elapsed = todoElapsed[todo.id, default: 0]
-        let setSeconds = todoTimeSettings[todo.id, default: 0] * 60
-        
-        // 시간이 설정되지 않은 경우 (setSeconds == 0) 완료되지 않은 것으로 처리
-        if setSeconds == 0 { return false }
-        
-        return elapsed >= setSeconds
     }
     
     func startFocusSessionIfNeeded() {
