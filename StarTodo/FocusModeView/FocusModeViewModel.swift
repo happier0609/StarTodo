@@ -135,6 +135,10 @@ final class FocusModeViewModel: ObservableObject {
         }
     }
     
+    func reloadTodos(todoPairs: [(UUID, Int)]) {
+        loadTodos(todoPairs: todoPairs, context: modelContext)
+    }
+    
     // MARK: - 휴식 로직
     func startBreak() {
         print("휴식 시작: \(breakPickedMinutes)분")
@@ -254,7 +258,7 @@ final class FocusModeViewModel: ObservableObject {
     
     func resumeCurrentTodo() {
         guard todos.indices.contains(currentIndex) else { return }
-        guard !isCurrentTodoCompleted() else { return }
+        guard !isCurrentTodoCompleted else { return }
         guard todoTimer == nil else { return }
         
         print("할 일 재시작: \(todos[currentIndex].title)")
@@ -290,9 +294,10 @@ final class FocusModeViewModel: ObservableObject {
         markTodoAsCompleted(at: currentIndex)
     }
     
+    // todos 중에서 아직 완료되지 않은 첫 번째 항목을 찾아 이동
     private func moveToNextTodo() {
         let next = todos.enumerated().first { (_, todo) in
-            !isCurrentTodoCompleted()
+            !todo.isCompleted
         }
         
         if let (index, _) = next {
@@ -341,7 +346,7 @@ final class FocusModeViewModel: ObservableObject {
                     title: todo.title,
                     setSeconds: todoTimeSettings[todo.id, default: 0] * 60,
                     elapsedSeconds: todoElapsed[todo.id, default: 0],
-                    isCompleted: isCurrentTodoCompleted(),
+                    isCompleted: todo.isCompleted,
                     order: index
                 )
             }
