@@ -9,6 +9,7 @@ import SwiftUI
 
 struct TimerSettingView: View {
     @EnvironmentObject var coordinator: MainCoordinator
+    @Environment(\.modelContext) private var context
     @State private var viewModel: TimerSettingViewModel
     
     // 생성자에서 ViewModel 주입
@@ -37,7 +38,9 @@ struct TimerSettingView: View {
                             item: todo,
                             parentTitle: parentTitle,
                             selectedTime: viewModel.selectedTimes[todo.id] ?? nil,
-                            onTimeChange: { viewModel.setTime(for: todo.id, to: $0) }
+                            onTimeChange: { newTime in
+                                viewModel.setTime(for: todo.id, to: newTime)
+                            }
                         )
                     }
                 }
@@ -59,21 +62,26 @@ struct TimerSettingView: View {
                     .foregroundColor(Color("Cool1100"))
             }
             
-            // ✅ 시작 버튼
+            // ✅ 시작 버튼 (수정된 로직)
             Button(action: {
-                let idPairs: [(UUID, Int)] = viewModel.todosWithTime.enumerated().map { ($0.element.0, $0.offset) }
-                let input = FocusTodoInput(todoIDPairs: idPairs)
+                // todosWithTime에서 (UUID, Int) 튜플 배열을 가져옴
+                let todoTimePairs = viewModel.todosWithTime
+                let input = FocusTodoInput(todoIDPairs: todoTimePairs)
+
+                print("🚀 집중모드 시작 버튼 클릭")
+                print("📋 전달할 데이터: \(todoTimePairs)")
 
                 coordinator.push(.focusMode(input: input))
             }) {
                 Text("이대로 시작하기")
                     .typo(.textMDEmphasized)
-                    .foregroundColor(Color("White"))
+                    .foregroundColor(Color("App.White"))
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .background(Color("Primary600"))
+                    .background(viewModel.todosWithTime.isEmpty ? Color.gray : Color("Primary600"))
                     .cornerRadius(12)
             }
+            .disabled(viewModel.todosWithTime.isEmpty)
             .padding(.horizontal)
         }
         .padding(.top)
@@ -85,6 +93,11 @@ struct TimerSettingView: View {
                     .scaledToFit()
                     .frame(height: 24)
             }
+        }
+        .onAppear {
+            print("📱 TimerSettingView 나타남")
+            print("📋 표시할 Todo 개수: \(viewModel.displayedTodos.count)")
+            print("⏰ 현재 시간 설정: \(viewModel.selectedTimes)")
         }
     }
 }

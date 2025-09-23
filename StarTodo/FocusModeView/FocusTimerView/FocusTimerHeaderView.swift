@@ -28,7 +28,7 @@ struct FocusTimerHeaderView: View {
 
                     GeometryReader { geo in
                         Rectangle()
-                            .fill(Color("White"))
+                            .fill(Color("App.White"))
                             .frame(height: 2)
                             .frame(width: isCompleted ? geo.size.width : 0) // 너비를 애니메이션
                             .offset(y: geo.size.height / 2) // 텍스트 중간에 맞추기
