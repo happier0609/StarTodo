@@ -13,46 +13,44 @@ struct FocusModeView: View {
     @Environment(\.modelContext) private var context
     @StateObject private var viewModel: FocusModeViewModel
     @State private var selectedTab: FocusTab = .timer
-
-    /// FocusTodoInput을 받아 ViewModel을 초기화하는 생성자
-    @State private var input: FocusTodoInput
+    @State private var todoIDPairs: [(UUID, Int)]
     
+    // FocusTodoInput을 받아 ViewModel 초기화
     init(input: FocusTodoInput) {
-        _input = State(initialValue: input)  // ✅ State로 보관
-
-        // 기본 context로 임시 store를 생성 (onAppear에서 실제 context로 교체)
+        _todoIDPairs = State(initialValue: input.todoIDPairs)
+        print("FocusModeView 초기화 시작")
+        print("받은 데이터: \(input.todoIDPairs)")
+        
+        // 기본 컨텍스트로 임시 초기화 (onAppear에서 실제 컨텍스트로 교체)
         _viewModel = StateObject(wrappedValue: FocusModeViewModel(
             todoIDPairs: input.todoIDPairs,
-            context: defaultContext, // placeholder
+            context: defaultContext,
             store: SwiftDataSessionStore(context: defaultContext)
         ))
+        _todoIDPairs = State(initialValue: input.todoIDPairs) // 👈 저장
     }
-
+    
     var body: some View {
         ZStack {
             Color("BgDark")
                 .ignoresSafeArea()
-
+            
             VStack {
-                /// 상단 상태 텍스트 표시
                 FocusModeHeaderView(
                     statusText: viewModel.headerStatusText,
                     viewModel: viewModel
                 )
-
-                /// 세그먼트 탭 (타이머 / 목록)
+                
                 CustomSegmentedControl(selectedTab: $selectedTab)
                     .padding()
-
-                /// 탭에 따라 타이머 뷰 혹은 목록 뷰 표시
+                
                 switch selectedTab {
                 case .timer:
                     FocusTimerView(viewModel: viewModel)
                 case .list:
                     FocusListView(viewModel: viewModel)
                 }
-
-                /// 하단 버튼 영역 (휴식, 예상 종료 시간)
+                
                 FocusModeFooterView(
                     expectedEndTimeString: viewModel.expectedEndTimeString,
                     isBreakActive: viewModel.isBreakActive,
@@ -66,7 +64,6 @@ struct FocusModeView: View {
                 )
             }
         }
-        // ✅ 휴식 시간 설정 시트
         .breakTimeAlert(
             isPresented: Binding(
                 get: { viewModel.showBreakSheet },
@@ -80,7 +77,6 @@ struct FocusModeView: View {
                 viewModel.startBreak()
             }
         )
-        // ✅ 휴식 종료 오버레이
         .disabled(viewModel.showBreakEndOverlay)
         .overlay {
             if viewModel.showBreakEndOverlay {
@@ -90,36 +86,37 @@ struct FocusModeView: View {
                 .transition(.opacity)
             }
         }
-        // ✅ 세션이 완료되면 ReportView로 이동
         .onChange(of: viewModel.savedSession) {
             if let session = viewModel.savedSession {
-                print("\n✅ 세션 완료 - ReportView로 이동: \(session.id)")
+                print("세션 완료 - ReportView로 이동: \(session.id)")
                 coordinator.push(.report(sessionID: session.id))
             }
         }
         .onAppear {
             print("FocusModeView 나타남")
+            viewModel.reloadTodos(todoPairs: todoIDPairs)
             
-            // 👉 실제 context로 교체
-            viewModel.replaceStoreWithContext(newContext: context)
-
-            // 👉 context가 바뀌었으므로 다시 todos를 불러와야 함
-            viewModel.reloadTodos(todoPairs: input.todoIDPairs)
+            // 환경에서 실제 ModelContext를 가져와서 ViewModel 업데이트
+            updateViewModelContext()
+            
+            print("현재 로드된 할 일 개수: \(viewModel.todos.count)")
+            for (index, todo) in viewModel.todos.enumerated() {
+                let setMinutes = viewModel.todoTimeSettings[todo.id] ?? 0
+                let timeText = setMinutes > 0 ? "\(setMinutes)분" : "시간 없음"
+                print("  \(index): \(todo.title) - \(timeText)")
+            }
         }
     }
-
-    /// 실제 context로 ViewModel의 store를 교체
+    
     private func updateViewModelContext() {
-        viewModel.replaceStoreWithContext(newContext: context)
+        viewModel.replaceStoreWithContext()
     }
 }
 
-// ✅ 프리뷰용: 더미 UUID로 구성된 테스트 데이터 전달
 #Preview {
     let context = try! ModelContainer(for: FocusSession.self).mainContext
     let input = FocusTodoInput(todoIDPairs: [
-        (UUID(), 25),
-        (UUID(), 0)
+        (UUID(), 25), (UUID(), 0) // 두 번째는 시간 없음
     ])
     return FocusModeView(input: input)
         .environmentObject(MainCoordinator.preview())
