@@ -18,16 +18,15 @@ struct FocusModeView: View {
     // FocusTodoInput을 받아 ViewModel 초기화
     init(input: FocusTodoInput) {
         _todoIDPairs = State(initialValue: input.todoIDPairs)
+
         print("FocusModeView 초기화 시작")
         print("받은 데이터: \(input.todoIDPairs)")
-        
-        // 기본 컨텍스트로 임시 초기화 (onAppear에서 실제 컨텍스트로 교체)
+
         _viewModel = StateObject(wrappedValue: FocusModeViewModel(
             todoIDPairs: input.todoIDPairs,
             context: defaultContext,
             store: SwiftDataSessionStore(context: defaultContext)
         ))
-        _todoIDPairs = State(initialValue: input.todoIDPairs) // 👈 저장
     }
     
     var body: some View {
@@ -94,7 +93,7 @@ struct FocusModeView: View {
         }
         .onAppear {
             print("FocusModeView 나타남")
-            viewModel.reloadTodos(todoPairs: todoIDPairs)
+            print("전달된 데이터: \(todoIDPairs)")
             
             // 환경에서 실제 ModelContext를 가져와서 ViewModel 업데이트
             updateViewModelContext()
@@ -109,6 +108,8 @@ struct FocusModeView: View {
     }
     
     private func updateViewModelContext() {
+        // 환경의 context를 ViewModel에 설정
+        viewModel.modelContext = context
         viewModel.replaceStoreWithContext()
     }
 }

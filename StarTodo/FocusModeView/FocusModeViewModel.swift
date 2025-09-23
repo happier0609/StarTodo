@@ -18,7 +18,7 @@ final class FocusModeViewModel: ObservableObject {
     // MARK: - 세션 저장 및 관계 연결용
     @Published var focusSession: FocusSession? = nil
     @Published var savedSession: FocusSession? = nil
-    private let modelContext: ModelContext
+    var modelContext: ModelContext
     private var store: SessionStore
     
     // MARK: - 할 일 관련 상태 (Todo 모델 직접 사용)
