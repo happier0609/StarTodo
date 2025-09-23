@@ -18,10 +18,10 @@ struct FocusModeView: View {
     // FocusTodoInput을 받아 ViewModel 초기화
     init(input: FocusTodoInput) {
         _todoIDPairs = State(initialValue: input.todoIDPairs)
-
+        
         print("FocusModeView 초기화 시작")
         print("받은 데이터: \(input.todoIDPairs)")
-
+        
         _viewModel = StateObject(wrappedValue: FocusModeViewModel(
             todoIDPairs: input.todoIDPairs,
             context: defaultContext,
@@ -105,6 +105,9 @@ struct FocusModeView: View {
                 print("  \(index): \(todo.title) - \(timeText)")
             }
         }
+        // Back 버튼 숨기기, 잠금 상태 만들기
+        .navigationBarBackButtonHidden(true)
+        .focusLocked()
     }
     
     private func updateViewModelContext() {
