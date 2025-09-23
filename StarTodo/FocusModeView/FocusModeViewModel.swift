@@ -315,6 +315,8 @@ final class FocusModeViewModel: ObservableObject {
         guard todos.indices.contains(index) else { return }
         let todo = todos[index]
         
+        todo.isCompleted = true
+        
         // 시간이 설정된 경우만 강제 완료 처리
         if let setMinutes = todoTimeSettings[todo.id], setMinutes > 0 {
             todoElapsed[todo.id] = setMinutes * 60
