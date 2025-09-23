@@ -35,6 +35,21 @@ enum MainScreen: Hashable {
     case report(sessionID: PersistentIdentifier)
 }
 
+// MARK: - Fullscreen 전용 화면 전환 enum
+enum FullScreenCoverRoute: Identifiable, Hashable {
+    case focusMode(input: FocusTodoInput)
+    case report(sessionID: PersistentIdentifier)
+    
+    var id: String {
+        switch self {
+        case .focusMode(let input):
+            return "focusMode_\(input.hashValue)"
+        case .report(let id):
+            return "report_\(id.hashValue)"
+        }
+    }
+}
+
 // MARK: - Coordinator
 /// MainView 전용 Coordinator (FocusSettingView ~ ReportView 관리)
 final class MainCoordinator: ObservableObject {
@@ -47,6 +62,9 @@ final class MainCoordinator: ObservableObject {
     
     // ✅ NavigationStack 경로 관리
     @Published var path = NavigationPath()
+    
+    // ✅ full screen 전용 route
+    @Published var fullScreenRoute: FullScreenCoverRoute?
     
     // ✅ 다음 화면으로 push
     func push(_ screen: MainScreen) {
@@ -63,6 +81,17 @@ final class MainCoordinator: ObservableObject {
     // ✅ 처음 화면으로 pop
     func popToRoot() {
         path.removeLast(path.count)
+    }
+}
+
+// MARK: - 풀스크린 전환 처리
+extension MainCoordinator {
+    func presentFullScreen(_ route: FullScreenCoverRoute) {
+        fullScreenRoute = route
+    }
+
+    func dismissFullScreen() {
+        fullScreenRoute = nil
     }
 }
 

@@ -43,7 +43,6 @@ struct ContentView: View {
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = .white
-        
         UITabBar.appearance().standardAppearance = appearance
         UITabBar.appearance().scrollEdgeAppearance = appearance
     }
@@ -53,7 +52,7 @@ struct ContentView: View {
             // ✅ Main 탭: NavigationStack + Coordinator 적용
             NavigationStack(path: $mainCoordinator.path) {
                 MainView()
-                    .environmentObject(MainCoordinator.shared)
+                    .environmentObject(mainCoordinator)
                     .navigationDestination(for: MainScreen.self) { screen in
                         switch screen {
                         case .focusSetting:
@@ -64,19 +63,9 @@ struct ContentView: View {
                             TimerSettingView(selectedIDs: selectedIDs, allTodos: allTodos)
                                 .environmentObject(mainCoordinator)
                             
-                        case .focusMode(let input):
-                            FocusModeView(input: input)
-                                .environmentObject(mainCoordinator)
-                            
-                        case .report(let sessionID):
-                            let vm = ReportViewModel(sessionID: sessionID)
-                            ReportView(
-                                viewModel: vm,
-                                onComplete: {
-                                    mainCoordinator.popToRoot()
-                                }
-                            )
-                            .environmentObject(mainCoordinator)
+                        case .focusMode, .report:
+                            // 🚫 fullScreenCover에서 처리하므로 여긴 무시
+                            EmptyView()
                         }
                     }
             }
@@ -86,13 +75,36 @@ struct ContentView: View {
             }
             .tag(TabBarType.main)
             
-            // ❌ History 탭: 기존 방식 유지
+            // ✅ History 탭
             HistoryView()
                 .tabItem {
                     Image(selectedTab == .history ? "My" : "NullMy")
                     Text("히스토리")
                 }
                 .tag(TabBarType.history)
+        }
+        
+        // ✅ FocusModeView / ReportView 전용 풀스크린 뷰
+        .fullScreenCover(item: $mainCoordinator.fullScreenRoute) { screen in
+            switch screen {
+            case .focusMode(let input):
+                FocusModeView(input: input)
+                    .focusLocked() // 탭바 숨기기 + 스와이프 금지
+                
+            case .report(let sessionID):
+                let vm = ReportViewModel(sessionID: sessionID)
+                ReportView(
+                    viewModel: vm,
+                    onComplete: {
+                        mainCoordinator.dismissFullScreen()
+                        mainCoordinator.popToRoot()
+                    }
+                )
+                .focusLocked()
+                
+            default:
+                EmptyView() // 안전 처리용
+            }
         }
     }
 }

@@ -31,7 +31,7 @@ struct CustomSegmentedControl: View {
                         }
 
                         Text(tab.rawValue)
-                            .foregroundColor(Color("White"))
+                            .foregroundColor(Color("App.White"))
                             .typo(selectedTab == tab ? .textSMEmphasized : .textSMRegular)
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 10)

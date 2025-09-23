@@ -67,6 +67,7 @@ struct TimerSettingView: View {
                 // todosWithTime에서 (UUID, Int) 튜플 배열을 가져옴
                 let todoTimePairs = viewModel.todosWithTime
                 let input = FocusTodoInput(todoIDPairs: todoTimePairs)
+                MainCoordinator.shared.presentFullScreen(.focusMode(input: input))
 
                 print("🚀 집중모드 시작 버튼 클릭")
                 print("📋 전달할 데이터: \(todoTimePairs)")

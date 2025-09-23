@@ -363,7 +363,14 @@ final class FocusModeViewModel: ObservableObject {
             }
             
             savedSession = session
-            shouldNavigateToReport = true
+            
+            // ✅ Coordinator: FocusModeView 닫고 ReportView 띄우기
+            MainCoordinator.shared.dismissFullScreen()
+
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                let id = session.persistentModelID
+                MainCoordinator.shared.presentFullScreen(.report(sessionID: id))
+            }
         }
     }
     
