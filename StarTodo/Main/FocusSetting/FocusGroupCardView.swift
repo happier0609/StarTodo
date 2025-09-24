@@ -33,7 +33,7 @@ struct FocusGroupCardView: View {
     var body: some View {
         ZStack(alignment: .top) {
             RoundedRectangle(cornerRadius: 12)
-                .fill(isSelected ? Color("Primary100") : Color("White"))
+                .fill(isSelected ? Color("Primary100") : Color("App.White"))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
                         .stroke(isSelected ? Color("Primary500") : Color.clear, lineWidth: 1.3)
