@@ -183,6 +183,8 @@ extension ReportViewModel {
             fatalError("⚠️ 해당 ID의 FocusSession을 찾을 수 없습니다.")
         }
         
+        print("🟢 ReportViewModel 초기화 - sessionID: \(session.persistentModelID)")
+        
         // 4. 기존 생성자 호출 (session 기반)
         self.init(session: session)
     }

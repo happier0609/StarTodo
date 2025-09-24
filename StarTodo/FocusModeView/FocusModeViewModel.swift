@@ -83,6 +83,7 @@ final class FocusModeViewModel: ObservableObject {
         
         print("FocusModeViewModel 초기화 시작")
         print("전달받은 데이터: \(todoIDPairs)")
+        print("----------------------------------")
         
         loadTodos(todoPairs: todoIDPairs, context: context)
     }
@@ -133,6 +134,7 @@ final class FocusModeViewModel: ObservableObject {
         } else {
             print("로드된 할 일이 없어서 타이머를 시작하지 않습니다.")
         }
+        print("----------------------------------")
     }
     
     func reloadTodos(todoPairs: [(UUID, Int)]) {
@@ -150,6 +152,7 @@ final class FocusModeViewModel: ObservableObject {
         
         todoTimer?.invalidate()
         todoTimer = nil
+        print("----------------------------------")
     }
     
     private func startBreakTimer() {
@@ -192,7 +195,7 @@ final class FocusModeViewModel: ObservableObject {
             
             print("휴식 기록 저장 완료: \(Int(duration))초")
         }
-        
+        print("----------------------------------")
         isBreakActive = false
     }
     
@@ -200,6 +203,7 @@ final class FocusModeViewModel: ObservableObject {
         print("휴식 종료 후 할 일 재시작")
         endBreak()
         resumeCurrentTodo()
+        print("----------------------------------")
     }
     
     // MARK: - 정렬된 할 일 목록
@@ -226,6 +230,7 @@ final class FocusModeViewModel: ObservableObject {
         if !isBreakActive {
             startTodoTimer()
         }
+        print("----------------------------------")
     }
     
     // MARK: - Timer Logic
@@ -254,6 +259,7 @@ final class FocusModeViewModel: ObservableObject {
         todoTimer?.invalidate()
         todoTimer = nil
         isRunning = false
+        print("----------------------------------")
     }
     
     func resumeCurrentTodo() {
@@ -263,6 +269,7 @@ final class FocusModeViewModel: ObservableObject {
         
         print("할 일 재시작: \(todos[currentIndex].title)")
         startTodoTimer()
+        print("----------------------------------")
     }
     
     private func onTodoTimerTick() {
@@ -278,6 +285,7 @@ final class FocusModeViewModel: ObservableObject {
             print("할 일 완료: \(todo.title)")
             completeCurrentTodo()
         }
+        print("----------------------------------")
     }
     
     func startFocusSessionIfNeeded() {
@@ -287,6 +295,7 @@ final class FocusModeViewModel: ObservableObject {
             focusSession = session
             print("집중 세션 생성")
         }
+        print("----------------------------------")
     }
     
     // MARK: - Complete & Move to Next
@@ -309,6 +318,7 @@ final class FocusModeViewModel: ObservableObject {
             isRunning = false
             endFocusSession()
         }
+        print("----------------------------------")
     }
     
     func markTodoAsCompleted(at index: Int) {
@@ -317,10 +327,8 @@ final class FocusModeViewModel: ObservableObject {
         
         todo.isCompleted = true
         
-        // 시간이 설정된 경우만 강제 완료 처리
-        if let setMinutes = todoTimeSettings[todo.id], setMinutes > 0 {
-            todoElapsed[todo.id] = setMinutes * 60
-        }
+        // 실제 경과 시간 그대로 유지
+        // todoElapsed는 건드리지 않음
         
         if index == currentIndex {
             stopTimer()
@@ -343,11 +351,21 @@ final class FocusModeViewModel: ObservableObject {
             session.endedAt = Date()
             session.totalBreakSeconds = breakTotalSeconds
             
+            // 디버깅: 저장 전 상태 확인
+            print("저장 전 데이터:")
+            print("- todoTimeSettings: \(todoTimeSettings)")
+            print("- todoElapsed: \(todoElapsed)")
+            
             session.items = todos.enumerated().map { (index, todo) in
-                FocusItem(
+                let setSeconds = todoTimeSettings[todo.id, default: 0] * 60
+                let elapsedSeconds = todoElapsed[todo.id, default: 0]
+                
+                print("FocusItem: \(todo.title) - 경과:\(elapsedSeconds)초")
+                
+                return FocusItem(
                     title: todo.title,
-                    setSeconds: todoTimeSettings[todo.id, default: 0] * 60,
-                    elapsedSeconds: todoElapsed[todo.id, default: 0],
+                    setSeconds: setSeconds,
+                    elapsedSeconds: elapsedSeconds,
                     isCompleted: todo.isCompleted,
                     order: index
                 )
@@ -357,7 +375,7 @@ final class FocusModeViewModel: ObservableObject {
             
             do {
                 try modelContext.save()
-                print("세션 저장 완료")
+                print("세션 저장 완료 - items 개수: \(session.items.count)")
             } catch {
                 print("세션 저장 실패: \(error.localizedDescription)")
             }
@@ -372,6 +390,7 @@ final class FocusModeViewModel: ObservableObject {
                 MainCoordinator.shared.presentFullScreen(.report(sessionID: id))
             }
         }
+        print("----------------------------------")
     }
     
     func replaceStoreWithContext() {
