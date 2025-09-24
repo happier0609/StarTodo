@@ -347,9 +347,17 @@ final class FocusModeViewModel: ObservableObject {
         isRunning = false
         isBreakActive = false
         
+        // 휴식 기록 디버깅
+        print("저장할 휴식 기록 개수: \(breakSessions.count)")
+        for (index, breakSession) in breakSessions.enumerated() {
+            print("휴식 \(index): \(breakSession.start) ~ \(breakSession.end)")
+        }
+        
         if let session = focusSession {
             session.endedAt = Date()
             session.totalBreakSeconds = breakTotalSeconds
+            session.breaks = breakSessions
+            print("FocusSession에 연결된 휴식 개수: \(session.breaks.count)")
             
             // 디버깅: 저장 전 상태 확인
             print("저장 전 데이터:")
@@ -384,7 +392,7 @@ final class FocusModeViewModel: ObservableObject {
             
             // ✅ Coordinator: FocusModeView 닫고 ReportView 띄우기
             MainCoordinator.shared.dismissFullScreen()
-
+            
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                 let id = session.persistentModelID
                 MainCoordinator.shared.presentFullScreen(.report(sessionID: id))
