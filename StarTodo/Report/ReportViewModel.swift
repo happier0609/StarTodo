@@ -9,83 +9,137 @@ import Foundation
 import SwiftUI
 import SwiftData
 
+// MARK: - 타임라인 아이템 프로토콜
+protocol TimelineItem {
+    var timestamp: Date { get }
+    var displayTitle: String { get }
+    var displayTime: String { get }
+    var itemType: TimelineItemType { get }
+}
+
+enum TimelineItemType {
+    case todo
+    case breakTime
+}
+
+// MARK: - 타임라인용 래퍼 구조체
+struct TimelineReportItem: Identifiable, TimelineItem {
+    let id = UUID()
+    let originalItem: ReportItem
+    
+    var timestamp: Date {
+        originalItem.performedDate ?? Date()
+    }
+    
+    var displayTitle: String {
+        originalItem.title
+    }
+    
+    var displayTime: String {
+        let minutes = originalItem.elapsedSeconds / 60
+        if originalItem.setSeconds > 0 {
+            let plannedMin = originalItem.setSeconds / 60
+            if minutes > plannedMin {
+                return "\(minutes - plannedMin)분 더 집중"
+            } else if minutes < plannedMin {
+                return "\(plannedMin - minutes)분 일찍 완료"
+            }
+        }
+        return "\(minutes)분 집중"
+    }
+    
+    var itemType: TimelineItemType { .todo }
+}
+
+struct TimelineBreakItem: Identifiable, TimelineItem {
+    let id = UUID()
+    let breakSession: BreakSession
+    
+    var timestamp: Date {
+        breakSession.end // 휴식 종료 시점을 기준으로
+    }
+    
+    var displayTitle: String {
+        "휴식"
+    }
+    
+    var displayTime: String {
+        let duration = Int(breakSession.duration)
+        let minutes = duration / 60
+        let seconds = duration % 60
+        
+        if breakSession.isOverdue {
+            return "\(minutes)분 \(seconds)초 (초과)"
+        } else {
+            return "\(minutes)분 \(seconds)초"
+        }
+    }
+    
+    var itemType: TimelineItemType { .breakTime }
+}
+
 /// 집중 모드 종료 후 리포트 화면에서 사용하는 ViewModel (SwiftData 버전)
 @MainActor
 final class ReportViewModel: ObservableObject {
     
-    private var session: FocusSession //
+    private var session: FocusSession
     
-    // 전체 할 일 목록 (이번 세션에서 "수행됨" 표식이 있는 항목들만 전달받아 사용)
+    // 전체 할 일 목록
     @Published var todos: [ReportItem] = []
+    
+    // 휴식 기록
+    @Published var breaks: [BreakSession] = []
+    
+    // 타임라인 (할 일 + 휴식 통합)
+    @Published var timelineItems: [any TimelineItem] = []
     
     // 완료/미완료 분리 리스트 (UI 편의용)
     @Published var completedTodos: [ReportItem] = []
     @Published var incompletedTodos: [ReportItem] = []
     
     // MARK: - 초기화
-    // session 기반으로 ReportItem 초기화
     init(session: FocusSession) {
-        self.session = session // 세션 보관
+        print("리포트 초기화 - 휴식 기록 개수: \(session.breaks.count)")
         
+        self.session = session
+        self.breaks = session.breaks
+        
+        // FocusItem -> ReportItem 변환
         let items = session.items.map {
             ReportItem(
                 title: $0.title,
                 setSeconds: $0.setSeconds,
                 elapsedSeconds: $0.elapsedSeconds,
                 isCompleted: $0.isCompleted,
-                order: $0.order
+                order: $0.order,
+                performedDate: session.startedAt.addingTimeInterval(TimeInterval($0.elapsedSeconds))
             )
         }
         
-        // 정렬: 완료 여부 → order 기준
-        self.todos = items.sorted {
-            if $0.isCompleted != $1.isCompleted {
-                return $0.isCompleted == false // 미완료 먼저
-            }
-            return $0.order < $1.order
-        }
-        
+        self.todos = items
         self.completedTodos = todos.filter { $0.isCompleted }
         self.incompletedTodos = todos.filter { !$0.isCompleted }
+        
+        // 타임라인 생성
+        buildTimeline()
     }
     
-    // MARK: - 데이터 로딩
-    
-    /// 완료 여부와 상관없이, "수행된(performedDate != nil)" 항목만 리포트 대상으로 채택
-    /// 동시에 완료/미완료 리스트를 분리 저장
-    func fetchTodos(from allTodos: [Todo]) {
-        // 1. 수행된 항목만
-        let performed = allTodos.filter { $0.performedDate != nil }
+    // MARK: - 타임라인 빌드
+    private func buildTimeline() {
+        var timeline: [any TimelineItem] = []
         
-        // 2. ReportItem 변환 시 performedDate도 함께 보관
-        let reportItems: [ReportItem] = performed.map { todo in
-            ReportItem(
-                title: todo.title,
-                setSeconds: todo.setTime,
-                elapsedSeconds: todo.elapsedTime,
-                isCompleted: todo.isCompleted,
-                order: todo.order,
-                performedDate: todo.performedDate
-            )
-        }
+        // 완료된 할 일들을 타임라인 아이템으로 변환
+        let completedTimelineItems = completedTodos.map { TimelineReportItem(originalItem: $0) }
+        timeline.append(contentsOf: completedTimelineItems)
         
-        // 3. 정렬: 완료된 항목은 performedDate 기준 정렬, 미완료는 뒤로
-        self.todos = reportItems.sorted {
-            switch ($0.performedDate, $1.performedDate) {
-            case let (.some(date1), .some(date2)):
-                return date1 < date2
-            case (.some, .none):
-                return true  // performedDate가 있는 게 먼저
-            case (.none, .some):
-                return false // performedDate가 없는 게 나중
-            case (.none, .none):
-                return false
-            }
-        }
+        // 휴식 기록을 타임라인 아이템으로 변환
+        let breakTimelineItems = breaks.map { TimelineBreakItem(breakSession: $0) }
+        timeline.append(contentsOf: breakTimelineItems)
         
-        // 4. 완료/미완료 분리
-        self.completedTodos = todos.filter { $0.isCompleted }
-        self.incompletedTodos = todos.filter { !$0.isCompleted }
+        // 시간순 정렬
+        timeline.sort { $0.timestamp < $1.timestamp }
+        
+        self.timelineItems = timeline
     }
     
     // MARK: - 총합/통계
@@ -98,6 +152,11 @@ final class ReportViewModel: ObservableObject {
     /// 총 집중 시간(분)
     var totalFocusedMinutes: Int {
         totalFocusedSeconds / 60
+    }
+    
+    /// 총 휴식 시간(분)
+    var totalBreakMinutes: Int {
+        session.totalBreakSeconds / 60
     }
     
     /// 총 집중 시간 텍스트: "X시간 Y분"
@@ -113,16 +172,19 @@ final class ReportViewModel: ObservableObject {
     /// 완료한 할 일 개수
     var completedCount: Int { completedTodos.count }
     
+    /// 휴식 횟수
+    var breakCount: Int { breaks.count }
+    
     // MARK: - 계획 시간 관련
     
-    /// 전체 수행 항목의 계획 시간(setTime, 분) 합 (모든 항목이 0초가 아니어야 합산; 아니면 nil)
+    /// 전체 수행 항목의 계획 시간(setTime, 분) 합
     var totalPlannedMinutes: Int? {
-        let mins = todos.map { $0.setSeconds / 60 }  // 초 → 분
+        let mins = todos.map { $0.setSeconds / 60 }
         guard mins.allSatisfy({ $0 > 0 }) else { return nil }
         return mins.reduce(0, +)
     }
     
-    /// 총 실제 시간 vs 총 계획 시간 비교 텍스트 (예: "5분 일찍 완료", "10분 더 집중")
+    /// 총 실제 시간 vs 총 계획 시간 비교 텍스트
     var timeComparisonMessage: String? {
         guard let planned = totalPlannedMinutes else { return nil }
         
@@ -143,7 +205,7 @@ final class ReportViewModel: ObservableObject {
         guard item.isCompleted else { return nil }
         
         let plannedMin = item.setSeconds / 60
-        let actualMin  = item.elapsedSeconds / 60
+        let actualMin = item.elapsedSeconds / 60
         
         guard plannedMin > 0 else { return nil }
         
@@ -168,24 +230,20 @@ extension ReportViewModel {
     /// `PersistentIdentifier` 기반으로 SwiftData에서 FocusSession을 불러와 ViewModel을 초기화
     convenience init(sessionID: PersistentIdentifier) {
         
-        // 1. SwiftData 컨텍스트 사용 (앱 전체에서 공유되는 기본 컨텍스트)
         let context = defaultContext
         
-        // 2. 주어진 ID와 일치하는 FocusSession을 찾기 위한 FetchDescriptor 정의
         let descriptor = FetchDescriptor<FocusSession>(
             predicate: #Predicate { $0.persistentModelID == sessionID },
-            sortBy: [] // 정렬 필요 없음 (ID는 유일함)
+            sortBy: []
         )
         
-        // 3. 해당 FocusSession을 fetch (결과는 배열 → 첫 번째 요소 사용)
         guard let session = try? context.fetch(descriptor).first else {
-            // 에러 처리: ID에 해당하는 FocusSession을 찾지 못한 경우 앱 크래시
             fatalError("⚠️ 해당 ID의 FocusSession을 찾을 수 없습니다.")
         }
         
         print("🟢 ReportViewModel 초기화 - sessionID: \(session.persistentModelID)")
+        print("🟢 휴식 기록 개수: \(session.breaks.count)")
         
-        // 4. 기존 생성자 호출 (session 기반)
         self.init(session: session)
     }
 }
