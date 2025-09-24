@@ -218,6 +218,17 @@ final class ReportViewModel: ObservableObject {
         }
     }
     
+    /// 개별 BreakSession의 예정/실제 시간 비교 텍스트
+    func breakDescription(for breakSession: BreakSession) -> String {
+        let breakMinutes = Int(breakSession.end.timeIntervalSince(breakSession.start) / 60)
+
+        if breakSession.isOverdue {
+            return "\(breakMinutes)분 더 충전"
+        } else {
+            return "\(breakMinutes)분 휴식"
+        }
+    }
+    
     // MARK: - 세션 종료 처리
     func finalizeSession() {
         session.endedAt = Date()

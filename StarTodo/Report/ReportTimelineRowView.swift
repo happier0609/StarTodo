@@ -44,9 +44,9 @@ struct ReportTimelineRowView: View {
         switch type {
         case .completed:
             return AnyView(Circle()
-                .fill(Color("White"))
+                .fill(Color("App.White"))
                 .frame(width: 24, height: 24)
-                .shadow(color: Color("White").opacity(0.8), radius: 6))
+                .shadow(color: Color("App.White").opacity(0.8), radius: 6))
 
         case .incompleted:
             return AnyView(Circle()
