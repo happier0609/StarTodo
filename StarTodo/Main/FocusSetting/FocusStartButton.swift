@@ -25,7 +25,7 @@ struct FocusStartButton: View {
                 .padding(.horizontal, 24)
                 .padding(.vertical, 14)
                 .background(selectedCount > 0 ? Color.blue : Color.gray.opacity(0.3))
-                .foregroundColor(.white)
+                .foregroundColor(Color("App.White"))
                 .clipShape(Capsule())
                 .overlay(
                     Capsule()
@@ -36,9 +36,9 @@ struct FocusStartButton: View {
                     Text("\(selectedCount)")
                         .font(.caption2)
                         .fontWeight(.bold)
-                        .foregroundColor(.white)
+                        .foregroundColor(Color("App.White"))
                         .padding(6)
-                        .background(Circle().fill(Color.white))
+                        .background(Circle().fill(Color("App.White")))
                         .overlay(
                             Circle().stroke(Color.blue, lineWidth: 2)
                         )

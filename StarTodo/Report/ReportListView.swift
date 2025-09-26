@@ -8,45 +8,61 @@
 import SwiftUI
 
 struct ReportListView: View {
-    let todos: [ReportItem]
-    let getComment: (ReportItem) -> String?
-    let isCompleted: (ReportItem) -> Bool
+    let timelineItems: [ReportRowType]
+    let incompletedTodos: [ReportItem]
+    let viewModel: ReportViewModel
     
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                ForEach(todos, id: \.id) { todo in
-                    HStack(alignment: .top) {
-                        ZStack {
-                            if isCompleted(todo) {
-                                Circle()
-                                    .fill(Color("White"))
-                                    .frame(width: 24, height: 24)
-                                    .shadow(color: Color("White").opacity(0.8), radius: 6) // Glow 효과
-                            } else {
-                                Circle()
-                                    .stroke(Color("Cool100"), lineWidth: 2)
-                                    .frame(width: 24, height: 24)
-                            }
+                // MARK: - 타임라인 섹션 (완료된 할 일 + 휴식)
+                if !timelineItems.isEmpty {
+                    ForEach(Array(timelineItems.enumerated()), id: \.offset) { index, item in
+                        ReportListRowView(
+                            type: item,
+                            viewModel: viewModel
+                        )
+                        
+                        if index < timelineItems.count - 1 {
+                            Divider()
+                                .background(Color("Cool100").opacity(0.3))
                         }
-                        .padding(.top, 2)
-                        
-                        // ✅ 텍스트 및 설명
-                        Text(todo.title)
-                            .typo(.textMDRegular)
-                            .foregroundColor(Color("BgLight"))
-                        
-                        if let comment = getComment(todo), todo.isCompleted {
-                            Text(comment)
-                                .typo(.textSMEmphasized)
-                                .foregroundColor(Color("Info200"))
-                                .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+                
+                // MARK: - 미완료 섹션
+                if !incompletedTodos.isEmpty {
+                    // 구분선
+                    if !timelineItems.isEmpty {
+                        HStack {
+                            Rectangle()
+                                .fill(Color("Cool100").opacity(0.3))
+                                .frame(height: 1)
                         }
-                        
-                        Spacer()
+                        .padding(.vertical, 16)
                     }
                     
-                    Divider()
+                    // 미완료 헤더
+                    HStack {
+                        Text("미완료 항목")
+                            .typo(.textSMEmphasized)
+                            .foregroundColor(Color("Cool100"))
+                        Spacer()
+                    }
+                    .padding(.bottom, 8)
+                    
+                    // 미완료 아이템들
+                    ForEach(Array(incompletedTodos.enumerated()), id: \.element.id) { index, todo in
+                        ReportListRowView(
+                            type: .incompleted(todo),
+                            viewModel: viewModel
+                        )
+                        
+                        if index < incompletedTodos.count - 1 {
+                            Divider()
+                                .background(Color("Cool100").opacity(0.3))
+                        }
+                    }
                 }
             }
             .padding(.horizontal)

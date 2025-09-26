@@ -25,11 +25,11 @@ struct FocusItemRowView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 10)
-                    .fill(isSelected ? Color("Primary100") : Color("White"))
+                    .fill(isSelected ? Color("Primary100") : Color("App.White"))
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 10)
-                    .stroke(isSelected ? Color("Primary500") : Color("White"), lineWidth: 1.3)
+                    .stroke(isSelected ? Color("Primary500") : Color("App.White"), lineWidth: 1.3)
             )
             .foregroundColor(isSelected ? Color("Primary500") : Color("Cool300"))
             .onTapGesture {

@@ -15,29 +15,29 @@ struct ReportView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            // 상단 요약 헤더
+            // 상단 요약 헤더 (기존 ReportHeaderView 그대로 사용)
             ReportHeaderView(
                 totalTasks: viewModel.todos.count,
                 completedTasks: viewModel.completedCount,
-                totalHours: viewModel.totalFocusedMinutes / 60,   // 분 → 시/분 분해
+                totalHours: viewModel.totalFocusedMinutes / 60,
                 totalMinutes: viewModel.totalFocusedMinutes % 60
             )
             .padding(.bottom)
             
-            // (선택) 총 계획 대비 결과 코멘트가 있으면 노출
-            if let msg = viewModel.timeComparisonMessage {
-                Text(msg)
-                    .typo(.textSMEmphasized)
-                    .foregroundColor(Color("Info400"))
+            ZStack {
+                Rectangle()
+                    .cornerRadius(16)
+                    .foregroundColor(Color("Cool1000"))
+                
+                // ✅ 리스트 뷰 (타임라인 형식으로 업데이트)
+                ReportListView(
+                    timelineItems: viewModel.timelineItems,
+                    incompletedTodos: viewModel.incompletedTodos,
+                    viewModel: viewModel
+                )
+                .frame(maxHeight: 390)
             }
-            
-            // ✅ 리스트 뷰
-            ReportListView(
-                todos: viewModel.todos,
-                getComment: viewModel.timeDescription(for:),
-                isCompleted: { $0.isCompleted }
-            )
-            .frame(maxHeight: 400)
+            .frame(maxHeight: 420)
             
             // ✅ 완료 버튼
             Button {
@@ -49,8 +49,8 @@ struct ReportView: View {
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Color("Info300"))
-                    .foregroundColor(Color("White"))
-                    .cornerRadius(12)
+                    .foregroundColor(Color("App.White"))
+                    .cornerRadius(16)
             }
             .padding(.horizontal)
             
@@ -58,7 +58,6 @@ struct ReportView: View {
         }
         .padding()
         .background(Color("BgDark"))
-        .foregroundColor(.white)
         
         // Back 버튼 숨기기, 잠금 상태 만들기
         .navigationBarBackButtonHidden(true)
@@ -72,10 +71,48 @@ struct ReportView: View {
 
         // 1. 더미 FocusSession 생성
         let dummySession = FocusSession(
-            startedAt: .now.addingTimeInterval(-1800),
+            startedAt: .now.addingTimeInterval(-3600),
             endedAt: .now,
             totalBreakSeconds: 600
         )
+        
+        // 더미 아이템 추가
+        let item1 = FocusItem(
+            title: "완료한 작업 1",
+            setSeconds: 1200,
+            elapsedSeconds: 1300,
+            isCompleted: true,
+            order: 0
+        )
+        let item2 = FocusItem(
+            title: "완료한 작업 2",
+            setSeconds: 900,
+            elapsedSeconds: 850,
+            isCompleted: true,
+            order: 1
+        )
+        let item3 = FocusItem(
+            title: "미완료 작업",
+            setSeconds: 600,
+            elapsedSeconds: 0,
+            isCompleted: false,
+            order: 2
+        )
+        dummySession.items = [item1, item2, item3]
+        
+        // 더미 휴식 추가
+        let break1 = BreakSession(
+            start: .now.addingTimeInterval(-2400),
+            end: .now.addingTimeInterval(-2100),
+            isOverdue: false
+        )
+        let break2 = BreakSession(
+            start: .now.addingTimeInterval(-1200),
+            end: .now.addingTimeInterval(-900),
+            isOverdue: true
+        )
+        dummySession.breaks = [break1, break2]
+        
         context.insert(dummySession)
 
         // 2. ID 추출
