@@ -9,73 +9,10 @@ import Foundation
 import SwiftUI
 import SwiftData
 
-// MARK: - 타임라인 아이템 프로토콜
-protocol TimelineItem {
-    var timestamp: Date { get }
-    var displayTitle: String { get }
-    var displayTime: String { get }
-    var itemType: TimelineItemType { get }
-}
-
+// MARK: - 타임라인 아이템 타입
 enum TimelineItemType {
-    case todo
-    case breakTime
-}
-
-// MARK: - 타임라인용 래퍼 구조체
-struct TimelineReportItem: Identifiable, TimelineItem {
-    let id = UUID()
-    let originalItem: ReportItem
-    
-    var timestamp: Date {
-        originalItem.performedDate ?? Date()
-    }
-    
-    var displayTitle: String {
-        originalItem.title
-    }
-    
-    var displayTime: String {
-        let minutes = originalItem.elapsedSeconds / 60
-        if originalItem.setSeconds > 0 {
-            let plannedMin = originalItem.setSeconds / 60
-            if minutes > plannedMin {
-                return "\(minutes - plannedMin)분 더 집중"
-            } else if minutes < plannedMin {
-                return "\(plannedMin - minutes)분 일찍 완료"
-            }
-        }
-        return "\(minutes)분 집중"
-    }
-    
-    var itemType: TimelineItemType { .todo }
-}
-
-struct TimelineBreakItem: Identifiable, TimelineItem {
-    let id = UUID()
-    let breakSession: BreakSession
-    
-    var timestamp: Date {
-        breakSession.end // 휴식 종료 시점을 기준으로
-    }
-    
-    var displayTitle: String {
-        "휴식"
-    }
-    
-    var displayTime: String {
-        let duration = Int(breakSession.duration)
-        let minutes = duration / 60
-        let seconds = duration % 60
-        
-        if breakSession.isOverdue {
-            return "\(minutes)분 \(seconds)초 (초과)"
-        } else {
-            return "\(minutes)분 \(seconds)초"
-        }
-    }
-    
-    var itemType: TimelineItemType { .breakTime }
+    case todo(ReportItem)
+    case breakTime(BreakSession)
 }
 
 /// 집중 모드 종료 후 리포트 화면에서 사용하는 ViewModel (SwiftData 버전)
@@ -87,59 +24,133 @@ final class ReportViewModel: ObservableObject {
     // 전체 할 일 목록
     @Published var todos: [ReportItem] = []
     
-    // 휴식 기록
-    @Published var breaks: [BreakSession] = []
-    
-    // 타임라인 (할 일 + 휴식 통합)
-    @Published var timelineItems: [any TimelineItem] = []
+    // 타임라인용 통합 리스트 (할 일 + 휴식)
+    @Published var timelineItems: [TimelineItemType] = []
     
     // 완료/미완료 분리 리스트 (UI 편의용)
     @Published var completedTodos: [ReportItem] = []
     @Published var incompletedTodos: [ReportItem] = []
     
+    // 휴식 기록
+    @Published var breaks: [BreakSession] = []
+    
     // MARK: - 초기화
     init(session: FocusSession) {
+        
         print("리포트 초기화 - 휴식 기록 개수: \(session.breaks.count)")
         
         self.session = session
         self.breaks = session.breaks
         
-        // FocusItem -> ReportItem 변환
-        let items = session.items.map {
-            ReportItem(
-                title: $0.title,
-                setSeconds: $0.setSeconds,
-                elapsedSeconds: $0.elapsedSeconds,
-                isCompleted: $0.isCompleted,
-                order: $0.order,
-                performedDate: session.startedAt.addingTimeInterval(TimeInterval($0.elapsedSeconds))
-            )
+        // FocusItem을 ReportItem으로 변환하면서 완료 시간 추정
+        var cumulativeTime: TimeInterval = 0
+        let items = session.items.map { item -> ReportItem in
+            // 완료된 아이템의 경우 누적 시간으로 performedDate 추정
+            if item.isCompleted && item.elapsedSeconds > 0 {
+                cumulativeTime += TimeInterval(item.elapsedSeconds)
+                return ReportItem(
+                    title: item.title,
+                    setSeconds: item.setSeconds,
+                    elapsedSeconds: item.elapsedSeconds,
+                    isCompleted: item.isCompleted,
+                    order: item.order,
+                    performedDate: session.startedAt.addingTimeInterval(cumulativeTime)
+                )
+            } else {
+                return ReportItem(
+                    title: item.title,
+                    setSeconds: item.setSeconds,
+                    elapsedSeconds: item.elapsedSeconds,
+                    isCompleted: item.isCompleted,
+                    order: item.order,
+                    performedDate: nil
+                )
+            }
         }
         
         self.todos = items
         self.completedTodos = todos.filter { $0.isCompleted }
         self.incompletedTodos = todos.filter { !$0.isCompleted }
         
-        // 타임라인 생성
+        // 타임라인 구성
         buildTimeline()
     }
     
     // MARK: - 타임라인 빌드
     private func buildTimeline() {
-        var timeline: [any TimelineItem] = []
+        var timeline: [TimelineItemType] = []
         
-        // 완료된 할 일들을 타임라인 아이템으로 변환
-        let completedTimelineItems = completedTodos.map { TimelineReportItem(originalItem: $0) }
-        timeline.append(contentsOf: completedTimelineItems)
+        // 완료된 할 일들을 타임라인에 추가
+        for todo in completedTodos {
+            timeline.append(.todo(todo))
+        }
         
-        // 휴식 기록을 타임라인 아이템으로 변환
-        let breakTimelineItems = breaks.map { TimelineBreakItem(breakSession: $0) }
-        timeline.append(contentsOf: breakTimelineItems)
+        // 휴식 기록을 타임라인에 추가
+        for breakSession in breaks {
+            timeline.append(.breakTime(breakSession))
+        }
         
         // 시간순 정렬
-        timeline.sort { $0.timestamp < $1.timestamp }
+        timeline.sort { item1, item2 in
+            let date1: Date
+            let date2: Date
+            
+            switch item1 {
+            case .todo(let item):
+                date1 = item.performedDate ?? Date.distantPast
+            case .breakTime(let breakItem):
+                date1 = breakItem.end
+            }
+            
+            switch item2 {
+            case .todo(let item):
+                date2 = item.performedDate ?? Date.distantPast
+            case .breakTime(let breakItem):
+                date2 = breakItem.end
+            }
+            
+            return date1 < date2
+        }
         
         self.timelineItems = timeline
+    }
+    
+    // MARK: - 데이터 로딩
+    
+    /// 완료 여부와 상관없이, "수행된(performedDate != nil)" 항목만 리포트 대상으로 채택
+    func fetchTodos(from allTodos: [Todo]) {
+        // 1. 수행된 항목만
+        let performed = allTodos.filter { $0.performedDate != nil }
+        
+        // 2. ReportItem 변환 시 performedDate도 함께 보관
+        let reportItems: [ReportItem] = performed.map { todo in
+            ReportItem(
+                title: todo.title,
+                setSeconds: todo.setTime,
+                elapsedSeconds: todo.elapsedTime,
+                isCompleted: todo.isCompleted,
+                order: todo.order,
+                performedDate: todo.performedDate
+            )
+        }
+        
+        // 3. 정렬: 완료된 항목은 performedDate 기준 정렬, 미완료는 뒤로
+        self.todos = reportItems.sorted {
+            switch ($0.performedDate, $1.performedDate) {
+            case let (.some(date1), .some(date2)):
+                return date1 < date2
+            case (.some, .none):
+                return true  // performedDate가 있는 게 먼저
+            case (.none, .some):
+                return false // performedDate가 없는 게 나중
+            case (.none, .none):
+                return false
+            }
+        }
+        
+        // 4. 완료/미완료 분리
+        self.completedTodos = todos.filter { $0.isCompleted }
+        self.incompletedTodos = todos.filter { !$0.isCompleted }
     }
     
     // MARK: - 총합/통계
@@ -159,6 +170,11 @@ final class ReportViewModel: ObservableObject {
         session.totalBreakSeconds / 60
     }
     
+    /// 휴식 횟수
+    var breakCount: Int {
+        breaks.count
+    }
+    
     /// 총 집중 시간 텍스트: "X시간 Y분"
     var totalFocusedTimeText: String {
         let hours = totalFocusedMinutes / 60
@@ -171,9 +187,6 @@ final class ReportViewModel: ObservableObject {
     
     /// 완료한 할 일 개수
     var completedCount: Int { completedTodos.count }
-    
-    /// 휴식 횟수
-    var breakCount: Int { breaks.count }
     
     // MARK: - 계획 시간 관련
     
@@ -218,14 +231,16 @@ final class ReportViewModel: ObservableObject {
         }
     }
     
-    /// 개별 BreakSession의 예정/실제 시간 비교 텍스트
+    /// 휴식 시간 설명 텍스트
     func breakDescription(for breakSession: BreakSession) -> String {
-        let breakMinutes = Int(breakSession.end.timeIntervalSince(breakSession.start) / 60)
-
-        if breakSession.isOverdue {
-            return "\(breakMinutes)분 더 충전"
+        let duration = Int(breakSession.duration)
+        let minutes = duration / 60
+        let seconds = duration % 60
+        
+        if minutes > 0 {
+            return breakSession.isOverdue ? "\(minutes)분 초과" : "\(minutes)분 충전"
         } else {
-            return "\(breakMinutes)분 휴식"
+            return breakSession.isOverdue ? "\(seconds)초 초과" : "\(seconds)초 충전"
         }
     }
     

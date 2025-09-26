@@ -15,14 +15,32 @@ struct ReportView: View {
     
     var body: some View {
         VStack(spacing: 20) {
-            // 상단 요약 헤더
+            // 상단 요약 헤더 (기존 ReportHeaderView 그대로 사용)
             ReportHeaderView(
                 totalTasks: viewModel.todos.count,
                 completedTasks: viewModel.completedCount,
-                totalHours: viewModel.totalFocusedMinutes / 60,   // 분 → 시/분 분해
+                totalHours: viewModel.totalFocusedMinutes / 60,
                 totalMinutes: viewModel.totalFocusedMinutes % 60
             )
             .padding(.bottom)
+            
+            // 휴식 정보 표시 (있을 경우)
+            if viewModel.breakCount > 0 {
+                HStack(spacing: 12) {
+                    Image(systemName: "pause.circle.fill")
+                        .foregroundColor(Color("Info200"))
+                    Text("휴식 \(viewModel.breakCount)회")
+                        .typo(.textMDRegular)
+                        .foregroundColor(Color("Info200"))
+                    Text("•")
+                        .foregroundColor(Color("Cool100"))
+                    Text("총 \(viewModel.totalBreakMinutes)분")
+                        .typo(.textMDRegular)
+                        .foregroundColor(Color("Cool100"))
+                    Spacer()
+                }
+                .padding(.horizontal)
+            }
             
             // (선택) 총 계획 대비 결과 코멘트가 있으면 노출
             if let msg = viewModel.timeComparisonMessage {
@@ -31,11 +49,11 @@ struct ReportView: View {
                     .foregroundColor(Color("Info400"))
             }
             
-            // ✅ 리스트 뷰
+            // ✅ 리스트 뷰 (타임라인 형식으로 업데이트)
             ReportListView(
-                todos: viewModel.todos,
-                getComment: viewModel.timeDescription(for:),
-                isCompleted: { $0.isCompleted }
+                timelineItems: viewModel.timelineItems,
+                incompletedTodos: viewModel.incompletedTodos,
+                viewModel: viewModel
             )
             .frame(maxHeight: 400)
             
@@ -72,10 +90,48 @@ struct ReportView: View {
 
         // 1. 더미 FocusSession 생성
         let dummySession = FocusSession(
-            startedAt: .now.addingTimeInterval(-1800),
+            startedAt: .now.addingTimeInterval(-3600),
             endedAt: .now,
             totalBreakSeconds: 600
         )
+        
+        // 더미 아이템 추가
+        let item1 = FocusItem(
+            title: "완료한 작업 1",
+            setSeconds: 1200,
+            elapsedSeconds: 1300,
+            isCompleted: true,
+            order: 0
+        )
+        let item2 = FocusItem(
+            title: "완료한 작업 2",
+            setSeconds: 900,
+            elapsedSeconds: 850,
+            isCompleted: true,
+            order: 1
+        )
+        let item3 = FocusItem(
+            title: "미완료 작업",
+            setSeconds: 600,
+            elapsedSeconds: 0,
+            isCompleted: false,
+            order: 2
+        )
+        dummySession.items = [item1, item2, item3]
+        
+        // 더미 휴식 추가
+        let break1 = BreakSession(
+            start: .now.addingTimeInterval(-2400),
+            end: .now.addingTimeInterval(-2100),
+            isOverdue: false
+        )
+        let break2 = BreakSession(
+            start: .now.addingTimeInterval(-1200),
+            end: .now.addingTimeInterval(-900),
+            isOverdue: true
+        )
+        dummySession.breaks = [break1, break2]
+        
         context.insert(dummySession)
 
         // 2. ID 추출
