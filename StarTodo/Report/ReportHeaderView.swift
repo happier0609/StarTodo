@@ -45,6 +45,7 @@ struct ReportHeaderView: View {
             VStack(spacing: 4) {
                 Text("총 집중 시간")
                     .typo(.textMDRegular)
+                    .foregroundColor(Color("BgLight"))
 
                 HStack(spacing: 4) {
                     GlowingText(text: "\(totalHours)", fontSize: 40)

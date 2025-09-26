@@ -50,7 +50,7 @@ struct ReportView: View {
                     .padding()
                     .background(Color("Info300"))
                     .foregroundColor(Color("App.White"))
-                    .cornerRadius(12)
+                    .cornerRadius(16)
             }
             .padding(.horizontal)
             
@@ -58,7 +58,6 @@ struct ReportView: View {
         }
         .padding()
         .background(Color("BgDark"))
-        .foregroundColor(.white)
         
         // Back 버튼 숨기기, 잠금 상태 만들기
         .navigationBarBackButtonHidden(true)
