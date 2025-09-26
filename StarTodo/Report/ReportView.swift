@@ -24,13 +24,20 @@ struct ReportView: View {
             )
             .padding(.bottom)
             
-            // ✅ 리스트 뷰 (타임라인 형식으로 업데이트)
-            ReportListView(
-                timelineItems: viewModel.timelineItems,
-                incompletedTodos: viewModel.incompletedTodos,
-                viewModel: viewModel
-            )
-            .frame(maxHeight: 400)
+            ZStack {
+                Rectangle()
+                    .cornerRadius(16)
+                    .foregroundColor(Color("Cool1000"))
+                
+                // ✅ 리스트 뷰 (타임라인 형식으로 업데이트)
+                ReportListView(
+                    timelineItems: viewModel.timelineItems,
+                    incompletedTodos: viewModel.incompletedTodos,
+                    viewModel: viewModel
+                )
+                .frame(maxHeight: 390)
+            }
+            .frame(maxHeight: 420)
             
             // ✅ 완료 버튼
             Button {
@@ -42,7 +49,7 @@ struct ReportView: View {
                     .frame(maxWidth: .infinity)
                     .padding()
                     .background(Color("Info300"))
-                    .foregroundColor(Color("White"))
+                    .foregroundColor(Color("App.White"))
                     .cornerRadius(12)
             }
             .padding(.horizontal)
