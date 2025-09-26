@@ -88,10 +88,12 @@ struct ReportListView: View {
             .padding(.top, 2)
             
             // 텍스트 및 설명
-            VStack(alignment: .leading, spacing: 2) {
+            HStack {
                 Text(todo.title)
                     .typo(.textMDRegular)
                     .foregroundColor(isCompleted ? Color("BgLight") : Color("Cool100"))
+                
+                Spacer()
                 
                 if let comment = viewModel.timeDescription(for: todo), isCompleted {
                     Text(comment)
@@ -124,10 +126,12 @@ struct ReportListView: View {
             .padding(.top, 2)
             
             // 휴식 정보
-            VStack(alignment: .leading, spacing: 2) {
+            HStack {
                 Text("휴식")
                     .typo(.textMDRegular)
                     .foregroundColor(Color("Info200"))
+                
+                Spacer()
                 
                 Text(viewModel.breakDescription(for: breakSession))
                     .typo(.textSMEmphasized)

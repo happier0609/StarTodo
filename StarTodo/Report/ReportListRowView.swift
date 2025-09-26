@@ -14,7 +14,7 @@ enum ReportRowType {
     case breakSession(BreakSession)
 }
 
-struct ReportTimelineRowView: View {
+struct ReportListRowView: View {
     let type: ReportRowType
     let viewModel: ReportViewModel
 
