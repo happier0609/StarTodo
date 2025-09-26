@@ -9,12 +9,6 @@ import Foundation
 import SwiftUI
 import SwiftData
 
-// MARK: - 타임라인 아이템 타입
-enum TimelineItemType {
-    case todo(ReportItem)
-    case breakTime(BreakSession)
-}
-
 /// 집중 모드 종료 후 리포트 화면에서 사용하는 ViewModel (SwiftData 버전)
 @MainActor
 final class ReportViewModel: ObservableObject {
@@ -24,8 +18,8 @@ final class ReportViewModel: ObservableObject {
     // 전체 할 일 목록
     @Published var todos: [ReportItem] = []
     
-    // 타임라인용 통합 리스트 (할 일 + 휴식)
-    @Published var timelineItems: [TimelineItemType] = []
+    // 타임라인용 통합 리스트 (할 일 + 휴식) - ReportRowType 사용
+    @Published var timelineItems: [ReportRowType] = []
     
     // 완료/미완료 분리 리스트 (UI 편의용)
     @Published var completedTodos: [ReportItem] = []
@@ -76,18 +70,18 @@ final class ReportViewModel: ObservableObject {
         buildTimeline()
     }
     
-    // MARK: - 타임라인 빌드
+    // MARK: - 타임라인 빌드 (ReportRowType 사용)
     private func buildTimeline() {
-        var timeline: [TimelineItemType] = []
+        var timeline: [ReportRowType] = []
         
         // 완료된 할 일들을 타임라인에 추가
         for todo in completedTodos {
-            timeline.append(.todo(todo))
+            timeline.append(.completed(todo))
         }
         
         // 휴식 기록을 타임라인에 추가
         for breakSession in breaks {
-            timeline.append(.breakTime(breakSession))
+            timeline.append(.breakSession(breakSession))
         }
         
         // 시간순 정렬
@@ -96,16 +90,20 @@ final class ReportViewModel: ObservableObject {
             let date2: Date
             
             switch item1 {
-            case .todo(let item):
+            case .completed(let item):
                 date1 = item.performedDate ?? Date.distantPast
-            case .breakTime(let breakItem):
+            case .incompleted(let item):
+                date1 = item.performedDate ?? Date.distantPast
+            case .breakSession(let breakItem):
                 date1 = breakItem.end
             }
             
             switch item2 {
-            case .todo(let item):
+            case .completed(let item):
                 date2 = item.performedDate ?? Date.distantPast
-            case .breakTime(let breakItem):
+            case .incompleted(let item):
+                date2 = item.performedDate ?? Date.distantPast
+            case .breakSession(let breakItem):
                 date2 = breakItem.end
             }
             

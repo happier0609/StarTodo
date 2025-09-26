@@ -23,10 +23,12 @@ struct ReportListRowView: View {
             icon
                 .padding(.top, 2)
 
-            VStack(alignment: .leading, spacing: 2) {
+            HStack {
                 Text(title)
                     .typo(.textMDRegular)
                     .foregroundColor(titleColor)
+                
+                Spacer()
 
                 if let subtitle = subtitle {
                     Text(subtitle)
@@ -45,24 +47,20 @@ struct ReportListRowView: View {
         case .completed:
             return AnyView(Circle()
                 .fill(Color("App.White"))
-                .frame(width: 24, height: 24)
+                .frame(width: 20, height: 20)
                 .shadow(color: Color("App.White").opacity(0.8), radius: 6))
 
         case .incompleted:
             return AnyView(Circle()
                 .stroke(Color("Cool100"), lineWidth: 2)
-                .frame(width: 24, height: 24))
+                .frame(width: 20, height: 20))
 
         case .breakSession:
             return AnyView(
                 ZStack {
                     Circle()
-                        .fill(Color("Info200").opacity(0.2))
-                        .frame(width: 24, height: 24)
-                    Image(systemName: "pause.circle.fill")
-                        .resizable()
+                        .fill(Color.clear)
                         .frame(width: 20, height: 20)
-                        .foregroundColor(Color("Info200"))
                 }
             )
         }

@@ -24,31 +24,6 @@ struct ReportView: View {
             )
             .padding(.bottom)
             
-            // 휴식 정보 표시 (있을 경우)
-            if viewModel.breakCount > 0 {
-                HStack(spacing: 12) {
-                    Image(systemName: "pause.circle.fill")
-                        .foregroundColor(Color("Info200"))
-                    Text("휴식 \(viewModel.breakCount)회")
-                        .typo(.textMDRegular)
-                        .foregroundColor(Color("Info200"))
-                    Text("•")
-                        .foregroundColor(Color("Cool100"))
-                    Text("총 \(viewModel.totalBreakMinutes)분")
-                        .typo(.textMDRegular)
-                        .foregroundColor(Color("Cool100"))
-                    Spacer()
-                }
-                .padding(.horizontal)
-            }
-            
-            // (선택) 총 계획 대비 결과 코멘트가 있으면 노출
-            if let msg = viewModel.timeComparisonMessage {
-                Text(msg)
-                    .typo(.textSMEmphasized)
-                    .foregroundColor(Color("Info400"))
-            }
-            
             // ✅ 리스트 뷰 (타임라인 형식으로 업데이트)
             ReportListView(
                 timelineItems: viewModel.timelineItems,
