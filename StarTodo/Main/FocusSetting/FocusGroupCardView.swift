@@ -71,3 +71,46 @@ struct FocusGroupCardView: View {
         .padding(.vertical, 4)
     }
 }
+
+#Preview {
+    let parent = Todo(
+        id: UUID(),
+        title: "상위 할일",
+        isCompleted: false,
+        createdAt: Date(),
+        order: 0
+    )
+
+    let children = [
+        Todo(
+            id: UUID(),
+            title: "하위 할일 1",
+            isCompleted: false,
+            createdAt: Date(),
+            order: 1,
+            parent: parent
+        ),
+        Todo(
+            id: UUID(),
+            title: "하위 할일 2",
+            isCompleted: true,
+            createdAt: Date(),
+            order: 2,
+            parent: parent
+        )
+    ]
+    
+    FocusGroupCardView(
+        parent: parent,
+        children: children,
+        isExpanded: true,
+        selectedChildCount: 1,
+        totalChildCount: 2,
+        isSelected: true,
+        onToggleExpand: {},
+        onParentTap: {},
+        onChildTap: { _ in }
+    )
+    .padding()
+    .background(Color.gray.opacity(0.1))
+}
