@@ -83,7 +83,3 @@ struct FocusSettingView: View {
     }
 }
 
-#Preview {
-    FocusSettingView()
-        .environmentObject(MainCoordinator.preview())
-}

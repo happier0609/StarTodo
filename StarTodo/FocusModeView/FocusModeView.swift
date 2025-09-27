@@ -117,11 +117,3 @@ struct FocusModeView: View {
     }
 }
 
-#Preview {
-    let context = try! ModelContainer(for: FocusSession.self).mainContext
-    let input = FocusTodoInput(todoIDPairs: [
-        (UUID(), 25), (UUID(), 0) // 두 번째는 시간 없음
-    ])
-    return FocusModeView(input: input)
-        .environmentObject(MainCoordinator.preview())
-}

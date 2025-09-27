@@ -57,7 +57,3 @@ struct MainView: View {
     }
 }
 
-#Preview {
-    MainView()
-        .environmentObject(MainCoordinator.preview())
-}

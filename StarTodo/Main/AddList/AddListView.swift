@@ -124,7 +124,3 @@ struct AddListView: View {
     }
 }
 
-#Preview {
-    AddListView()
-        .environmentObject(MainCoordinator.preview())
-}
