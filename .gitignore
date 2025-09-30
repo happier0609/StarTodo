@@ -1,0 +1,29 @@
+# Xcode workspace user settings
+*.xcuserstate
+*.xcuserdata/
+
+# Derived data
+DerivedData/
+
+# Build products
+build/
+*.o
+*.swiftmodule
+*.swiftdoc
+
+# CocoaPods
+Pods/
+
+# Swift Package Manager
+.build/
+
+# Carthage
+Carthage/Build/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+
+# Misc
+.DS_Store

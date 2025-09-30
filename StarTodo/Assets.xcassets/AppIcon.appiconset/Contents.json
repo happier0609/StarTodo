@@ -1,6 +1,7 @@
 {
   "images" : [
     {
+      "filename" : "StarTodoIcon.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"
@@ -73,11 +74,6 @@
       "idiom" : "ios-marketing",
       "scale" : "1x",
       "size" : "1024x1024"
-    },
-    {
-      "filename" : "_App Icon Options.png",
-      "idiom" : "universal",
-      "scale" : "1x"
     }
   ],
   "info" : {

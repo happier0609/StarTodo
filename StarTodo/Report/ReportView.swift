@@ -41,8 +41,13 @@ struct ReportView: View {
             
             // ✅ 완료 버튼
             Button {
-                viewModel.finalizeSession()   // 1. 세션 종료 처리
-                coordinator.popToRoot()       // 2. 홈으로 이동
+                viewModel.finalizeSession()
+                
+                // 1. fullscreen 닫기
+                coordinator.dismissFullScreen()
+                
+                // 2. NavigationStack 초기화 (루트로 이동)
+                coordinator.popToRoot()
             } label: {
                 Text("완료하기")
                     .typo(.textMDEmphasized)
@@ -65,67 +70,3 @@ struct ReportView: View {
     }
 }
 
-#Preview {
-    do {
-        let context = try defaultContext
-
-        // 1. 더미 FocusSession 생성
-        let dummySession = FocusSession(
-            startedAt: .now.addingTimeInterval(-3600),
-            endedAt: .now,
-            totalBreakSeconds: 600
-        )
-        
-        // 더미 아이템 추가
-        let item1 = FocusItem(
-            title: "완료한 작업 1",
-            setSeconds: 1200,
-            elapsedSeconds: 1300,
-            isCompleted: true,
-            order: 0
-        )
-        let item2 = FocusItem(
-            title: "완료한 작업 2",
-            setSeconds: 900,
-            elapsedSeconds: 850,
-            isCompleted: true,
-            order: 1
-        )
-        let item3 = FocusItem(
-            title: "미완료 작업",
-            setSeconds: 600,
-            elapsedSeconds: 0,
-            isCompleted: false,
-            order: 2
-        )
-        dummySession.items = [item1, item2, item3]
-        
-        // 더미 휴식 추가
-        let break1 = BreakSession(
-            start: .now.addingTimeInterval(-2400),
-            end: .now.addingTimeInterval(-2100),
-            isOverdue: false
-        )
-        let break2 = BreakSession(
-            start: .now.addingTimeInterval(-1200),
-            end: .now.addingTimeInterval(-900),
-            isOverdue: true
-        )
-        dummySession.breaks = [break1, break2]
-        
-        context.insert(dummySession)
-
-        // 2. ID 추출
-        let id = dummySession.persistentModelID
-
-        return ReportView(
-            viewModel: ReportViewModel(sessionID: id),
-            onComplete: {}
-        )
-        .environmentObject(MainCoordinator.preview())
-        
-    } catch {
-        // 에러 발생 시 Text View 반환
-        return Text("프리뷰 실패: \(error.localizedDescription)")
-    }
-}
