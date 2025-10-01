@@ -14,7 +14,8 @@ struct FocusSettingView: View {
     @EnvironmentObject var mainVM: MainViewModel
     @EnvironmentObject var coordinator: MainCoordinator
     
-    @Environment(\.modelContext) private var context   // ✅ SwiftData ModelContext 주입
+    @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase // 앱 상태 감지
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -24,7 +25,9 @@ struct FocusSettingView: View {
                 } else {
                     VStack(spacing: 16) {
                         ForEach(focusSettingVM.focusParents) { parent in
-                            let children = parent.children.sorted(by: { $0.order < $1.order })
+                            let children = parent.children
+                                .filter { !$0.isCompleted } // ✨ 완료된 자식 제외
+                                .sorted(by: { $0.order < $1.order })
                             let selectedCount = children.filter { focusSettingVM.isSelected($0.id) }.count
 
                             FocusGroupCardView(
@@ -65,21 +68,28 @@ struct FocusSettingView: View {
             )
             .padding(.bottom, 24)
         }
-        // ✨ 핵심: View가 나타날 때마다 데이터 fetch (AddListView 패턴 적용)
+        // ✨ 뷰가 나타날 때마다 데이터 로드
         .onAppear {
             print("🔄 FocusSettingView onAppear - 데이터 로딩 시작")
             focusSettingVM.fetchUncompletedParents(with: context)
+            focusSettingVM.clearSelections() // 선택 상태 초기화
         }
-        // ✨ ScenePhase 변화 감지 (백그라운드에서 돌아올 때도 갱신)
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-            print("🔄 FocusSettingView willEnterForeground - 데이터 갱신")
+        // ✨ ScenePhase 변경 감지 (백그라운드에서 돌아올 때)
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                print("🔄 FocusSettingView ScenePhase Active - 데이터 갱신")
+                focusSettingVM.fetchUncompletedParents(with: context)
+            }
+        }
+        // ✨ 네비게이션으로 돌아올 때 추가 감지
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            print("🔄 FocusSettingView didBecomeActive - 데이터 갱신")
             focusSettingVM.fetchUncompletedParents(with: context)
         }
-        // ✨ 추가: Todo 완료 상태 변경을 감지하기 위한 알림 (선택사항)
+        // ✨ Todo 완료 상태 변경 감지
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TodoCompletionChanged"))) { _ in
             print("🔄 FocusSettingView TodoCompletionChanged - 데이터 갱신")
             focusSettingVM.fetchUncompletedParents(with: context)
         }
     }
 }
-
