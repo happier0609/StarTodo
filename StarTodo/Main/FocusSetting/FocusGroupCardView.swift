@@ -27,16 +27,21 @@ struct FocusGroupCardView: View {
     }
     
     var isGroupSelected: Bool {
-        isParentSelected || selectedChildCount > 0
+        // ✨ 자식이 없는 부모는 자신의 선택 상태로, 자식이 있으면 자식의 선택 상태로 판단
+        if parent.children.isEmpty {
+            return isParentSelected
+        } else {
+            return selectedChildCount > 0
+        }
     }
     
     var body: some View {
         ZStack(alignment: .top) {
             RoundedRectangle(cornerRadius: 12)
-                .fill(isSelected ? Color("Primary100") : Color("App.White"))
+                .fill(isGroupSelected ? Color("Primary100") : Color("App.White"))
                 .overlay(
                     RoundedRectangle(cornerRadius: 12)
-                        .stroke(isSelected ? Color("Primary500") : Color.clear, lineWidth: 1.3)
+                        .stroke(isGroupSelected ? Color("Primary500") : Color.clear, lineWidth: 1.3)
                 )
             
             VStack(spacing: 0) {
@@ -45,13 +50,12 @@ struct FocusGroupCardView: View {
                     selectedChildCount: selectedChildCount,
                     totalChildCount: totalChildCount,
                     isExpanded: isExpanded,
-                    isSelected: isSelected,
+                    isSelected: isGroupSelected,  // ✨ isSelected → isGroupSelected로 변경
                     onToggleExpand: onToggleExpand,
                     onParentTap: onParentTap
                 )
-//                .padding(.bottom, isExpanded && !children.isEmpty ? 12 : 0)
                 
-                if isExpanded {
+                if isExpanded && !children.isEmpty {
                     VStack(spacing: 10) {
                         ForEach(children, id: \.id) { child in
                             FocusItemRowView(todo: child, isChild: true)

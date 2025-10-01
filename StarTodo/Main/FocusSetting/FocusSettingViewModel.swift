@@ -69,7 +69,7 @@ final class FocusSettingViewModel: ObservableObject {
     // MARK: - ✨ 완료되지 않은 할 일 불러오기 (AddListViewModel 패턴 적용)
     func fetchUncompletedParents(with context: ModelContext) {
         do {
-            // SwiftData에서는 정렬을 직접 처리하는 것이 더 안정적
+            // ✨ 완료되지 않은 부모 항목만 가져오기
             let descriptor = FetchDescriptor<Todo>(
                 predicate: #Predicate { todo in
                     todo.parent == nil && !todo.isCompleted
@@ -77,22 +77,39 @@ final class FocusSettingViewModel: ObservableObject {
             )
             let fetchedTodos = try context.fetch(descriptor)
             
+            // ✨ 완료되지 않은 자식이 하나라도 있거나, 자식이 없는 부모만 필터링
+            let parentsToShow = fetchedTodos.filter { parent in
+                // 자식이 없거나, 완료되지 않은 자식이 있는 경우만 포함
+                parent.children.isEmpty || parent.children.contains { !$0.isCompleted }
+            }
+            
             // 수동으로 정렬 적용 (AddListViewModel과 동일한 로직)
-            focusParents = fetchedTodos.sorted { a, b in
-                // 1. 완료 여부 (미완료가 먼저) - 이미 !isCompleted로 필터링했으므로 생략 가능
-                // 2. order 순서
+            focusParents = parentsToShow.sorted { a, b in
+                // 1. order 순서
                 if a.order != b.order {
                     return a.order < b.order
                 }
-                // 3. 생성 시간
+                // 2. 생성 시간
                 return a.createdAt < b.createdAt
             }
             
             print("✅ FocusSettingViewModel: \(focusParents.count)개의 미완료 부모 할 일을 불러왔습니다.")
             
+            // ✨ 선택 상태 정리 - 완료된 항목이 선택되어 있다면 제거
+            cleanupCompletedSelections()
+            
         } catch {
             print("❌ FocusSettingViewModel fetch 실패: \(error.localizedDescription)")
             focusParents = []
+        }
+    }
+    
+    // MARK: - ✨ 완료된 항목 선택 상태 정리
+    private func cleanupCompletedSelections() {
+        // 선택된 Todo 중 완료된 것들 제거
+        selectedTodos.removeAll { $0.isCompleted }
+        selectedIDs.removeAll { id in
+            selectedTodos.allSatisfy { $0.id != id }
         }
     }
 
@@ -114,30 +131,56 @@ final class FocusSettingViewModel: ObservableObject {
 
     /// 할 일을 선택하거나 해제하는 함수 (부모는 자식과 함께 처리)
     func toggleSelection(of todo: Todo) {
+        // ✨ 완료된 항목은 선택 불가
+        if todo.isCompleted {
+            print("⚠️ 완료된 항목은 선택할 수 없습니다: \(todo.title)")
+            return
+        }
+        
         if todo.parent == nil {
-            // 부모 할 일인 경우: 자식들과 함께 토글
             let isCurrentlySelected = isSelected(todo)
-            let allChildren = todo.children
             
-            if isCurrentlySelected {
-                // 부모와 모든 자식 선택 해제
-                selectedIDs.removeAll { id in
-                    id == todo.id || allChildren.contains { $0.id == id }
+            // ✨ 자식이 없는 부모의 경우: 부모만 토글
+            if todo.children.isEmpty {
+                if isCurrentlySelected {
+                    // 부모 선택 해제
+                    selectedIDs.removeAll { $0 == todo.id }
+                    selectedTodos.removeAll { $0.id == todo.id }
+                } else {
+                    // 부모 선택
+                    if !selectedIDs.contains(todo.id) {
+                        selectedIDs.append(todo.id)
+                    }
+                    if !selectedTodos.contains(where: { $0.id == todo.id }) {
+                        selectedTodos.append(todo)
+                    }
                 }
-                selectedTodos.removeAll { selectedTodo in
-                    selectedTodo.id == todo.id || allChildren.contains { $0.id == selectedTodo.id }
-                }
-            } else {
-                // 부모와 모든 자식 선택
-                let newIDs = [todo.id] + allChildren.map(\.id)
-                let newTodos = [todo] + allChildren
+            }
+            // ✨ 자식이 있는 부모의 경우: 자식들만 토글
+            else {
+                let uncompletedChildren = todo.children.filter { !$0.isCompleted }
                 
-                // 중복 제거하면서 추가
-                for id in newIDs where !selectedIDs.contains(id) {
-                    selectedIDs.append(id)
-                }
-                for newTodo in newTodos where !selectedTodos.contains(where: { $0.id == newTodo.id }) {
-                    selectedTodos.append(newTodo)
+                // 모든 미완료 자식이 선택되어 있는지 확인
+                let allChildrenSelected = uncompletedChildren.allSatisfy { isSelected($0.id) }
+                
+                if allChildrenSelected {
+                    // 모든 자식 선택 해제
+                    selectedIDs.removeAll { id in
+                        uncompletedChildren.contains { $0.id == id }
+                    }
+                    selectedTodos.removeAll { selectedTodo in
+                        uncompletedChildren.contains { $0.id == selectedTodo.id }
+                    }
+                } else {
+                    // 모든 미완료 자식 선택
+                    for child in uncompletedChildren {
+                        if !selectedIDs.contains(child.id) {
+                            selectedIDs.append(child.id)
+                        }
+                        if !selectedTodos.contains(where: { $0.id == child.id }) {
+                            selectedTodos.append(child)
+                        }
+                    }
                 }
             }
         } else {
@@ -150,6 +193,7 @@ final class FocusSettingViewModel: ObservableObject {
     func clearSelections() {
         selectedTodos.removeAll()
         selectedIDs.removeAll()
+        timeSettings.removeAll() // 시간 설정도 초기화
     }
 
     
@@ -157,18 +201,36 @@ final class FocusSettingViewModel: ObservableObject {
 
     /// 부모 할 일을 선택하거나 해제할 때, 자식 항목도 함께 처리
     func toggleParentSelection(_ parent: Todo, _ select: Bool) {
-        let ids = [parent.id] + parent.children.map(\.id)
-
-        if select {
-            // 선택
-            selectedIDs = Array(Set(selectedIDs + ids)) // 중복 방지
-            for t in [parent] + parent.children where !selectedTodos.contains(where: { $0.id == t.id }) {
-                selectedTodos.append(t)
+        // ✨ 자식이 없는 부모는 자신만, 자식이 있으면 자식들만 처리
+        if parent.children.isEmpty {
+            // 자식이 없는 부모: 자신만 처리
+            if select {
+                if !selectedIDs.contains(parent.id) {
+                    selectedIDs.append(parent.id)
+                }
+                if !selectedTodos.contains(where: { $0.id == parent.id }) {
+                    selectedTodos.append(parent)
+                }
+            } else {
+                selectedIDs.removeAll { $0 == parent.id }
+                selectedTodos.removeAll { $0.id == parent.id }
             }
         } else {
-            // 선택 해제
-            selectedIDs.removeAll { ids.contains($0) }
-            selectedTodos.removeAll { ids.contains($0.id) }
+            // 자식이 있는 부모: 완료되지 않은 자식들만 처리
+            let uncompletedChildren = parent.children.filter { !$0.isCompleted }
+            let ids = uncompletedChildren.map(\.id)
+            
+            if select {
+                // 선택
+                selectedIDs = Array(Set(selectedIDs + ids)) // 중복 방지
+                for child in uncompletedChildren where !selectedTodos.contains(where: { $0.id == child.id }) {
+                    selectedTodos.append(child)
+                }
+            } else {
+                // 선택 해제
+                selectedIDs.removeAll { ids.contains($0) }
+                selectedTodos.removeAll { ids.contains($0.id) }
+            }
         }
     }
 
@@ -177,6 +239,12 @@ final class FocusSettingViewModel: ObservableObject {
 
     /// 자식 할 일을 선택하거나 해제하는 함수
     func toggleChildSelection(_ child: Todo, _ select: Bool) {
+        // ✨ 완료된 자식은 선택 불가
+        if child.isCompleted {
+            print("⚠️ 완료된 자식 항목은 선택할 수 없습니다: \(child.title)")
+            return
+        }
+        
         if select {
             if !selectedIDs.contains(child.id) { selectedIDs.append(child.id) }
             if !selectedTodos.contains(where: { $0.id == child.id }) { selectedTodos.append(child) }
@@ -200,15 +268,28 @@ final class FocusSettingViewModel: ObservableObject {
     }
 
     
-    // MARK: - 🆕 선택된 자식 항목만 반환하는 함수
+    // MARK: - 🆕 선택된 항목 반환하는 함수
 
-    /// ✅ 부모 항목들로부터 선택된 자식 할 일만 모아 리턴하는 함수
+    /// ✅ 부모 항목들로부터 선택된 모든 할 일(부모+자식)을 모아 리턴하는 함수
     /// - 파라미터: 상위 할 일 목록 (focusParents)
-    /// - 리턴: 선택된 자식 할 일들의 배열
+    /// - 리턴: 선택된 할 일들의 배열 (부모와 자식 모두 포함)
     func pickedTodos(from parents: [Todo]) -> [Todo] {
-        parents.flatMap { parent in
-            parent.children.filter { isSelected($0.id) }
+        var result: [Todo] = []
+        
+        for parent in parents {
+            // 1. 부모가 선택되었고 자식이 없는 경우: 부모만 추가
+            if isSelected(parent.id) && parent.children.isEmpty {
+                result.append(parent)
+            }
+            // 2. 자식이 있는 경우: 선택된 자식들만 추가
+            else {
+                let selectedChildren = parent.children
+                    .filter { !$0.isCompleted && isSelected($0.id) }
+                result.append(contentsOf: selectedChildren)
+            }
         }
+        
+        return result
     }
 
     
