@@ -90,6 +90,14 @@ final class AddListViewModel: ObservableObject {
             return parent
         }
     }
+    
+    // MARK: - 표시 가능한 자식 Todo 필터링
+    /// 완료 기준 시간을 고려하여 표시할 자식 Todo만 반환
+    /// - Parameter parent: 부모 Todo
+    /// - Returns: 표시 가능한 자식 Todo 배열
+    func getVisibleChildren(of parent: Todo) -> [Todo] {
+        parent.children.filter { shouldShowCompletedTodo($0) }
+    }
 
     /// 할 일 정렬 기준: 완료여부 → order → 생성시간
     private func sortingRule(a: Todo, b: Todo) -> Bool {
