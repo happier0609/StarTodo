@@ -77,12 +77,12 @@ struct AddListView: View {
             .presentationDragIndicator(.visible)
         }
         .alert("정말 삭제할까요?", isPresented: $viewModel.showAlert, presenting: viewModel.parentToDelete) { parent in
+            Button("취소", role: .cancel) { }
             Button("삭제", role: .destructive) {
                 viewModel.delete(parent: parent, in: context)
             }
-            Button("취소", role: .cancel) { }
         } message: { parent in
-            Text("\"\(parent.title)\"과 관련된 모든 할 일이 함께 삭제됩니다.")
+            Text("\"\(parent.title)\"의 하위 항목 \(parent.children.count)개도 함께 삭제됩니다.")
         }
     }
 
@@ -103,33 +103,112 @@ struct AddListView: View {
                 // ViewModel에서 표시 가능한 자식 가져오기
                 let visibleChildren = viewModel.getVisibleChildren(of: parent)
                 
-                TodoGroupCardView(
-                    parent: parent,
-                    children: visibleChildren.sorted(by: { $0.order < $1.order }),
-                    onToggle: { todo in
-                        todo.isCompleted.toggle()
-                        if todo.isCompleted {
-                            todo.performedDate = Date()
+                SwipeableCardContainer(
+                    onDelete: {
+                        // 자식이 있으면 알럿 표시, 없으면 바로 삭제
+                        if !parent.children.isEmpty {
+                            viewModel.showDeleteAlert(for: parent)
                         } else {
-                            todo.performedDate = nil
+                            viewModel.delete(parent: parent, in: context)
                         }
-                        
-                        do {
-                            try context.save()
-                            // ✨ 완료 상태 변경 시에도 목록 갱신
-                            viewModel.fetchParents(with: context)
-                        } catch {
-                            print("❌ 완료 상태 저장 실패: \(error.localizedDescription)")
-                        }
-                    },
-                    onLongPressEdit: { _ in
-                        viewModel.editingParent = parent
-                        viewModel.showModal = true
                     }
-                )
-                .contentShape(Rectangle())
+                ) {
+                    TodoGroupCardView(
+                        parent: parent,
+                        children: visibleChildren.sorted(by: { $0.order < $1.order }),
+                        onToggle: { todo in
+                            todo.isCompleted.toggle()
+                            if todo.isCompleted {
+                                todo.performedDate = Date()
+                            } else {
+                                todo.performedDate = nil
+                            }
+                            
+                            do {
+                                try context.save()
+                                // ✨ 완료 상태 변경 시에도 목록 갱신
+                                viewModel.fetchParents(with: context)
+                            } catch {
+                                print("❌ 완료 상태 저장 실패: \(error.localizedDescription)")
+                            }
+                        },
+                        onLongPressEdit: { _ in
+                            viewModel.editingParent = parent
+                            viewModel.showModal = true
+                        }
+                    )
+                }
             }
         }
         .padding(.horizontal)
+    }
+}
+
+// MARK: - Swipeable Card Container
+struct SwipeableCardContainer<Content: View>: View {
+    @State private var offset: CGFloat = 0
+    @State private var isDeletingIconVisible = false
+    
+    let onDelete: () -> Void
+    let content: Content
+    
+    init(onDelete: @escaping () -> Void, @ViewBuilder content: () -> Content) {
+        self.onDelete = onDelete
+        self.content = content()
+    }
+    
+    var body: some View {
+        ZStack {
+            // 삭제 버튼 배경
+            HStack {
+                Spacer()
+                
+                Button(action: onDelete) {
+                    VStack {
+                        Image(systemName: "trash")
+                            .font(.title2)
+                            .foregroundColor(.white)
+                        Text("삭제")
+                            .font(.caption)
+                            .foregroundColor(.white)
+                    }
+                    .frame(width: 80)
+                }
+                .opacity(isDeletingIconVisible ? 1 : 0)
+            }
+            .frame(height: .infinity)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.red)
+                    .opacity(isDeletingIconVisible ? 1 : 0)
+            )
+            
+            // 실제 카드 콘텐츠
+            content
+                .offset(x: offset)
+                .gesture(
+                    DragGesture()
+                        .onChanged { value in
+                            // 왼쪽으로만 스와이프 가능
+                            if value.translation.width < 0 {
+                                offset = value.translation.width
+                                isDeletingIconVisible = offset < -50
+                            }
+                        }
+                        .onEnded { value in
+                            withAnimation(.spring()) {
+                                // 충분히 스와이프했으면 삭제 버튼 표시
+                                if value.translation.width < -100 {
+                                    offset = -80
+                                    isDeletingIconVisible = true
+                                } else {
+                                    // 원위치로 복귀
+                                    offset = 0
+                                    isDeletingIconVisible = false
+                                }
+                            }
+                        }
+                )
+        }
     }
 }
