@@ -164,10 +164,18 @@ final class AddListViewModel: ObservableObject {
 
     // MARK: - 삭제 수행
     func delete(parent: Todo, in context: ModelContext) {
+        // 자식 Todo들도 함께 삭제 (SwiftData의 cascade 삭제가 작동하지 않을 경우를 대비)
+        for child in parent.children {
+            context.delete(child)
+        }
+        
+        // 부모 Todo 삭제
         context.delete(parent)
+        
         do {
             try context.save()
             fetchParents(with: context) // 삭제 후 목록 갱신
+            print("✅ Todo '\(parent.title)' 및 하위 항목 \(parent.children.count)개 삭제 완료")
         } catch {
             print("❌ 삭제 저장 실패: \(error.localizedDescription)")
         }
