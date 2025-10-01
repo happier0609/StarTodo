@@ -11,6 +11,9 @@ import SwiftData
 struct AddListView: View {
     @Environment(\.modelContext) private var context
     @StateObject private var viewModel = AddListViewModel()
+    
+    // 타이머 추가 - 매분마다 UI 갱신을 위해
+    @State private var timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -60,6 +63,10 @@ struct AddListView: View {
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
             viewModel.fetchParents(with: context)
         }
+        // ✨ 매분마다 UI 갱신 (새벽 5시 자동 갱신용)
+        .onReceive(timer) { _ in
+            viewModel.fetchParents(with: context)
+        }
         .sheet(isPresented: $viewModel.showModal) {
             AddTaskModalView(
                 isPresented: $viewModel.showModal,
@@ -93,9 +100,12 @@ struct AddListView: View {
     private func todoSection(for list: [Todo]) -> some View {
         VStack(spacing: 16) {
             ForEach(list) { parent in
+                // ViewModel에서 표시 가능한 자식 가져오기
+                let visibleChildren = viewModel.getVisibleChildren(of: parent)
+                
                 TodoGroupCardView(
                     parent: parent,
-                    children: parent.children.sorted(by: { $0.order < $1.order }),
+                    children: visibleChildren.sorted(by: { $0.order < $1.order }),
                     onToggle: { todo in
                         todo.isCompleted.toggle()
                         if todo.isCompleted {
@@ -123,4 +133,3 @@ struct AddListView: View {
         .padding(.horizontal)
     }
 }
-
