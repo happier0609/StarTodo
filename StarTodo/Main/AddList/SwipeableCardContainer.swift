@@ -22,7 +22,7 @@ struct SwipeableCardContainer<Content: View>: View {
     /// 스와이프 임계값 설정
     private let deleteThreshold: CGFloat = -100
     private let showIconThreshold: CGFloat = -50
-    private let deleteButtonWidth: CGFloat = 80
+    private let deleteButtonWidth: CGFloat = 58
     
     init(onDelete: @escaping () -> Void, @ViewBuilder content: () -> Content) {
         self.onDelete = onDelete
@@ -30,7 +30,7 @@ struct SwipeableCardContainer<Content: View>: View {
     }
     
     var body: some View {
-        ZStack {
+        ZStack(alignment: .trailing) {
             deleteButtonBackground
             cardContent
         }
@@ -38,29 +38,23 @@ struct SwipeableCardContainer<Content: View>: View {
     
     // MARK: - Delete Button Background
     private var deleteButtonBackground: some View {
-        HStack {
-            Spacer()
-            
-            Button(action: onDelete) {
-                VStack(spacing: 4) {
-                    Image(systemName: "trash")
-                        .font(.title2)
-                        .foregroundColor(.white)
-                    Text("삭제")
-                        .font(.caption)
-                        .foregroundColor(.white)
-                }
-                .frame(width: deleteButtonWidth)
+        Button(action: onDelete) {
+            VStack {
+                Spacer()
+                Image(systemName: "trash")
+                    .font(.title2)
+                    .foregroundColor(Color("Danger300"))
+                Spacer()
             }
-            .opacity(isDeletingIconVisible ? 1 : 0)
-            .animation(.easeInOut(duration: 0.2), value: isDeletingIconVisible)
+            .frame(width: deleteButtonWidth)
+            .frame(maxHeight: .infinity)
         }
-        .frame(height: .infinity)
         .background(
             RoundedRectangle(cornerRadius: 12)
-                .fill(Color.red)
-                .opacity(isDeletingIconVisible ? 1 : 0)
+                .fill(Color("Danger100"))
         )
+        .opacity(isDeletingIconVisible ? 1 : 0)
+        .animation(.easeInOut(duration: 0.2), value: isDeletingIconVisible)
     }
     
     // MARK: - Card Content with Gesture
