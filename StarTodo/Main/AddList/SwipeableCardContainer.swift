@@ -38,23 +38,29 @@ struct SwipeableCardContainer<Content: View>: View {
     
     // MARK: - Delete Button Background
     private var deleteButtonBackground: some View {
-        Button(action: onDelete) {
-            VStack {
-                Spacer()
-                Image(systemName: "trash")
-                    .font(.title2)
-                    .foregroundColor(Color("Danger300"))
-                Spacer()
+        HStack(spacing: 0) {
+            Spacer()
+                .frame(width: 15) // 카드와 삭제 버튼 사이 padding
+            
+            Button(action: onDelete) {
+                VStack {
+                    Spacer()
+                    Image(systemName: "trash")
+                        .font(.title2)
+                        .foregroundColor(Color("Danger300"))
+                    Spacer()
+                }
+                .frame(width: deleteButtonWidth)
+                .frame(maxHeight: .infinity)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color("Danger100"))
+                )
             }
-            .frame(width: deleteButtonWidth)
-            .frame(maxHeight: .infinity)
         }
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(Color("Danger100"))
-        )
         .opacity(isDeletingIconVisible ? 1 : 0)
         .animation(.easeInOut(duration: 0.2), value: isDeletingIconVisible)
+        .allowsHitTesting(isDeletingIconVisible) // 보이지 않을 때는 터치 비활성화
     }
     
     // MARK: - Card Content with Gesture
@@ -70,18 +76,18 @@ struct SwipeableCardContainer<Content: View>: View {
     
     // MARK: - Gesture Handlers
     private func handleDragChange(_ value: DragGesture.Value) {
-        // 왼쪽으로만 스와이프 가능
+        // 왼쪽으로만 스와이프 가능, 최대값 제한
         if value.translation.width < 0 {
-            offset = value.translation.width
+            offset = max(value.translation.width, -200) // 최대 -200까지만 이동
             isDeletingIconVisible = offset < showIconThreshold
         }
     }
     
     private func handleDragEnd(_ value: DragGesture.Value) {
-        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
+        withAnimation(.easeInOut(duration: 0.3)) { // spring 대신 easeInOut 사용
             // 충분히 스와이프했으면 삭제 버튼 표시
             if value.translation.width < deleteThreshold {
-                offset = -deleteButtonWidth
+                offset = -(deleteButtonWidth + 15) // padding 15 추가
                 isDeletingIconVisible = true
             } else {
                 // 원위치로 복귀
