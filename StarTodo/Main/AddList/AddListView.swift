@@ -11,74 +11,92 @@ import SwiftData
 struct AddListView: View {
     @Environment(\.modelContext) private var context
     @StateObject private var viewModel = AddListViewModel()
+    
+    // 타이머 추가 - 매분마다 UI 갱신을 위해
+    @State private var timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
-            if viewModel.parents.isEmpty {
-                AddListEmptyView()
-            } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 24) {
-                        if !viewModel.todayParents.isEmpty {
-                            Text("오늘 추가됨")
-                                .typo(.captionMDRegular)
-                                .foregroundColor(Color("Cool300"))
-                                .padding(.horizontal)
-
-                            todoSection(for: viewModel.todayParents)
-                        }
-
-                        if !viewModel.previousParents.isEmpty {
-                            Text("이전에 추가됨")
-                                .typo(.captionMDRegular)
-                                .foregroundColor(Color("Cool300"))
-                                .padding(.horizontal)
-
-                            todoSection(for: viewModel.previousParents)
-                        }
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.top)
-                }
-
-                // 하단 리셋 문구
-                Text("오늘 완료한 일은 매일 오전 5시에 리셋됩니다.")
-                    .typo(.captionMDRegular)
-                    .foregroundColor(Color("Cool300"))
-                    .multilineTextAlignment(.center)
-                    .frame(maxWidth: .infinity)
-                    .padding(.bottom, 80)
-            }
-
+            mainContent
             addButton
         }
-        // ✨ 핵심: View가 나타날 때마다 데이터 fetch
-        .onAppear {
-            viewModel.fetchParents(with: context)
-        }
-        // ✨ ScenePhase 변화 감지 (백그라운드에서 돌아올 때도 갱신)
+        .onAppear { refreshData() }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-            viewModel.fetchParents(with: context)
+            refreshData()
         }
+        .onReceive(timer) { _ in refreshData() }
         .sheet(isPresented: $viewModel.showModal) {
-            AddTaskModalView(
-                isPresented: $viewModel.showModal,
-                editingParent: viewModel.editingParent
-            )
-            .environmentObject(viewModel)
-            .presentationDetents([.medium, .large])
-            .presentationDragIndicator(.visible)
+            addTaskModalSheet
         }
         .alert("정말 삭제할까요?", isPresented: $viewModel.showAlert, presenting: viewModel.parentToDelete) { parent in
-            Button("삭제", role: .destructive) {
-                viewModel.delete(parent: parent, in: context)
-            }
-            Button("취소", role: .cancel) { }
+            deleteAlertButtons(for: parent)
         } message: { parent in
-            Text("\"\(parent.title)\"과 관련된 모든 할 일이 함께 삭제됩니다.")
+            deleteAlertMessage(for: parent)
         }
     }
-
+    
+    // MARK: - Main Content
+    @ViewBuilder
+    private var mainContent: some View {
+        if viewModel.parents.isEmpty {
+            AddListEmptyView()
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    todaySection
+                    previousSection
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.top)
+                
+                resetInfoText
+            }
+        }
+    }
+    
+    // MARK: - Today Section
+    @ViewBuilder
+    private var todaySection: some View {
+        if !viewModel.todayParents.isEmpty {
+            sectionHeader(title: "오늘 추가됨")
+            TodoSectionView(
+                todos: viewModel.todayParents,
+                viewModel: viewModel
+            )
+        }
+    }
+    
+    // MARK: - Previous Section
+    @ViewBuilder
+    private var previousSection: some View {
+        if !viewModel.previousParents.isEmpty {
+            sectionHeader(title: "이전에 추가됨")
+            TodoSectionView(
+                todos: viewModel.previousParents,
+                viewModel: viewModel
+            )
+        }
+    }
+    
+    // MARK: - Section Header
+    private func sectionHeader(title: String) -> some View {
+        Text(title)
+            .typo(.captionMDRegular)
+            .foregroundColor(Color("Cool300"))
+            .padding(.horizontal)
+    }
+    
+    // MARK: - Reset Info Text
+    private var resetInfoText: some View {
+        Text("오늘 완료한 일은 매일 오전 5시에 리셋됩니다.")
+            .typo(.captionMDRegular)
+            .foregroundColor(Color("Cool300"))
+            .multilineTextAlignment(.center)
+            .frame(maxWidth: .infinity)
+            .padding(.bottom, 80)
+    }
+    
+    // MARK: - Add Button
     private var addButton: some View {
         Button {
             viewModel.editingParent = nil
@@ -88,39 +106,34 @@ struct AddListView: View {
                 .padding()
         }
     }
-
+    
+    // MARK: - Add Task Modal Sheet
+    private var addTaskModalSheet: some View {
+        AddTaskModalView(
+            isPresented: $viewModel.showModal,
+            editingParent: viewModel.editingParent
+        )
+        .environmentObject(viewModel)
+        .presentationDetents([.medium, .large])
+        .presentationDragIndicator(.visible)
+    }
+    
+    // MARK: - Delete Alert Buttons
     @ViewBuilder
-    private func todoSection(for list: [Todo]) -> some View {
-        VStack(spacing: 16) {
-            ForEach(list) { parent in
-                TodoGroupCardView(
-                    parent: parent,
-                    children: parent.children.sorted(by: { $0.order < $1.order }),
-                    onToggle: { todo in
-                        todo.isCompleted.toggle()
-                        if todo.isCompleted {
-                            todo.performedDate = Date()
-                        } else {
-                            todo.performedDate = nil
-                        }
-                        
-                        do {
-                            try context.save()
-                            // ✨ 완료 상태 변경 시에도 목록 갱신
-                            viewModel.fetchParents(with: context)
-                        } catch {
-                            print("❌ 완료 상태 저장 실패: \(error.localizedDescription)")
-                        }
-                    },
-                    onLongPressEdit: { _ in
-                        viewModel.editingParent = parent
-                        viewModel.showModal = true
-                    }
-                )
-                .contentShape(Rectangle())
-            }
+    private func deleteAlertButtons(for parent: Todo) -> some View {
+        Button("취소", role: .cancel) { }
+        Button("삭제", role: .destructive) {
+            viewModel.delete(parent: parent, in: context)
         }
-        .padding(.horizontal)
+    }
+    
+    // MARK: - Delete Alert Message
+    private func deleteAlertMessage(for parent: Todo) -> some View {
+        Text("\"\(parent.title)\"의 하위 항목 \(parent.children.count)개도 함께 삭제됩니다.")
+    }
+    
+    // MARK: - Helper Methods
+    private func refreshData() {
+        viewModel.fetchParents(with: context)
     }
 }
-
