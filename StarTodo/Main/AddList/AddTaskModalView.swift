@@ -46,6 +46,7 @@ struct AddTaskModalView: View {
                 
                 saveButton
             }
+            .background(Color("BgLight").ignoresSafeArea())
         }
         .onAppear {
             // 실제 ViewModel 재설정
@@ -59,7 +60,7 @@ struct AddTaskModalView: View {
             Button("취소") {
                 isPresented = false
             }
-            .foregroundColor(.red)
+            .foregroundColor(Color("Info300"))
             
             Spacer()
             
@@ -71,25 +72,29 @@ struct AddTaskModalView: View {
             Text("취소").opacity(0) // 균형 맞추기용
         }
         .padding()
-        .background(Color(.systemGray6))
+        .background(Color("BgLight"))
     }
     
     // MARK: - Title Section
     private var titleSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             Text("제목")
-                .font(.caption)
-                .foregroundColor(.gray)
+                .typo(.textSMRegular)
+                .foregroundColor(Color("Cool300"))
             
-            TextField("예: A프로젝트: SNS 캠페인 이미지 제작", text: $viewModel.title)
-                .font(.headline)
-                .padding()
-                .background(Color(.systemBackground))
-                .cornerRadius(10)
-                .overlay(
-                    RoundedRectangle(cornerRadius: 10)
-                        .stroke(Color(.systemGray4), lineWidth: 1)
-                )
+            HStack(spacing: 0) {
+                if viewModel.childrenCount > 0 {
+                    Image("List")
+                        .resizable()
+                        .frame(width: 20, height: 20)
+                }
+                
+                TextField("여기에 새로운 할 일을 추가하세요", text: $viewModel.title)
+                    .typo(.textMDRegular)
+                    .padding()
+            }
+            .background(Color("App.White"))
+            .cornerRadius(10)
         }
     }
     
@@ -111,28 +116,29 @@ struct AddTaskModalView: View {
     private var childrenHeader: some View {
         HStack {
             Text("하위 작업")
-                .font(.caption)
-                .foregroundColor(.gray)
+                .typo(.textSMRegular)
+                .foregroundColor(Color("Cool300"))
             
             Spacer()
             
             if viewModel.isEditMode && viewModel.childrenCount > 0 {
                 Text("\(viewModel.childrenCount)개")
-                    .font(.caption)
-                    .foregroundColor(.gray)
+                    .typo(.textMDRegular)
+                    .foregroundColor(Color("Cool200"))
             }
         }
     }
     
     @ViewBuilder
     private func childItemRow(at index: Int) -> some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             Image(systemName: "circle")
                 .foregroundColor(.gray)
                 .font(.system(size: 20))
             
             TextField("하위 작업 입력", text: $viewModel.children[index])
                 .textFieldStyle(.plain)
+                .typo(.textSMRegular)
             
             if viewModel.canRemoveChild(at: index) {
                 Button(action: {
@@ -146,26 +152,25 @@ struct AddTaskModalView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
-        .background(Color(.systemBackground))
+        .background(Color("App.White"))
         .cornerRadius(10)
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color(.systemGray4), lineWidth: 1)
-        )
     }
     
     private var addChildButton: some View {
         Button(action: viewModel.addChild) {
             HStack(spacing: 8) {
-                Image(systemName: "plus.circle.fill")
+                Image(systemName: "plus")
                     .font(.system(size: 20))
                 Text("하위 작업 추가")
-                    .font(.callout)
+                    .typo(.textSMRegular)
+                    .foregroundColor(Color("Cool300"))
+                Spacer()
             }
-            .foregroundColor(.blue)
+            .foregroundColor(Color("Primary600"))
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
-            .background(Color.blue.opacity(0.1))
+            .padding(.leading, 12)
+            .background(Color("App.White"))
             .cornerRadius(10)
         }
     }
@@ -177,19 +182,12 @@ struct AddTaskModalView: View {
             isPresented = false
         }) {
             HStack {
+                Spacer()
+                
                 Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 20))
-                Text(viewModel.saveButtonTitle)
-                    .font(.headline)
+                    .font(.system(size: 30))
             }
-            .foregroundColor(.white)
-            .frame(maxWidth: .infinity)
-            .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(viewModel.isSaveDisabled ? Color.gray : Color.blue)
-            )
-            .padding()
+            .padding(22)
         }
         .disabled(viewModel.isSaveDisabled)
     }
