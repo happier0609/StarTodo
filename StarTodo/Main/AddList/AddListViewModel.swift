@@ -27,6 +27,48 @@ final class AddListViewModel: ObservableObject {
     // MARK: - 완료 기준 시간 설정 (새벽 5시)
     @AppStorage("resetHour") private var resetHour: Int = 5
 
+    // MARK: - SwiftData 관련
+    
+    private var context: ModelContext
+    
+    init(context: ModelContext) {
+        self.context = context
+        fetchTodos()
+    }
+    
+    // Convenience init for cases where we need a default context
+    convenience init() {
+        self.init(context: defaultContext)
+    }
+    
+    // 내부 메서드에서 context 사용을 위한 setter (필요시)
+    func setContext(_ newContext: ModelContext) {
+        self.context = newContext
+        fetchTodos()
+    }
+    
+    // MARK: - Fetch 로직
+    
+    private func fetchTodos() {
+        do {
+            // 전체 할 일 Fetch
+            let fd = FetchDescriptor<Todo>()
+            let list = try context.fetch(fd)
+            
+            // 메모리 내 정렬
+            let sorted = list.sorted {
+                if $0.isCompleted != $1.isCompleted { return !$0.isCompleted && $1.isCompleted }
+                if $0.order != $1.order { return $0.order < $1.order }
+                return $0.createdAt < $1.createdAt
+            }
+            
+            parents = sorted.filter { $0.parent == nil }
+        } catch {
+            print("❌ SwiftData fetch 실패:", error.localizedDescription)
+            parents = []
+        }
+    }
+
     // MARK: - 오늘 할 일 / 이전 할 일 필터링
     var todayParents: [Todo] {
         filterVisibleTodos(from: parents)
