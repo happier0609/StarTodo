@@ -9,118 +9,222 @@ import SwiftUI
 import SwiftData
 
 /// 할 일을 새로 추가하거나 수정할 수 있는 모달 뷰
-/// - 제목 입력 및 세부 항목(자식 할 일) 입력 가능
-/// - 저장 로직은 ViewModel로 위임되어 있음 (MVVM 구조)
-/// 모달 높이는 medium ~ large 사이에서 확장되며,
-/// 하위 작업 수에 따라 스크롤로 전환됨
-
 struct AddTaskModalView: View {
     
-    /// 모달 표시 여부를 제어하는 바인딩
     @Binding var isPresented: Bool
+    let editingParent: Todo?
     
-    /// 수정하려는 기존 할 일 (없으면 새로 생성)
-    var editingParent: Todo?
-    
-    /// SwiftData의 모델 컨텍스트 (삽입/삭제 등 DB 작업에 필요)
     @Environment(\.modelContext) private var context
+    @EnvironmentObject private var listViewModel: AddListViewModel
+    @StateObject private var viewModel: AddTaskModalViewModel
     
-    /// 상위 뷰에서 주입받는 ViewModel (AddList 전용)
-    @EnvironmentObject private var viewModel: AddListViewModel
-    
-    /// 입력된 제목 (부모 할 일)
-    @State private var title: String = ""
-    
-    /// 입력된 자식 할 일 목록 (문자열 배열)
-    @State private var children: [String] = [""]
+    init(isPresented: Binding<Bool>, editingParent: Todo? = nil) {
+        self._isPresented = isPresented
+        self.editingParent = editingParent
+        
+        // ViewModel 초기화 - 실제 앱에서는 context와 listViewModel이 필요
+        // 하지만 init에서는 접근 불가하므로 임시 객체 생성
+        self._viewModel = StateObject(wrappedValue: AddTaskModalViewModel(
+            editingParent: editingParent,
+            parentViewModel: AddListViewModel(),
+            context: defaultContext
+        ))
+    }
     
     var body: some View {
-        VStack(spacing: 16) {
-            // 상단 입력 안내
-            HStack {
-                Text(editingParent == nil ? "여기에 새로운 할 일을 추가하세요." : "")
-                    .foregroundColor(Color.gray)
-                Spacer()
-            }
-            .padding(.top)
-            
-            // 제목 입력 필드
-            TextField("예: A프로젝트: SNS 캠페인 이미지 제작", text: $title)
-                .font(.headline)
-                .padding(.vertical, 4)
-                .padding(.horizontal)
-                .background(Color(.systemGray6))
-                .cornerRadius(10)
-            
-            // 하위 항목 목록
-            ScrollView {
-                VStack(spacing: 8) {
-                    ForEach(children.indices, id: \.self) { index in
-                        HStack {
-                            Image(systemName: "circle")
-                                .foregroundColor(.gray)
-                            TextField("하위 작업 입력", text: $children[index])
-                                .textFieldStyle(.plain)
-                            if children.count > 1 {
-                                Button(action: {
-                                    children.remove(at: index)
-                                }) {
-                                    Image(systemName: "xmark")
-                                        .foregroundColor(.gray)
-                                }
-                            }
-                        }
-                        .padding(.horizontal)
+        NavigationView {
+            VStack(spacing: 0) {
+                navigationBar
+                
+                ScrollView {
+                    VStack(spacing: 20) {
+                        titleSection
+                        childrenSection
                     }
-                    
-                    // 하위 작업 추가 버튼
-                    Button(action: {
-                        children.append("")
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "plus")
-                            Text("하위 작업 추가하기")
-                        }
-                        .font(.callout)
-                        .foregroundColor(.blue)
-                        .padding(.top, 8)
-                    }
+                    .padding()
                 }
+                
+                saveButton
             }
+            .background(Color("BgLight").ignoresSafeArea())
+        }
+        .onAppear {
+            // 실제 ViewModel 재설정
+            viewModel.setupWithParent(listViewModel, context: context)
+        }
+    }
+    
+    // MARK: - Navigation Bar
+    private var navigationBar: some View {
+        HStack {
+            Button("취소") {
+                isPresented = false
+            }
+            .foregroundColor(Color("Info300"))
             
             Spacer()
             
-            // 저장 버튼 (우측 하단 고정)
-            HStack {
-                Spacer()
-                Button {
-                    viewModel.saveTodo(
-                        editingParent: editingParent,
-                        title: title,
-                        children: children,
-                        context: context
-                    )
-                    isPresented = false
-                } label: {
-                    Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 36))
-                        .foregroundColor(title.isEmpty ? .gray : .accentColor)
-                }
-                .disabled(title.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
+            Text(viewModel.modalTitle)
+                .font(.headline)
+            
+            Spacer()
+            
+            Text("취소").opacity(0) // 균형 맞추기용
         }
         .padding()
-        .onAppear {
-            if let todo = editingParent {
-                title = todo.title
-                children = todo.children
-                    .sorted(by: { $0.order < $1.order })
-                    .map { $0.title }
-                
-                if children.isEmpty {
-                    children = [""]
+        .background(Color("BgLight"))
+    }
+    
+    // MARK: - Title Section
+    private var titleSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("제목")
+                .typo(.textSMRegular)
+                .foregroundColor(Color("Cool300"))
+            
+            HStack(spacing: 0) {
+                if viewModel.childrenCount > 0 {
+                    Image("List")
+                        .resizable()
+                        .frame(width: 20, height: 20)
                 }
+                
+                TextField("여기에 새로운 할 일을 추가하세요", text: $viewModel.title)
+                    .typo(.textMDRegular)
+                    .padding()
+            }
+            .background(Color("App.White"))
+            .cornerRadius(10)
+        }
+    }
+    
+    // MARK: - Children Section
+    private var childrenSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            childrenHeader
+            
+            VStack(spacing: 12) {
+                ForEach(viewModel.children.indices, id: \.self) { index in
+                    childItemRow(at: index)
+                }
+                
+                addChildButton
             }
         }
     }
+    
+    private var childrenHeader: some View {
+        HStack {
+            Text("하위 작업")
+                .typo(.textSMRegular)
+                .foregroundColor(Color("Cool300"))
+            
+            Spacer()
+            
+            if viewModel.isEditMode && viewModel.childrenCount > 0 {
+                Text("\(viewModel.childrenCount)개")
+                    .typo(.textMDRegular)
+                    .foregroundColor(Color("Cool200"))
+            }
+        }
+    }
+    
+    @ViewBuilder
+    private func childItemRow(at index: Int) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "circle")
+                .foregroundColor(.gray)
+                .font(.system(size: 20))
+            
+            TextField("하위 작업 입력", text: $viewModel.children[index])
+                .textFieldStyle(.plain)
+                .typo(.textSMRegular)
+            
+            if viewModel.canRemoveChild(at: index) {
+                Button(action: {
+                    viewModel.removeChild(at: index)
+                }) {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundColor(.gray)
+                        .font(.system(size: 20))
+                }
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .background(Color("App.White"))
+        .cornerRadius(10)
+    }
+    
+    private var addChildButton: some View {
+        Button(action: viewModel.addChild) {
+            HStack(spacing: 8) {
+                Image(systemName: "plus")
+                    .font(.system(size: 20))
+                Text("하위 작업 추가")
+                    .typo(.textSMRegular)
+                    .foregroundColor(Color("Cool300"))
+                Spacer()
+            }
+            .foregroundColor(Color("Primary600"))
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .padding(.leading, 12)
+            .background(Color("App.White"))
+            .cornerRadius(10)
+        }
+    }
+    
+    // MARK: - Save Button
+    private var saveButton: some View {
+        Button(action: {
+            viewModel.save()
+            isPresented = false
+        }) {
+            HStack {
+                Spacer()
+                
+                Image(systemName: "checkmark.circle.fill")
+                    .font(.system(size: 30))
+            }
+            .padding(22)
+        }
+        .disabled(viewModel.isSaveDisabled)
+    }
 }
+
+// MARK: - Preview
+#if DEBUG
+struct AddTaskModalView_Previews: PreviewProvider {
+    static var previews: some View {
+        Group {
+            AddTaskModalView(
+                isPresented: .constant(true),
+                editingParent: nil
+            )
+            .previewDisplayName("새 할 일 추가")
+            
+            AddTaskModalView(
+                isPresented: .constant(true),
+                editingParent: createSampleTodo()
+            )
+            .previewDisplayName("할 일 수정")
+        }
+        .environmentObject(AddListViewModel())
+        .modelContainer(for: Todo.self, inMemory: true)
+    }
+    
+    static func createSampleTodo() -> Todo {
+        Todo(
+            title: "A프로젝트: SNS 캠페인 이미지 제작",
+            isCompleted: false,
+            setTime: 25,
+            elapsedTime: 0,
+            createdAt: .now,
+            performedDate: nil,
+            order: 0,
+            parent: nil
+        )
+    }
+}
+#endif
