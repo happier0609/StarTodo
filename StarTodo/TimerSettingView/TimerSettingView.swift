@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct TimerSettingView: View {
     @EnvironmentObject var coordinator: MainCoordinator
@@ -103,3 +104,27 @@ struct TimerSettingView: View {
     }
 }
 
+// MARK: - Preview
+#if DEBUG
+#Preview("1개 선택") {
+    let todos = PreviewData.makeSampleTodos()
+    let selected = Array(todos.prefix(1)).map { $0.id }
+
+    return TimerSettingView(
+        selectedIDs: selected,
+        allTodos: todos
+    )
+    .previewSetup()
+}
+
+#Preview("계층 포함") {
+    let todos = PreviewData.makeTodosWithHierarchy()
+    let selected = Array(todos.prefix(2)).map { $0.id }
+
+    return TimerSettingView(
+        selectedIDs: selected,
+        allTodos: todos
+    )
+    .previewSetup()
+}
+#endif
