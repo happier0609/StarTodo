@@ -23,6 +23,17 @@ struct FocusSettingView: View {
                 if focusSettingVM.focusParents.isEmpty {
                     FocusSettingEmptyView()
                 } else {
+                    
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("완벽보다 중요한건 시작하는 용기")
+                            .typo(.textLGEmphasized)
+                            .foregroundColor(Color("Cool1100"))
+                        Text("지금 해낼 수 있는 일들을 선택해요")
+                            .typo(.textLGEmphasized)
+                            .foregroundColor(Color("Cool1100"))
+                    }
+                    
+                    
                     VStack(spacing: 16) {
                         ForEach(focusSettingVM.focusParents) { parent in
                             let children = parent.children
