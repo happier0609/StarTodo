@@ -24,25 +24,21 @@ struct FocusStartButton: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.vertical, 14)
-                .background(selectedCount > 0 ? Color.blue : Color.gray.opacity(0.3))
+                .background(selectedCount > 0 ? Color("Primary500") : Color("Cool200"))
                 .foregroundColor(Color("App.White"))
                 .clipShape(Capsule())
-                .overlay(
-                    Capsule()
-                        .strokeBorder(Color.black.opacity(0.05), lineWidth: 1)
-                )
 
                 if selectedCount > 0 {
                     Text("\(selectedCount)")
-                        .font(.caption2)
-                        .fontWeight(.bold)
+                        .typo(.textSMRegular)
                         .foregroundColor(Color("Primary500"))
-                        .padding(6)
+                        .padding(8)
                         .background(Circle().fill(Color("App.White")))
-                        .offset(x: 2, y: -8)
+                        .offset(x: 4, y: -12)
                 }
             }
         }
+        .shadow(color: Color("Cool1000").opacity(0.3), radius: 6, x: 2, y: 3)
         .disabled(selectedCount == 0)
     }
 }
