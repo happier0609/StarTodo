@@ -1,10 +1,3 @@
-//
-//  TimerItemRowView.swift
-//  JPS_3
-//
-//  Created by ChoMinKyung on 5/8/25.
-//
-
 import SwiftUI
 import SwiftData
 
@@ -45,13 +38,20 @@ struct TimerItemRowView: View {
                         }
                     }
                 } label: {
-                    Text(minuteText(selectedTime))
-                        .typo(.textMDEmphasized)
-                        .foregroundColor(Color("Info700"))
-                        .padding(.vertical, 6)
-                        .padding(.horizontal, 12)
-                        .background(Color("Primary100"))
-                        .cornerRadius(10)
+                    HStack(spacing: 4) {
+                        Text(minuteText(selectedTime))
+                            .typo(.textMDEmphasized)
+                            .foregroundColor(selectedTime == nil ? Color("Cool300") : Color("Info700"))
+                        
+                        // 위아래 화살표 아이콘
+                        Image(systemName: "chevron.up.chevron.down")
+                            .font(.system(size: 10, weight: .semibold))
+                            .foregroundColor(selectedTime == nil ? Color("Cool300") : Color("Info700"))
+                    }
+                    .padding(.vertical, 6)
+                    .padding(.horizontal, 12)
+                    .background(selectedTime == nil ? Color("Cool100") : Color("Primary100"))
+                    .cornerRadius(10)
                 }
             }
         }
