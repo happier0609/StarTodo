@@ -77,6 +77,8 @@ struct FocusSettingView: View {
                     ))
                 }
             )
+            .frame(maxWidth: .infinity, alignment: .trailing) // ✅ 오른쪽 정렬
+            .padding(.trailing, 20)
             .padding(.bottom, 24)
         }
         // ✨ 뷰가 나타날 때마다 데이터 로드
