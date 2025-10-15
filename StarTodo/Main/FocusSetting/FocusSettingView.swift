@@ -93,3 +93,14 @@ struct FocusSettingView: View {
         }
     }
 }
+
+
+#if DEBUG
+import SwiftUI
+
+#Preview {
+    FocusSettingView()
+        .previewSetup()
+}
+
+#endif

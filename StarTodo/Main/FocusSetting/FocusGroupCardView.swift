@@ -76,35 +76,20 @@ struct FocusGroupCardView: View {
     }
 }
 
-#Preview {
-    let parent = Todo(
-        id: UUID(),
-        title: "상위 할일",
-        isCompleted: false,
-        createdAt: Date(),
-        order: 0
-    )
+#if DEBUG
+import SwiftUI
 
+#Preview {
+    let parent = Todo(title: "상위 할 일", isCompleted: false)
     let children = [
-        Todo(
-            id: UUID(),
-            title: "하위 할일 1",
-            isCompleted: false,
-            createdAt: Date(),
-            order: 1,
-            parent: parent
-        ),
-        Todo(
-            id: UUID(),
-            title: "하위 할일 2",
-            isCompleted: true,
-            createdAt: Date(),
-            order: 2,
-            parent: parent
-        )
+        Todo(title: "하위 할 일 1", isCompleted: false, parent: parent),
+        Todo(title: "하위 할 일 2", isCompleted: true, parent: parent)
     ]
     
-    FocusGroupCardView(
+    // 상위에 자식 연결
+    parent.children.append(contentsOf: children)
+    
+    return FocusGroupCardView(
         parent: parent,
         children: children,
         isExpanded: true,
@@ -115,6 +100,6 @@ struct FocusGroupCardView: View {
         onParentTap: {},
         onChildTap: { _ in }
     )
-    .padding()
-    .background(Color.gray.opacity(0.1))
+    .environmentObject(FocusSettingViewModel()) // 뷰에서 사용 중
 }
+#endif
