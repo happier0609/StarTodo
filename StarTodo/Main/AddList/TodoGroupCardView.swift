@@ -16,7 +16,7 @@ struct TodoGroupCardView: View {
     @State private var isPressed = false
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 11) {
             // 상위 항목
             parentSection
             
@@ -27,8 +27,8 @@ struct TodoGroupCardView: View {
         }
         .padding()
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Color(.white))
-        .cornerRadius(12)
+        .background(Color("App.White"))
+        .cornerRadius(10)
         .scaleEffect(isPressed ? 0.95 : 1.0)
         .animation(.easeInOut(duration: 0.1), value: isPressed)
         .contentShape(Rectangle())
@@ -100,6 +100,9 @@ struct TodoGroupCardView: View {
     }
 }
 
+#if DEBUG
+import SwiftUI
+
 #Preview {
     VStack(spacing: 16) {
         // 미완료 상태 프리뷰
@@ -160,3 +163,5 @@ struct TodoGroupCardView: View {
     .padding()
     .background(Color.gray.opacity(0.1))
 }
+
+#endif
