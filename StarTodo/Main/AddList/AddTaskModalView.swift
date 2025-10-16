@@ -179,8 +179,10 @@ struct AddTaskModalView: View {
             HStack {
                 Spacer()
                 
-                Image(systemName: "checkmark.circle.fill")
-                    .font(.system(size: 30))
+                Image(viewModel.isSaveDisabled ? "DoneYet" : "Done")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 30, height: 30)
             }
             .padding(22)
         }
