@@ -18,7 +18,13 @@ struct AddListView: View {
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             mainContent
-            addButton
+            VStack(spacing: -15) {
+                HStack {
+                    Spacer()
+                    addButton
+                }
+                resetInfoText
+            }
         }
         .onAppear { refreshData() }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
@@ -48,8 +54,6 @@ struct AddListView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top)
-                
-                resetInfoText
             }
         }
     }
