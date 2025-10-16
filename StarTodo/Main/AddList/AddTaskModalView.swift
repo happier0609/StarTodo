@@ -78,10 +78,6 @@ struct AddTaskModalView: View {
     // MARK: - Title Section
     private var titleSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("제목")
-                .typo(.textSMRegular)
-                .foregroundColor(Color("Cool300"))
-            
             HStack(spacing: 0) {
                 if viewModel.childrenCount > 0 {
                     Image("List")
@@ -115,12 +111,6 @@ struct AddTaskModalView: View {
     
     private var childrenHeader: some View {
         HStack {
-            Text("하위 작업")
-                .typo(.textSMRegular)
-                .foregroundColor(Color("Cool300"))
-            
-            Spacer()
-            
             if viewModel.isEditMode && viewModel.childrenCount > 0 {
                 Text("\(viewModel.childrenCount)개")
                     .typo(.textMDRegular)
