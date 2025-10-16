@@ -149,15 +149,6 @@ enum PreviewData {
 // MARK: - ViewModel Factory
 enum PreviewViewModelFactory {
     
-    // MARK: - AddListViewModel
-//    static func makeAddListViewModel() -> AddListViewModel {
-//        let context = makePreviewContext()
-//        let vm = AddListViewModel(context: context)
-//        // 샘플 데이터로 초기화
-//        vm.parents = PreviewData.makeSampleTodos()
-//        return vm
-//    }
-    
     // MARK: - TimerSettingViewModel
     static func makeTimerSettingViewModel(
         selectedCount: Int = 3,

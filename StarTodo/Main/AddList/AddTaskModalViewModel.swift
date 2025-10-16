@@ -16,7 +16,7 @@ class AddTaskModalViewModel: ObservableObject {
     
     // MARK: - Published Properties
     @Published var title: String = ""
-    @Published var children: [String] = [""]
+    @Published var children: [String] = []
     
     // MARK: - Properties
     private var editingParent: Todo?
@@ -74,7 +74,7 @@ class AddTaskModalViewModel: ObservableObject {
         if !existingChildren.isEmpty {
             children = existingChildren
         } else {
-            children = [""]
+            children = []
         }
     }
     

@@ -18,7 +18,15 @@ struct AddListView: View {
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             mainContent
-            addButton
+            VStack(spacing: -15) {
+                Spacer()
+                
+                HStack {
+                    Spacer()
+                    addButton
+                }
+                resetInfoText
+            }
         }
         .onAppear { refreshData() }
         .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
@@ -48,8 +56,6 @@ struct AddListView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top)
-                
-                resetInfoText
             }
         }
     }
@@ -93,7 +99,7 @@ struct AddListView: View {
             .foregroundColor(Color("Cool300"))
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
-            .padding(.bottom, 80)
+            .padding(.bottom, 20)
     }
     
     // MARK: - Add Button
@@ -137,3 +143,37 @@ struct AddListView: View {
         viewModel.fetchParents(with: context)
     }
 }
+
+#if DEBUG
+import SwiftUI
+import SwiftData
+
+#Preview("AddListView - 기본 + 계층") {
+    // 인메모리 SwiftData 컨테이너 생성
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(
+        for: Todo.self,
+        configurations: config
+    )
+
+    // 1. 기본 샘플 Todo
+    let flatTodos = PreviewData.makeSampleTodos()
+    for todo in flatTodos {
+        container.mainContext.insert(todo)
+    }
+
+    // 2. 계층 구조 Todo (부모 + 자식)
+    let hierarchicalTodos = PreviewData.makeTodosWithHierarchy()
+    for todo in hierarchicalTodos {
+        container.mainContext.insert(todo)
+    }
+
+    // AddListView와 연결
+    return AddListView()
+        .modelContainer(container)
+        .environmentObject(MainCoordinator.shared)
+        .previewDisplayName("할 일 목록 (기본 + 계층)")
+        .previewLayout(.device)
+        .previewDevice("iPhone 15 Pro")
+}
+#endif
