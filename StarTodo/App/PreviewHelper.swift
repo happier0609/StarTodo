@@ -178,7 +178,8 @@ enum PreviewViewModelFactory {
     }
     
     // MARK: - Helper
-    @MainActor private static func makePreviewContext() -> ModelContext {
+    @MainActor
+    static func makePreviewContext() -> ModelContext {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try! ModelContainer(
             for: Todo.self,
