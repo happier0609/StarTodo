@@ -137,3 +137,37 @@ struct AddListView: View {
         viewModel.fetchParents(with: context)
     }
 }
+
+#if DEBUG
+import SwiftUI
+import SwiftData
+
+#Preview("AddListView - 기본 + 계층") {
+    // 인메모리 SwiftData 컨테이너 생성
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(
+        for: Todo.self,
+        configurations: config
+    )
+
+    // 1. 기본 샘플 Todo
+    let flatTodos = PreviewData.makeSampleTodos()
+    for todo in flatTodos {
+        container.mainContext.insert(todo)
+    }
+
+    // 2. 계층 구조 Todo (부모 + 자식)
+    let hierarchicalTodos = PreviewData.makeTodosWithHierarchy()
+    for todo in hierarchicalTodos {
+        container.mainContext.insert(todo)
+    }
+
+    // AddListView와 연결
+    return AddListView()
+        .modelContainer(container)
+        .environmentObject(MainCoordinator.shared)
+        .previewDisplayName("할 일 목록 (기본 + 계층)")
+        .previewLayout(.device)
+        .previewDevice("iPhone 15 Pro")
+}
+#endif
