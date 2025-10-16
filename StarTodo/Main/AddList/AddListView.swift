@@ -19,6 +19,8 @@ struct AddListView: View {
         ZStack(alignment: .bottomTrailing) {
             mainContent
             VStack(spacing: -15) {
+                Spacer()
+                
                 HStack {
                     Spacer()
                     addButton
@@ -97,7 +99,7 @@ struct AddListView: View {
             .foregroundColor(Color("Cool300"))
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
-            .padding(.bottom, 80)
+            .padding(.bottom, 20)
     }
     
     // MARK: - Add Button
