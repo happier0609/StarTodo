@@ -23,6 +23,17 @@ struct FocusSettingView: View {
                 if focusSettingVM.focusParents.isEmpty {
                     FocusSettingEmptyView()
                 } else {
+                    
+                    VStack(alignment: .leading, spacing: 0) {
+                        Text("완벽보다 중요한건 시작하는 용기")
+                            .typo(.textLGEmphasized)
+                            .foregroundColor(Color("Cool1100"))
+                        Text("지금 해낼 수 있는 일들을 선택해요")
+                            .typo(.textLGEmphasized)
+                            .foregroundColor(Color("Cool1100"))
+                    }
+                    
+                    
                     VStack(spacing: 16) {
                         ForEach(focusSettingVM.focusParents) { parent in
                             let children = parent.children
@@ -66,6 +77,8 @@ struct FocusSettingView: View {
                     ))
                 }
             )
+            .frame(maxWidth: .infinity, alignment: .trailing) // ✅ 오른쪽 정렬
+            .padding(.trailing, 20)
             .padding(.bottom, 24)
         }
         // ✨ 뷰가 나타날 때마다 데이터 로드
@@ -93,3 +106,18 @@ struct FocusSettingView: View {
         }
     }
 }
+
+
+#if DEBUG
+#Preview("FocusSettingView (Sample)") {
+    FocusSettingView()
+        .environmentObject(PreviewViewModelFactory.makeFocusSettingViewModel())
+        .previewSetup()
+}
+
+#Preview("FocusSettingView (With Hierarchy)") {
+    FocusSettingView()
+        .environmentObject(PreviewViewModelFactory.makeFocusSettingViewModel(withHierarchy: true))
+        .previewSetup()
+}
+#endif

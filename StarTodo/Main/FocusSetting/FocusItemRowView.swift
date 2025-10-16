@@ -37,3 +37,28 @@ struct FocusItemRowView: View {
             }
     }
 }
+
+#if DEBUG
+import SwiftUI
+
+#Preview("✅ 선택되지 않은 항목") {
+    let todo = Todo(title: "영어 단어 외우기", isCompleted: false)
+    let vm = FocusSettingViewModel()
+    
+    return FocusItemRowView(todo: todo)
+        .environmentObject(vm)
+        .padding()
+        .previewLayout(.sizeThatFits)
+}
+
+#Preview("✅ 선택된 항목") {
+    let todo = Todo(title: "수학 문제 풀기", isCompleted: false)
+    let vm = FocusSettingViewModel()
+    vm.isSelected(todo) // 선택된 상태로 만들기
+    
+    return FocusItemRowView(todo: todo)
+        .environmentObject(vm)
+        .padding()
+        .previewLayout(.sizeThatFits)
+}
+#endif

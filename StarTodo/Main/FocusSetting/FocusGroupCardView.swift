@@ -65,7 +65,6 @@ struct FocusGroupCardView: View {
                                 }
                         }
                     }
-                    .padding(.bottom, 16)
                 }
             }
             .padding(.top, 12)
@@ -76,45 +75,83 @@ struct FocusGroupCardView: View {
     }
 }
 
-#Preview {
-    let parent = Todo(
-        id: UUID(),
-        title: "상위 할일",
-        isCompleted: false,
-        createdAt: Date(),
-        order: 0
-    )
+#if DEBUG
+import SwiftUI
 
-    let children = [
-        Todo(
-            id: UUID(),
-            title: "하위 할일 1",
-            isCompleted: false,
-            createdAt: Date(),
-            order: 1,
-            parent: parent
-        ),
-        Todo(
-            id: UUID(),
-            title: "하위 할일 2",
-            isCompleted: true,
-            createdAt: Date(),
-            order: 2,
-            parent: parent
-        )
-    ]
+#Preview("① 자식이 없는 단일 부모 항목") {
+    let parent = Todo(title: "혼자 있는 할 일", isCompleted: false)
     
-    FocusGroupCardView(
+    return FocusGroupCardView(
         parent: parent,
-        children: children,
+        children: [],
+        isExpanded: false,
+        selectedChildCount: 0,
+        totalChildCount: 0,
+        isSelected: false,
+        onToggleExpand: {},
+        onParentTap: {},
+        onChildTap: { _ in }
+    )
+    .environmentObject(FocusSettingViewModel())
+}
+
+#Preview("② 자식 2개 모두 선택됨") {
+    let parent = Todo(title: "영어 공부", isCompleted: false)
+    let child1 = Todo(title: "문법 복습", isCompleted: false, parent: parent)
+    let child2 = Todo(title: "단어 외우기", isCompleted: false, parent: parent)
+    parent.children.append(contentsOf: [child1, child2])
+
+    return FocusGroupCardView(
+        parent: parent,
+        children: [child1, child2],
         isExpanded: true,
-        selectedChildCount: 1,
+        selectedChildCount: 2,
         totalChildCount: 2,
         isSelected: true,
         onToggleExpand: {},
         onParentTap: {},
         onChildTap: { _ in }
     )
-    .padding()
-    .background(Color.gray.opacity(0.1))
+    .environmentObject(FocusSettingViewModel())
 }
+
+#Preview("③ 부모만 선택됨") {
+    let parent = Todo(title: "운동 루틴", isCompleted: false)
+    let child1 = Todo(title: "스트레칭", isCompleted: false, parent: parent)
+    let child2 = Todo(title: "근력운동", isCompleted: false, parent: parent)
+    parent.children.append(contentsOf: [child1, child2])
+
+    return FocusGroupCardView(
+        parent: parent,
+        children: [child1, child2],
+        isExpanded: true,
+        selectedChildCount: 0,
+        totalChildCount: 2,
+        isSelected: true, // 부모만 선택되었을 때
+        onToggleExpand: {},
+        onParentTap: {},
+        onChildTap: { _ in }
+    )
+    .environmentObject(FocusSettingViewModel())
+}
+
+#Preview("④ 자식 1개만 선택됨") {
+    let parent = Todo(title: "코딩 공부", isCompleted: false)
+    let child1 = Todo(title: "SwiftUI 복습", isCompleted: false, parent: parent)
+    let child2 = Todo(title: "샘플 프로젝트", isCompleted: false, parent: parent)
+    parent.children.append(contentsOf: [child1, child2])
+
+    return FocusGroupCardView(
+        parent: parent,
+        children: [child1, child2],
+        isExpanded: true,
+        selectedChildCount: 1,
+        totalChildCount: 2,
+        isSelected: false,
+        onToggleExpand: {},
+        onParentTap: {},
+        onChildTap: { _ in }
+    )
+    .environmentObject(FocusSettingViewModel())
+}
+#endif

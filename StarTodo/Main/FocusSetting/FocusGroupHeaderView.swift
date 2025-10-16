@@ -58,3 +58,55 @@ struct FocusGroupHeaderView: View {
         .padding(.vertical, 12)
     }
 }
+
+#if DEBUG
+import SwiftUI
+import SwiftData
+
+#Preview("기본") {
+    // ✅ 1. 단일 부모 (자식 없음)
+    FocusGroupHeaderView(
+        parent: Todo(title: "단일 할 일"),
+        selectedChildCount: 0,
+        totalChildCount: 0,
+        isExpanded: false,
+        isSelected: false,
+        onToggleExpand: {},
+        onParentTap: {}
+    )
+    .previewLayout(.sizeThatFits)
+    .padding()
+}
+
+#Preview("자식 3개 중 2개 선택 (펼침)") {
+    // ✅ 2. 부모 + 자식 3개, 일부 선택된 상태
+    FocusGroupHeaderView(
+        parent: Todo(title: "프로젝트 A"),
+        selectedChildCount: 2,
+        totalChildCount: 3,
+        isExpanded: true,
+        isSelected: true,
+        onToggleExpand: {},
+        onParentTap: {}
+    )
+    .previewLayout(.sizeThatFits)
+    .padding()
+    .background(Color("BgLight"))
+}
+
+#Preview("자식 3개 중 0개 선택 (닫힘)") {
+    // ✅ 3. 부모 + 자식 3개, 아직 선택 안 됨
+    FocusGroupHeaderView(
+        parent: Todo(title: "SNS 캠페인 준비"),
+        selectedChildCount: 0,
+        totalChildCount: 3,
+        isExpanded: false,
+        isSelected: false,
+        onToggleExpand: {},
+        onParentTap: {}
+    )
+    .previewLayout(.sizeThatFits)
+    .padding()
+    .background(Color("BgLight"))
+}
+#endif

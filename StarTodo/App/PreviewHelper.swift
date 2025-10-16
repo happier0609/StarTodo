@@ -176,11 +176,15 @@ enum PreviewViewModelFactory {
     }
     
     // MARK: - FocusSettingViewModel
-//    static func makeFocusSettingViewModel() -> FocusSettingViewModel {
-//        let vm = FocusSettingViewModel()
-//        vm.todoEntities = PreviewData.makeSampleTodos()
-//        return vm
-//    }
+    @MainActor
+    static func makeFocusSettingViewModel(withHierarchy: Bool = false) -> FocusSettingViewModel {
+        let vm = FocusSettingViewModel()
+        let todos = withHierarchy
+            ? PreviewData.makeTodosWithHierarchy()
+            : PreviewData.makeSampleTodos()
+        vm.loadFrom(todos)
+        return vm
+    }
     
     // MARK: - Helper
     @MainActor private static func makePreviewContext() -> ModelContext {
