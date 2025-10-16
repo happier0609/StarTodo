@@ -37,7 +37,7 @@ struct AddTaskModalView: View {
                 navigationBar
                 
                 ScrollView {
-                    VStack(spacing: 20) {
+                    VStack(spacing:0) {
                         titleSection
                         childrenSection
                     }
@@ -85,37 +85,33 @@ struct AddTaskModalView: View {
                         .frame(width: 20, height: 20)
                 }
                 
-                TextField("여기에 새로운 할 일을 추가하세요", text: $viewModel.title)
-                    .typo(.textMDRegular)
-                    .padding()
+                ZStack(alignment: .leading) {
+                    if viewModel.title.isEmpty {
+                        Text("여기에 새로운 할 일을 추가하세요")
+                            .foregroundColor(Color("Cool300"))
+                            .typo(.textMDRegular)
+                            .padding()
+                    }
+                    
+                    TextField("", text: $viewModel.title)
+                        .typo(.textMDRegular)
+                        .foregroundColor(Color("Cool1100"))
+                        .padding()
+                }
             }
-            .background(Color("App.White"))
-            .cornerRadius(10)
+            //            .background(Color("App.White"))
+            //            .cornerRadius(10)
         }
     }
     
     // MARK: - Children Section
     private var childrenSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            childrenHeader
-            
-            VStack(spacing: 12) {
-                ForEach(viewModel.children.indices, id: \.self) { index in
-                    childItemRow(at: index)
-                }
+            ForEach(viewModel.children.indices, id: \.self) { index in
+                childItemRow(at: index)
                 
-                addChildButton
             }
-        }
-    }
-    
-    private var childrenHeader: some View {
-        HStack {
-            if viewModel.isEditMode && viewModel.childrenCount > 0 {
-                Text("\(viewModel.childrenCount)개")
-                    .typo(.textMDRegular)
-                    .foregroundColor(Color("Cool200"))
-            }
+            addChildButton
         }
     }
     
@@ -126,24 +122,33 @@ struct AddTaskModalView: View {
                 .foregroundColor(.gray)
                 .font(.system(size: 20))
             
-            TextField("하위 작업 입력", text: $viewModel.children[index])
-                .textFieldStyle(.plain)
-                .typo(.textSMRegular)
+            ZStack(alignment: .leading) {
+                if viewModel.children[index].isEmpty {
+                    Text("하위 작업 입력하기")
+                        .foregroundColor(Color("Cool300"))
+                        .typo(.textSMRegular)
+                        .padding(.vertical, 8)
+                }
+                
+                TextField("", text: $viewModel.children[index])
+                    .foregroundColor(Color("Cool1100"))
+                    .typo(.textSMRegular)
+                    .padding(.vertical, 8)
+            }
             
             if viewModel.canRemoveChild(at: index) {
                 Button(action: {
                     viewModel.removeChild(at: index)
                 }) {
-                    Image(systemName: "xmark.circle.fill")
+                    Image(systemName: "xmark")
                         .foregroundColor(.gray)
-                        .font(.system(size: 20))
+                        .font(.system(size: 16))
                 }
             }
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .background(Color("App.White"))
-        .cornerRadius(10)
+        //        .background(Color("App.White"))
+        //        .cornerRadius(10)
     }
     
     private var addChildButton: some View {
@@ -151,7 +156,7 @@ struct AddTaskModalView: View {
             HStack(spacing: 8) {
                 Image(systemName: "plus")
                     .font(.system(size: 20))
-                Text("하위 작업 추가")
+                Text("하위 작업 추가하기")
                     .typo(.textSMRegular)
                     .foregroundColor(Color("Cool300"))
                 Spacer()
@@ -160,8 +165,8 @@ struct AddTaskModalView: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, 12)
             .padding(.leading, 12)
-            .background(Color("App.White"))
-            .cornerRadius(10)
+            //            .background(Color("App.White"))
+            //            .cornerRadius(10)
         }
     }
     
@@ -205,7 +210,8 @@ struct AddTaskModalView_Previews: PreviewProvider {
     }
     
     static func createSampleTodo() -> Todo {
-        Todo(
+        // 상위 할 일 생성
+        let parentTodo = Todo(
             title: "A프로젝트: SNS 캠페인 이미지 제작",
             isCompleted: false,
             setTime: 25,
@@ -215,6 +221,35 @@ struct AddTaskModalView_Previews: PreviewProvider {
             order: 0,
             parent: nil
         )
+        
+        // 하위 할 일 1
+        let child1 = Todo(
+            title: "참고 이미지 수집하기",
+            isCompleted: false,
+            setTime: 10,
+            elapsedTime: 0,
+            createdAt: .now,
+            performedDate: nil,
+            order: 0,
+            parent: parentTodo
+        )
+        
+        // 하위 할 일 2
+        let child2 = Todo(
+            title: "포토샵 레이아웃 잡기",
+            isCompleted: false,
+            setTime: 15,
+            elapsedTime: 0,
+            createdAt: .now,
+            performedDate: nil,
+            order: 1,
+            parent: parentTodo
+        )
+        
+        // 관계 설정
+        parentTodo.children = [child1, child2]
+        
+        return parentTodo
     }
 }
 #endif
