@@ -109,11 +109,15 @@ struct FocusSettingView: View {
 
 
 #if DEBUG
-import SwiftUI
-
-#Preview {
+#Preview("FocusSettingView (Sample)") {
     FocusSettingView()
+        .environmentObject(PreviewViewModelFactory.makeFocusSettingViewModel())
         .previewSetup()
 }
 
+#Preview("FocusSettingView (With Hierarchy)") {
+    FocusSettingView()
+        .environmentObject(PreviewViewModelFactory.makeFocusSettingViewModel(withHierarchy: true))
+        .previewSetup()
+}
 #endif
