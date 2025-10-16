@@ -21,7 +21,7 @@ struct MainView: View {
     
     var body: some View {
         VStack(spacing: 0) {
-            // 상단 탭바
+            // 🔹 상단 탭바
             HStack {
                 ForEach(MainTabType.allCases, id: \.self) { tab in
                     Button(action: {
@@ -40,20 +40,21 @@ struct MainView: View {
                 }
             }
             .padding(.top)
-            .background(Color.white)
-            
-            // 탭에 따른 화면 전환
-            switch selectedTab {
-            case .start:
+            .background(Color("App.White"))
+
+            // 🔹 스와이프 가능한 탭 뷰
+            TabView(selection: $selectedTab) {
                 FocusSettingView()
                     .environmentObject(FocusSettingViewModel())
                     .environmentObject(mainVM)
-                    .environmentObject(MainCoordinator.shared) // ✅ 인스턴스를 넘김
-            case .todo:
+                    .environmentObject(coordinator)
+                    .tag(MainTabType.start)
+
                 AddListView()
+                    .tag(MainTabType.todo)
             }
+            .tabViewStyle(.page(indexDisplayMode: .never)) // 페이지 인디케이터 숨기기
         }
         .background(Color("BgLight"))
     }
 }
-
