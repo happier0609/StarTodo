@@ -23,3 +23,9 @@ struct FocusSettingEmptyView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
+
+#if DEBUG
+#Preview {
+    FocusSettingEmptyView()
+}
+#endif
