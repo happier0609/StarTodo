@@ -84,6 +84,7 @@ struct FocusGroupCardView: View {
                         }
                     }
                     .padding(.leading, 20)
+                    .padding(.trailing, 18)
                     .padding(.bottom, 18)
                 }
             }

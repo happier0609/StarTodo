@@ -50,7 +50,6 @@ struct FocusSettingView: View {
                                         .onTapGesture {
                                             focusSettingVM.toggleSelection(of: parent)
                                         }
-                                        .padding(.horizontal, 18)
                                 } else {
                                     // ✅ 자식이 있는 경우만 그룹 카드로 렌더링
                                     let selectedCount = children.filter { focusSettingVM.isSelected($0.id) }.count

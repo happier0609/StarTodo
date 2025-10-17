@@ -51,8 +51,6 @@ import SwiftUI
     let vm = FocusSettingViewModel()
     return FocusItemRowView(todo: todo, isChild: true)
         .environmentObject(vm)
-        .padding()
-        .previewLayout(.sizeThatFits)
 }
 
 #Preview("✅ 부모 항목") {
@@ -60,7 +58,5 @@ import SwiftUI
     let vm = FocusSettingViewModel()
     return FocusItemRowView(todo: todo, isChild: false)
         .environmentObject(vm)
-        .padding()
-        .previewLayout(.sizeThatFits)
 }
 #endif
