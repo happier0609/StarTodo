@@ -88,7 +88,6 @@ struct FocusGroupCardView: View {
                     .padding(.bottom, 18)
                 }
             }
-//            .padding(.horizontal, 18)
         }
     }
 }
@@ -126,26 +125,6 @@ import SwiftUI
         selectedChildCount: 2,
         totalChildCount: 2,
         isSelected: true,
-        onToggleExpand: {},
-        onParentTap: {},
-        onChildTap: { _ in }
-    )
-    .environmentObject(FocusSettingViewModel())
-}
-
-#Preview("③ 부모만 선택됨") {
-    let parent = Todo(title: "운동 루틴", isCompleted: false)
-    let child1 = Todo(title: "스트레칭", isCompleted: false, parent: parent)
-    let child2 = Todo(title: "근력운동", isCompleted: false, parent: parent)
-    parent.children.append(contentsOf: [child1, child2])
-
-    return FocusGroupCardView(
-        parent: parent,
-        children: [child1, child2],
-        isExpanded: true,
-        selectedChildCount: 0,
-        totalChildCount: 2,
-        isSelected: true, // 부모만 선택되었을 때
         onToggleExpand: {},
         onParentTap: {},
         onChildTap: { _ in }

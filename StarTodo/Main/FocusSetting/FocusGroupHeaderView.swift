@@ -18,6 +18,11 @@ struct FocusGroupHeaderView: View {
     
     private var hasChildren: Bool { totalChildCount > 0 }
     
+    /// ✅ 부모나 자식 중 하나라도 선택된 상태
+    private var isActive: Bool {
+        isSelected || selectedChildCount > 0
+    }
+    
     var body: some View {
         HStack(spacing: 8) {
             Button(action: onToggleExpand) {
@@ -31,17 +36,15 @@ struct FocusGroupHeaderView: View {
             // ▶ 부모 영역 전체를 버튼으로 처리 (제목 + 카운트)
             Button(action: onParentTap) {
                 HStack {
-                    Text(parent.title)              // title은 non-optional
+                    Text(parent.title)
                         .typo(.textMDRegular)
-                        .foregroundColor(isSelected ? Color("Primary500")
-                                         : Color("Cool300"))
+                        .foregroundColor(isActive ? Color("Primary500") : Color("Cool300"))
                         .frame(maxWidth: .infinity, alignment: .leading)
                     
                     if hasChildren {
                         Text("\(selectedChildCount)/\(totalChildCount)")
                             .typo(.textMDRegular)
-                            .foregroundColor(isSelected ? Color("Primary500")
-                                             : Color("Cool300"))
+                            .foregroundColor(isActive ? Color("Primary500") : Color("Cool300"))
                     }
                 }
                 .contentShape(Rectangle())          // 라벨 내부도 전부 터치
