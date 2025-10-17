@@ -22,26 +22,44 @@ struct FocusGroupCardView: View {
     
     @EnvironmentObject var focusSettingVM: FocusSettingViewModel
     
+    // 전체 선택 상태 여부
+    var isFullySelected: Bool {
+        totalChildCount > 0 && selectedChildCount == totalChildCount
+    }
+
+    // 일부만 선택된 상태 여부
+    var isPartiallySelected: Bool {
+        selectedChildCount > 0 && selectedChildCount < totalChildCount
+    }
+    
     var isParentSelected: Bool {
         focusSettingVM.isSelected(parent.id)
     }
     
+    // 자식 일부라도 선택된 경우 true
+    var hasPartialSelection: Bool {
+        !parent.children.isEmpty && selectedChildCount > 0 && selectedChildCount < totalChildCount
+    }
+
+    // 자식이 없을 경우 부모 선택 상태
     var isGroupSelected: Bool {
-        // ✨ 자식이 없는 부모는 자신의 선택 상태로, 자식이 있으면 자식의 선택 상태로 판단
         if parent.children.isEmpty {
             return isParentSelected
         } else {
-            return selectedChildCount > 0
+            return isFullySelected
         }
     }
     
     var body: some View {
         ZStack(alignment: .top) {
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 10)
                 .fill(isGroupSelected ? Color("Primary100") : Color("App.White"))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(isGroupSelected ? Color("Primary500") : Color.clear, lineWidth: 1.3)
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(
+                            (isFullySelected || hasPartialSelection) ? Color("Primary500") : Color.clear,
+                            lineWidth: 1.3
+                        )
                 )
             
             VStack(spacing: 0) {
@@ -65,13 +83,12 @@ struct FocusGroupCardView: View {
                                 }
                         }
                     }
+                    .padding(.leading, 20)
+                    .padding(.trailing, 18)
+                    .padding(.bottom, 18)
                 }
             }
-            .padding(.top, 12)
-            .padding(.horizontal, 12)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 4)
     }
 }
 
@@ -108,26 +125,6 @@ import SwiftUI
         selectedChildCount: 2,
         totalChildCount: 2,
         isSelected: true,
-        onToggleExpand: {},
-        onParentTap: {},
-        onChildTap: { _ in }
-    )
-    .environmentObject(FocusSettingViewModel())
-}
-
-#Preview("③ 부모만 선택됨") {
-    let parent = Todo(title: "운동 루틴", isCompleted: false)
-    let child1 = Todo(title: "스트레칭", isCompleted: false, parent: parent)
-    let child2 = Todo(title: "근력운동", isCompleted: false, parent: parent)
-    parent.children.append(contentsOf: [child1, child2])
-
-    return FocusGroupCardView(
-        parent: parent,
-        children: [child1, child2],
-        isExpanded: true,
-        selectedChildCount: 0,
-        totalChildCount: 2,
-        isSelected: true, // 부모만 선택되었을 때
         onToggleExpand: {},
         onParentTap: {},
         onChildTap: { _ in }

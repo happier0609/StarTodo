@@ -18,74 +18,93 @@ struct FocusSettingView: View {
     @Environment(\.scenePhase) private var scenePhase // 앱 상태 감지
     
     var body: some View {
-        ZStack(alignment: .bottom) {
-            ScrollView {
-                if focusSettingVM.focusParents.isEmpty {
-                    FocusSettingEmptyView()
-                } else {
-                    
-                    VStack(alignment: .leading, spacing: 0) {
-                        Text("완벽보다 중요한건 시작하는 용기")
-                            .typo(.textLGEmphasized)
-                            .foregroundColor(Color("Cool1100"))
-                        Text("지금 해낼 수 있는 일들을 선택해요")
-                            .typo(.textLGEmphasized)
-                            .foregroundColor(Color("Cool1100"))
-                    }
-                    
-                    
-                    VStack(spacing: 16) {
-                        ForEach(focusSettingVM.focusParents) { parent in
-                            let children = parent.children
-                                .filter { !$0.isCompleted } // ✨ 완료된 자식 제외
-                                .sorted(by: { $0.order < $1.order })
-                            let selectedCount = children.filter { focusSettingVM.isSelected($0.id) }.count
-
-                            FocusGroupCardView(
-                                parent: parent,
-                                children: children,
-                                isExpanded: focusSettingVM.isExpanded(parent),
-                                selectedChildCount: selectedCount,
-                                totalChildCount: children.count,
-                                isSelected: focusSettingVM.isSelected(parent.id),
-                                onToggleExpand: {
-                                    focusSettingVM.toggleExpanded(for: parent)
-                                },
-                                onParentTap: {
-                                    focusSettingVM.toggleSelection(of: parent)
-                                },
-                                onChildTap: { child in
-                                    focusSettingVM.toggleSelection(of: child)
-                                }
-                            )
+        ZStack {
+            if focusSettingVM.focusParents.isEmpty {
+                FocusSettingEmptyView()
+            } else {
+                ZStack(alignment: .bottom) {
+                    ScrollView {
+                        HStack {
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text("완벽보다 중요한건 시작하는 용기.")
+                                    .typo(.textLGEmphasized)
+                                    .foregroundColor(Color("Cool1100"))
+                                Text("지금 해낼 수 있는 일들을 선택해요")
+                                    .typo(.textLGEmphasized)
+                                    .foregroundColor(Color("Cool1100"))
+                            }
+                            Spacer()
                         }
+                        .padding(.leading, 18)
+                        .padding(.top, 24)
+                        
+                        VStack(spacing: 10) {
+                            ForEach(focusSettingVM.focusParents) { parent in
+                                let children = parent.children
+                                    .filter { !$0.isCompleted }
+                                    .sorted(by: { $0.order < $1.order })
+                                
+                                if children.isEmpty {
+                                    // ✅ 자식이 없을 경우: Row 형태
+                                    FocusItemRowView(todo: parent, isChild: false)
+                                        .onTapGesture {
+                                            focusSettingVM.toggleSelection(of: parent)
+                                        }
+                                } else {
+                                    // ✅ 자식이 있는 경우만 그룹 카드로 렌더링
+                                    let selectedCount = children.filter { focusSettingVM.isSelected($0.id) }.count
+                                    
+                                    FocusGroupCardView(
+                                        parent: parent,
+                                        children: children,
+                                        isExpanded: focusSettingVM.isExpanded(parent),
+                                        selectedChildCount: selectedCount,
+                                        totalChildCount: children.count,
+                                        isSelected: focusSettingVM.isSelected(parent.id),
+                                        onToggleExpand: {
+                                            focusSettingVM.toggleExpanded(for: parent)
+                                        },
+                                        onParentTap: {
+                                            focusSettingVM.toggleSelection(of: parent)
+                                        },
+                                        onChildTap: { child in
+                                            focusSettingVM.toggleSelection(of: child)
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                        .padding(.horizontal, 18)
                     }
-                    .padding(.horizontal)
-                    .padding(.top)
+                    
+                    FocusStartButton(
+                        selectedCount: focusSettingVM.selectedIDs.count,
+                        action: {
+                            let picked = focusSettingVM.pickedTodos(from: focusSettingVM.focusParents)
+                            mainVM.selectedIDs = picked.map(\.id)
+                            
+                            coordinator.push(.timerSetting(
+                                selectedIDs: picked.map(\.id),
+                                allTodos: picked
+                            ))
+                        }
+                    )
+                    .frame(maxWidth: .infinity, alignment: .trailing) // ✅ 오른쪽 정렬
+                    .padding(.trailing, 18)
+                    .padding(.bottom, 24)
                 }
             }
-            
-            FocusStartButton(
-                selectedCount: focusSettingVM.selectedIDs.count,
-                action: {
-                    let picked = focusSettingVM.pickedTodos(from: focusSettingVM.focusParents)
-                    mainVM.selectedIDs = picked.map(\.id)
-                    
-                    coordinator.push(.timerSetting(
-                        selectedIDs: picked.map(\.id),
-                        allTodos: picked
-                    ))
-                }
-            )
-            .frame(maxWidth: .infinity, alignment: .trailing) // ✅ 오른쪽 정렬
-            .padding(.trailing, 20)
-            .padding(.bottom, 24)
         }
         // ✨ 뷰가 나타날 때마다 데이터 로드
         .onAppear {
             print("🔄 FocusSettingView onAppear - 데이터 로딩 시작")
             focusSettingVM.fetchUncompletedParents(with: context)
             focusSettingVM.clearSelections() // 선택 상태 초기화
+            
+            // ✨ 모든 카드 접히도록 확장 상태 초기화
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                focusSettingVM.resetExpansionStates()
+            }
         }
         // ✨ ScenePhase 변경 감지 (백그라운드에서 돌아올 때)
         .onChange(of: scenePhase) { _, newPhase in
@@ -107,17 +126,93 @@ struct FocusSettingView: View {
     }
 }
 
-
+// MARK: - Preview Helper
 #if DEBUG
-#Preview("FocusSettingView (Sample)") {
-    FocusSettingView()
-        .environmentObject(PreviewViewModelFactory.makeFocusSettingViewModel())
-        .previewSetup()
+import SwiftUI
+import SwiftData
+
+@MainActor
+private func createPreviewContainer() -> ModelContainer {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    guard let container = try? ModelContainer(for: Todo.self, configurations: config) else {
+        fatalError("⚠️ Failed to create preview container")
+    }
+    return container
 }
 
-#Preview("FocusSettingView (With Hierarchy)") {
-    FocusSettingView()
-        .environmentObject(PreviewViewModelFactory.makeFocusSettingViewModel(withHierarchy: true))
-        .previewSetup()
+@MainActor
+private func setupMockData(context: ModelContext) {
+    let parent1 = Todo(title: "운동하기", setTime: 30, order: 0)
+    context.insert(parent1)
+    
+    let parent2 = Todo(title: "프로젝트 작업", setTime: 60, order: 1)
+    let child2_1 = Todo(title: "UI 디자인 완성하기", setTime: 30, order: 0, parent: parent2)
+    let child2_2 = Todo(title: "API 연동하기", setTime: 45, order: 1, parent: parent2)
+    let child2_3 = Todo(title: "테스트 코드 작성", setTime: 25, order: 2, parent: parent2)
+    [parent2, child2_1, child2_2, child2_3].forEach { context.insert($0) }
+    
+    let parent3 = Todo(title: "독서하기", setTime: 40, order: 2)
+    let child3_1 = Todo(title: "1장 읽기", setTime: 20, order: 0, parent: parent3)
+    let child3_2 = Todo(title: "2장 읽기", setTime: 20, order: 1, parent: parent3)
+    [parent3, child3_1, child3_2].forEach { context.insert($0) }
+    
+    let parent4 = Todo(title: "완료된 할 일", setTime: 30, order: 3)
+    parent4.isCompleted = true
+    context.insert(parent4)
+    
+    try? context.save()
+}
+
+@MainActor
+private func setupManyItems(context: ModelContext) {
+    for i in 0..<5 {
+        let parent = Todo(title: "할 일 그룹 \(i + 1)", setTime: 60, order: i)
+        context.insert(parent)
+        
+        for j in 0..<3 {
+            let child = Todo(
+                title: "세부 작업 \(j + 1)",
+                setTime: 20,
+                order: j,
+                parent: parent
+            )
+            context.insert(child)
+        }
+    }
+    try? context.save()
+}
+
+// MARK: - ViewBuilder Helper
+
+@MainActor
+private func makeFocusSettingPreview(using setup: (ModelContext) -> Void) -> some View {
+    let container = createPreviewContainer()
+    let context = container.mainContext
+    
+    setup(context)
+    
+    let mainVM = MainViewModel(context: context)
+    mainVM.fetchTodos()
+    
+    let focusVM = FocusSettingViewModel()
+    focusVM.fetchUncompletedParents(with: context)
+    
+    return FocusSettingView()
+        .environmentObject(focusVM)
+        .environmentObject(mainVM)
+        .modelContainer(container)
+}
+
+// MARK: - Preview
+#Preview("FocusSettingView - With Data") {
+    makeFocusSettingPreview(using: setupMockData)
+}
+
+#Preview("FocusSettingView - Many Items") {
+    makeFocusSettingPreview(using: setupManyItems)
+}
+
+#Preview("FocusSettingView - Empty State") {
+    makeFocusSettingPreview(using: { _ in })  // 데이터 없이 초기화
 }
 #endif
