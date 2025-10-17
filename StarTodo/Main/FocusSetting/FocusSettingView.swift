@@ -86,28 +86,33 @@ struct FocusSettingView: View {
             }
         }
         // ✨ 뷰가 나타날 때마다 데이터 로드
-            .onAppear {
-                print("🔄 FocusSettingView onAppear - 데이터 로딩 시작")
-                focusSettingVM.fetchUncompletedParents(with: context)
-                focusSettingVM.clearSelections() // 선택 상태 초기화
+        .onAppear {
+            print("🔄 FocusSettingView onAppear - 데이터 로딩 시작")
+            focusSettingVM.fetchUncompletedParents(with: context)
+            focusSettingVM.clearSelections() // 선택 상태 초기화
+            
+            // ✨ 모든 카드 접히도록 확장 상태 초기화
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                focusSettingVM.resetExpansionStates()
             }
+        }
         // ✨ ScenePhase 변경 감지 (백그라운드에서 돌아올 때)
-            .onChange(of: scenePhase) { _, newPhase in
-                if newPhase == .active {
-                    print("🔄 FocusSettingView ScenePhase Active - 데이터 갱신")
-                    focusSettingVM.fetchUncompletedParents(with: context)
-                }
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                print("🔄 FocusSettingView ScenePhase Active - 데이터 갱신")
+                focusSettingVM.fetchUncompletedParents(with: context)
             }
+        }
         // ✨ 네비게이션으로 돌아올 때 추가 감지
-            .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-                print("🔄 FocusSettingView didBecomeActive - 데이터 갱신")
-                focusSettingVM.fetchUncompletedParents(with: context)
-            }
+        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
+            print("🔄 FocusSettingView didBecomeActive - 데이터 갱신")
+            focusSettingVM.fetchUncompletedParents(with: context)
+        }
         // ✨ Todo 완료 상태 변경 감지
-            .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TodoCompletionChanged"))) { _ in
-                print("🔄 FocusSettingView TodoCompletionChanged - 데이터 갱신")
-                focusSettingVM.fetchUncompletedParents(with: context)
-            }
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TodoCompletionChanged"))) { _ in
+            print("🔄 FocusSettingView TodoCompletionChanged - 데이터 갱신")
+            focusSettingVM.fetchUncompletedParents(with: context)
+        }
     }
 }
 
@@ -129,22 +134,22 @@ private func createPreviewContainer() -> ModelContainer {
 private func setupMockData(context: ModelContext) {
     let parent1 = Todo(title: "운동하기", setTime: 30, order: 0)
     context.insert(parent1)
-
+    
     let parent2 = Todo(title: "프로젝트 작업", setTime: 60, order: 1)
     let child2_1 = Todo(title: "UI 디자인 완성하기", setTime: 30, order: 0, parent: parent2)
     let child2_2 = Todo(title: "API 연동하기", setTime: 45, order: 1, parent: parent2)
     let child2_3 = Todo(title: "테스트 코드 작성", setTime: 25, order: 2, parent: parent2)
     [parent2, child2_1, child2_2, child2_3].forEach { context.insert($0) }
-
+    
     let parent3 = Todo(title: "독서하기", setTime: 40, order: 2)
     let child3_1 = Todo(title: "1장 읽기", setTime: 20, order: 0, parent: parent3)
     let child3_2 = Todo(title: "2장 읽기", setTime: 20, order: 1, parent: parent3)
     [parent3, child3_1, child3_2].forEach { context.insert($0) }
-
+    
     let parent4 = Todo(title: "완료된 할 일", setTime: 30, order: 3)
     parent4.isCompleted = true
     context.insert(parent4)
-
+    
     try? context.save()
 }
 

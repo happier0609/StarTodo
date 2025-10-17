@@ -104,6 +104,11 @@ final class FocusSettingViewModel: ObservableObject {
         }
     }
     
+    /// 부모 카드 확장 상태 초기화 (모두 접힘)
+    func resetExpansionStates() {
+        expandedParentIDs.removeAll()
+    }
+    
     // MARK: - ✨ 완료된 항목 선택 상태 정리
     private func cleanupCompletedSelections() {
         // 선택된 Todo 중 완료된 것들 제거
