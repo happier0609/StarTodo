@@ -37,10 +37,10 @@ struct FocusGroupCardView: View {
     
     var body: some View {
         ZStack(alignment: .top) {
-            RoundedRectangle(cornerRadius: 12)
+            RoundedRectangle(cornerRadius: 10)
                 .fill(isGroupSelected ? Color("Primary100") : Color("App.White"))
                 .overlay(
-                    RoundedRectangle(cornerRadius: 12)
+                    RoundedRectangle(cornerRadius: 10)
                         .stroke(isGroupSelected ? Color("Primary500") : Color.clear, lineWidth: 1.3)
                 )
             
@@ -64,14 +64,13 @@ struct FocusGroupCardView: View {
                                     onChildTap(child)
                                 }
                         }
+                        .padding(.leading, )
                     }
+                    .padding(.bottom, 18)
                 }
             }
-            .padding(.top, 12)
-            .padding(.horizontal, 12)
+            .padding(.horizontal, 18)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 4)
     }
 }
 

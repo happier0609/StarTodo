@@ -24,16 +24,21 @@ struct FocusSettingView: View {
             } else {
                 ZStack(alignment: .bottom) {
                     ScrollView {
-                        VStack(alignment: .leading, spacing: 0) {
-                            Text("완벽보다 중요한건 시작하는 용기")
-                                .typo(.textLGEmphasized)
-                                .foregroundColor(Color("Cool1100"))
-                            Text("지금 해낼 수 있는 일들을 선택해요")
-                                .typo(.textLGEmphasized)
-                                .foregroundColor(Color("Cool1100"))
+                        HStack {
+                            VStack(alignment: .leading, spacing: 0) {
+                                Text("완벽보다 중요한건 시작하는 용기.")
+                                    .typo(.textLGEmphasized)
+                                    .foregroundColor(Color("Cool1100"))
+                                Text("지금 해낼 수 있는 일들을 선택해요")
+                                    .typo(.textLGEmphasized)
+                                    .foregroundColor(Color("Cool1100"))
+                            }
+                            Spacer()
                         }
+                        .padding(.leading, 18)
+                        .padding(.top, 24)
                         
-                        VStack(spacing: 16) {
+                        VStack(spacing: 10) {
                             ForEach(focusSettingVM.focusParents) { parent in
                                 let children = parent.children
                                     .filter { !$0.isCompleted } // ✨ 완료된 자식 제외
@@ -59,8 +64,7 @@ struct FocusSettingView: View {
                                 )
                             }
                         }
-                        .padding(.horizontal)
-                        .padding(.top)
+                        .padding(.horizontal, 18)
                     }
                     
                     FocusStartButton(
@@ -76,7 +80,7 @@ struct FocusSettingView: View {
                         }
                     )
                     .frame(maxWidth: .infinity, alignment: .trailing) // ✅ 오른쪽 정렬
-                    .padding(.trailing, 20)
+                    .padding(.trailing, 18)
                     .padding(.bottom, 24)
                 }
             }
