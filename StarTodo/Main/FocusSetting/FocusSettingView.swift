@@ -41,27 +41,38 @@ struct FocusSettingView: View {
                         VStack(spacing: 10) {
                             ForEach(focusSettingVM.focusParents) { parent in
                                 let children = parent.children
-                                    .filter { !$0.isCompleted } // ✨ 완료된 자식 제외
+                                    .filter { !$0.isCompleted }
                                     .sorted(by: { $0.order < $1.order })
-                                let selectedCount = children.filter { focusSettingVM.isSelected($0.id) }.count
                                 
-                                FocusGroupCardView(
-                                    parent: parent,
-                                    children: children,
-                                    isExpanded: focusSettingVM.isExpanded(parent),
-                                    selectedChildCount: selectedCount,
-                                    totalChildCount: children.count,
-                                    isSelected: focusSettingVM.isSelected(parent.id),
-                                    onToggleExpand: {
-                                        focusSettingVM.toggleExpanded(for: parent)
-                                    },
-                                    onParentTap: {
-                                        focusSettingVM.toggleSelection(of: parent)
-                                    },
-                                    onChildTap: { child in
-                                        focusSettingVM.toggleSelection(of: child)
-                                    }
-                                )
+                                if children.isEmpty {
+                                    // ✅ 자식이 없을 경우: Row 형태
+                                    FocusItemRowView(todo: parent, isChild: false)
+                                        .onTapGesture {
+                                            focusSettingVM.toggleSelection(of: parent)
+                                        }
+                                        .padding(.horizontal, 18)
+                                } else {
+                                    // ✅ 자식이 있는 경우만 그룹 카드로 렌더링
+                                    let selectedCount = children.filter { focusSettingVM.isSelected($0.id) }.count
+                                    
+                                    FocusGroupCardView(
+                                        parent: parent,
+                                        children: children,
+                                        isExpanded: focusSettingVM.isExpanded(parent),
+                                        selectedChildCount: selectedCount,
+                                        totalChildCount: children.count,
+                                        isSelected: focusSettingVM.isSelected(parent.id),
+                                        onToggleExpand: {
+                                            focusSettingVM.toggleExpanded(for: parent)
+                                        },
+                                        onParentTap: {
+                                            focusSettingVM.toggleSelection(of: parent)
+                                        },
+                                        onChildTap: { child in
+                                            focusSettingVM.toggleSelection(of: child)
+                                        }
+                                    )
+                                }
                             }
                         }
                         .padding(.horizontal, 18)

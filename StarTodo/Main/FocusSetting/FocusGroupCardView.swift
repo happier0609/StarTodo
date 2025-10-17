@@ -82,12 +82,12 @@ struct FocusGroupCardView: View {
                                     onChildTap(child)
                                 }
                         }
-                        .padding(.leading, )
                     }
+                    .padding(.leading, 20)
                     .padding(.bottom, 18)
                 }
             }
-            .padding(.horizontal, 18)
+//            .padding(.horizontal, 18)
         }
     }
 }

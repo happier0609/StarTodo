@@ -21,7 +21,7 @@ struct FocusItemRowView: View {
     var body: some View {
         Text(todo.title)
             .typo(.textMDRegular)
-            .padding()
+            .padding(18)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: 10)
