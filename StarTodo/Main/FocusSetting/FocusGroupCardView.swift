@@ -22,16 +22,31 @@ struct FocusGroupCardView: View {
     
     @EnvironmentObject var focusSettingVM: FocusSettingViewModel
     
+    // 전체 선택 상태 여부
+    var isFullySelected: Bool {
+        totalChildCount > 0 && selectedChildCount == totalChildCount
+    }
+
+    // 일부만 선택된 상태 여부
+    var isPartiallySelected: Bool {
+        selectedChildCount > 0 && selectedChildCount < totalChildCount
+    }
+    
     var isParentSelected: Bool {
         focusSettingVM.isSelected(parent.id)
     }
     
+    // 자식 일부라도 선택된 경우 true
+    var hasPartialSelection: Bool {
+        !parent.children.isEmpty && selectedChildCount > 0 && selectedChildCount < totalChildCount
+    }
+
+    // 자식이 없을 경우 부모 선택 상태
     var isGroupSelected: Bool {
-        // ✨ 자식이 없는 부모는 자신의 선택 상태로, 자식이 있으면 자식의 선택 상태로 판단
         if parent.children.isEmpty {
             return isParentSelected
         } else {
-            return selectedChildCount > 0
+            return isFullySelected
         }
     }
     
@@ -41,7 +56,10 @@ struct FocusGroupCardView: View {
                 .fill(isGroupSelected ? Color("Primary100") : Color("App.White"))
                 .overlay(
                     RoundedRectangle(cornerRadius: 10)
-                        .stroke(isGroupSelected ? Color("Primary500") : Color.clear, lineWidth: 1.3)
+                        .stroke(
+                            (isFullySelected || hasPartialSelection) ? Color("Primary500") : Color.clear,
+                            lineWidth: 1.3
+                        )
                 )
             
             VStack(spacing: 0) {
