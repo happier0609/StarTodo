@@ -307,36 +307,17 @@ final class FocusModeViewModel: ObservableObject {
         guard todos.indices.contains(index) else { return }
         let todo = todos[index]
         
-        print("✅ Todo 완료 처리: \(todo.title)")
-        
-        // ✅ 1. Todo 상태 변경
-        todo.isCompleted = true
-        todo.performedDate = Date()
-        
-        // ✅ 2. elapsedTime 업데이트 (실제 경과 시간 저장)
+        // ✅ 경과 시간 가져오기
         let elapsedSeconds = todoElapsed[todo.id, default: 0]
-        todo.elapsedTime = elapsedSeconds
         
-        print("  - 경과 시간: \(elapsedSeconds)초")
-        print("  - 완료 시각: \(todo.performedDate?.description ?? "nil")")
-        
-        // ✅ 3. SwiftData에 저장
+        // ✅ 통일된 메서드 사용
         do {
-            try modelContext.save()
-            print("✅ Todo 완료 상태 저장 성공: \(todo.title)")
-            
-            // ✅ 4. 알림 발송 (다른 뷰가 감지할 수 있도록)
-            NotificationCenter.default.post(
-                name: NSNotification.Name("TodoCompletionChanged"),
-                object: nil,
-                userInfo: ["todoID": todo.id, "isCompleted": true]
-            )
-            
+            try todo.markAsCompleted(context: modelContext, elapsedSeconds: elapsedSeconds)
         } catch {
-            print("❌ Todo 저장 실패: \(error.localizedDescription)")
+            print("❌ Todo 완료 처리 실패: \(error.localizedDescription)")
         }
         
-        // ✅ 5. 다음 Todo로 이동
+        // ✅ 다음 Todo로 이동
         if index == currentIndex {
             stopTimer()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -344,8 +325,7 @@ final class FocusModeViewModel: ObservableObject {
             }
         }
     }
-    
-    // ✅ 추가: 다음 할 일로 이동하는 메서드
+
     private func moveToNextTodo() {
         // todos 중에서 아직 완료되지 않은 첫 번째 항목을 찾아 이동
         let next = todos.enumerated().first { (_, todo) in
