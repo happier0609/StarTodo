@@ -92,29 +92,38 @@ struct FocusSettingView: View {
                 }
             }
         }
-        // ✅ 최초 진입 시
+        // ✅ 최초 진입 시 + 스와이프 진입 시 모두 처리
         .onAppear {
-            print("📄 FocusSettingView onAppear")
-            print("현재 선택된 항목: \(focusSettingVM.selectedIDs.count)개")
-            focusSettingVM.fetchUncompletedParents(with: context)
+            print("📄 FocusSettingView onAppear - 데이터 불러오기 시작")
+            refreshData()
         }
-
         // ✅ 앱 포그라운드 복귀
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
-                print("📄 FocusSettingView ScenePhase Active")
-                focusSettingVM.fetchUncompletedParents(with: context)
+                print("📄 FocusSettingView ScenePhase Active - 데이터 새로고침")
+                refreshData()
             }
         }
-
-        // ✅ 완료 상태 변경 감지 (더 명확한 로깅)
+        // ✅ 완료 상태 변경 감지
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TodoCompletionChanged"))) { notification in
             print("📄 FocusSettingView TodoCompletionChanged 알림 수신")
             if let todoID = notification.userInfo?["todoID"] as? UUID {
                 print("  변경된 Todo ID: \(todoID)")
             }
-            focusSettingVM.fetchUncompletedParents(with: context)
+            refreshData()
         }
+    }
+    
+    // ✅ 데이터 새로고침 헬퍼 함수
+    private func refreshData() {
+        print("🔄 데이터 새로고침 시작")
+        print("  이전 항목 수: \(focusSettingVM.focusParents.count)")
+        print("  이전 선택 수: \(focusSettingVM.selectedIDs.count)")
+        
+        focusSettingVM.fetchUncompletedParents(with: context)
+        
+        print("  새로운 항목 수: \(focusSettingVM.focusParents.count)")
+        print("  새로운 선택 수: \(focusSettingVM.selectedIDs.count)")
     }
 }
 

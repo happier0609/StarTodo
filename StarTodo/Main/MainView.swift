@@ -45,7 +45,7 @@ struct MainView: View {
             // 📹 스와이프 가능한 탭 뷰
             TabView(selection: $selectedTab) {
                 FocusSettingView()
-                    .environmentObject(mainVM.focusSettingViewModel) // ✅ mainVM의 인스턴스 사용
+                    .environmentObject(mainVM.focusSettingViewModel)
                     .environmentObject(mainVM)
                     .environmentObject(coordinator)
                     .tag(MainTabType.start)
@@ -56,24 +56,18 @@ struct MainView: View {
             .tabViewStyle(.page(indexDisplayMode: .never))
         }
         .background(Color("BgLight"))
-        // ✅ selectedTab 변경 감지 - Start 탭으로 전환될 때마다 데이터 새로고침
+        // ✅ selectedTab 변경 감지 - Start 탭으로 전환될 때 선택 상태만 초기화
         .onChange(of: selectedTab) { oldValue, newValue in
             if newValue == .start {
-                print("📄 Start 탭 진입 - 데이터 새로고침")
-                print("  이전 탭: \(oldValue.rawValue)")
+                print("📄 Start 탭 진입 (from \(oldValue.rawValue))")
                 
-                // 1. 데이터 새로고침
-                mainVM.focusSettingViewModel.fetchUncompletedParents(with: context)
-                
-                // 2. 선택 초기화
+                // ✅ 선택 초기화 (데이터는 FocusSettingView.onAppear에서 처리)
                 mainVM.focusSettingViewModel.clearSelections()
                 
-                // 3. 확장 상태 초기화
+                // ✅ 확장 상태 초기화
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     mainVM.focusSettingViewModel.resetExpansionStates()
                 }
-                
-                print("  불러온 항목: \(mainVM.focusSettingViewModel.focusParents.count)개")
             }
         }
     }
