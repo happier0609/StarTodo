@@ -377,3 +377,28 @@ extension AddListViewModel {
         context.insert(parent)
     }
 }
+
+// MARK: - Todo 완료 처리
+extension AddListViewModel {
+    
+    /// Todo의 완료 상태를 토글
+    /// - Parameters:
+    ///   - todo: 완료 상태를 변경할 Todo
+    ///   - context: SwiftData ModelContext
+    func toggleTodoCompletion(_ todo: Todo, context: ModelContext) {
+        do {
+            // ✅ 통일된 Extension 메서드 사용
+            try todo.toggleCompletion(context: context)
+            
+            print("🔄 AddListView에서 완료 상태 토글: \(todo.title)")
+            print("  - 완료 여부: \(todo.isCompleted)")
+            print("  - 완료 시각: \(todo.performedDate?.description ?? "nil")")
+            
+            // ✅ 목록 새로고침
+            fetchParents(with: context)
+            
+        } catch {
+            print("❌ 완료 상태 토글 실패: \(error.localizedDescription)")
+        }
+    }
+}
