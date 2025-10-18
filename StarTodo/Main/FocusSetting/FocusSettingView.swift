@@ -13,10 +13,9 @@ struct FocusSettingView: View {
     @EnvironmentObject var focusSettingVM: FocusSettingViewModel
     @EnvironmentObject var mainVM: MainViewModel
     @EnvironmentObject var coordinator: MainCoordinator
-    
     @Environment(\.modelContext) private var context
-    @Environment(\.scenePhase) private var scenePhase // 앱 상태 감지
-    
+    @Environment(\.scenePhase) private var scenePhase
+
     var body: some View {
         ZStack {
             if focusSettingVM.focusParents.isEmpty {
@@ -36,24 +35,22 @@ struct FocusSettingView: View {
                             Spacer()
                         }
                         .padding(.leading, 18)
-                        .padding(.top, 24)
-                        
+                        .padding(.vertical, 24)
+
                         VStack(spacing: 10) {
                             ForEach(focusSettingVM.focusParents) { parent in
                                 let children = parent.children
                                     .filter { !$0.isCompleted }
                                     .sorted(by: { $0.order < $1.order })
-                                
+
                                 if children.isEmpty {
-                                    // ✅ 자식이 없을 경우: Row 형태
                                     FocusItemRowView(todo: parent, isChild: false)
                                         .onTapGesture {
                                             focusSettingVM.toggleSelection(of: parent)
                                         }
                                 } else {
-                                    // ✅ 자식이 있는 경우만 그룹 카드로 렌더링
                                     let selectedCount = children.filter { focusSettingVM.isSelected($0.id) }.count
-                                    
+
                                     FocusGroupCardView(
                                         parent: parent,
                                         children: children,
@@ -76,51 +73,41 @@ struct FocusSettingView: View {
                         }
                         .padding(.horizontal, 18)
                     }
-                    
+
                     FocusStartButton(
                         selectedCount: focusSettingVM.selectedIDs.count,
                         action: {
                             let picked = focusSettingVM.pickedTodos(from: focusSettingVM.focusParents)
                             mainVM.selectedIDs = picked.map(\.id)
-                            
+
                             coordinator.push(.timerSetting(
                                 selectedIDs: picked.map(\.id),
                                 allTodos: picked
                             ))
                         }
                     )
-                    .frame(maxWidth: .infinity, alignment: .trailing) // ✅ 오른쪽 정렬
+                    .frame(maxWidth: .infinity, alignment: .trailing)
                     .padding(.trailing, 18)
                     .padding(.bottom, 24)
                 }
             }
         }
-        // ✨ 뷰가 나타날 때마다 데이터 로드
+        // ✅ 최초 진입 시 (MainView의 onChange가 처리하지 못하는 첫 로드만)
         .onAppear {
-            print("🔄 FocusSettingView onAppear - 데이터 로딩 시작")
+            print("🔄 FocusSettingView onAppear")
             focusSettingVM.fetchUncompletedParents(with: context)
-            focusSettingVM.clearSelections() // 선택 상태 초기화
-            
-            // ✨ 모든 카드 접히도록 확장 상태 초기화
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-                focusSettingVM.resetExpansionStates()
-            }
+            focusSettingVM.clearSelections()
         }
-        // ✨ ScenePhase 변경 감지 (백그라운드에서 돌아올 때)
+        // ✅ 앱 포그라운드 복귀
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
-                print("🔄 FocusSettingView ScenePhase Active - 데이터 갱신")
+                print("🔄 FocusSettingView ScenePhase Active")
                 focusSettingVM.fetchUncompletedParents(with: context)
             }
         }
-        // ✨ 네비게이션으로 돌아올 때 추가 감지
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.didBecomeActiveNotification)) { _ in
-            print("🔄 FocusSettingView didBecomeActive - 데이터 갱신")
-            focusSettingVM.fetchUncompletedParents(with: context)
-        }
-        // ✨ Todo 완료 상태 변경 감지
+        // ✅ 완료 상태 변경 감지
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TodoCompletionChanged"))) { _ in
-            print("🔄 FocusSettingView TodoCompletionChanged - 데이터 갱신")
+            print("🔄 FocusSettingView TodoCompletionChanged")
             focusSettingVM.fetchUncompletedParents(with: context)
         }
     }

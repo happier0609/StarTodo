@@ -18,10 +18,10 @@ struct MainView: View {
     @EnvironmentObject var mainVM: MainViewModel
     @EnvironmentObject var coordinator: MainCoordinator
     @Environment(\.modelContext) private var context
-    
+
     var body: some View {
         VStack(spacing: 0) {
-            // 🔹 상단 탭바
+            // 📹 상단 탭바
             HStack {
                 ForEach(MainTabType.allCases, id: \.self) { tab in
                     Button(action: {
@@ -42,10 +42,10 @@ struct MainView: View {
             .padding(.top)
             .background(Color("App.White"))
 
-            // 🔹 스와이프 가능한 탭 뷰
+            // 📹 스와이프 가능한 탭 뷰
             TabView(selection: $selectedTab) {
                 FocusSettingView()
-                    .environmentObject(FocusSettingViewModel())
+                    .environmentObject(mainVM.focusSettingViewModel) // ✅ mainVM의 인스턴스 사용
                     .environmentObject(mainVM)
                     .environmentObject(coordinator)
                     .tag(MainTabType.start)
@@ -53,8 +53,21 @@ struct MainView: View {
                 AddListView()
                     .tag(MainTabType.todo)
             }
-            .tabViewStyle(.page(indexDisplayMode: .never)) // 페이지 인디케이터 숨기기
+            .tabViewStyle(.page(indexDisplayMode: .never))
         }
         .background(Color("BgLight"))
+        // ✅ selectedTab 변경 감지 - Start 탭으로 전환될 때마다 데이터 새로고침
+        .onChange(of: selectedTab) { oldValue, newValue in
+            if newValue == .start {
+                print("🔄 Start 탭 진입 - 데이터 새로고침")
+                mainVM.focusSettingViewModel.fetchUncompletedParents(with: context)
+                mainVM.focusSettingViewModel.clearSelections()
+                
+                // ✅ 확장 상태 초기화 (약간의 딜레이 후)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+                    mainVM.focusSettingViewModel.resetExpansionStates()
+                }
+            }
+        }
     }
 }
