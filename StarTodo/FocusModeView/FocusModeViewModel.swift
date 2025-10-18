@@ -302,16 +302,76 @@ final class FocusModeViewModel: ObservableObject {
     func completeCurrentTodo() {
         markTodoAsCompleted(at: currentIndex)
     }
-    
-    // todos 중에서 아직 완료되지 않은 첫 번째 항목을 찾아 이동
+
+    func markTodoAsCompleted(at index: Int) {
+        guard todos.indices.contains(index) else { return }
+        let todo = todos[index]
+        
+        print("🎯 FocusMode 완료 처리 시작: \(todo.title)")
+        print("  이전 상태:")
+        print("    - isCompleted: \(todo.isCompleted)")
+        print("    - performedDate: \(todo.performedDate?.description ?? "nil")")
+        
+        // ✅ 경과 시간 가져오기
+        let elapsedSeconds = todoElapsed[todo.id, default: 0]
+        
+        // ✅ 통일된 Extension 메서드 사용
+        do {
+            try todo.markAsCompleted(context: modelContext, elapsedSeconds: elapsedSeconds)
+            
+            print("  완료 처리 후:")
+            print("    - isCompleted: \(todo.isCompleted)")
+            print("    - performedDate: \(todo.performedDate?.description ?? "nil")")
+            
+            // ✅ context가 제대로 저장되었는지 확인
+            print("  ModelContext 저장 확인:")
+            print("    - hasChanges: \(modelContext.hasChanges)")
+            
+            // ✅ 자식이 있는 경우: 모든 자식도 완료 처리
+            if !todo.children.isEmpty {
+                print("  자식 완료 처리:")
+                for child in todo.children where !child.isCompleted {
+                    let childElapsed = todoElapsed[child.id, default: 0]
+                    try child.markAsCompleted(context: modelContext, elapsedSeconds: childElapsed)
+                    print("    - \(child.title): 완료 처리됨")
+                }
+            }
+            
+            // ✅ 자식인 경우: 모든 형제가 완료되었는지 확인
+            if let parent = todo.parent {
+                let allSiblingsCompleted = parent.children.allSatisfy { $0.isCompleted }
+                print("  부모 확인: \(parent.title)")
+                print("    - 모든 형제 완료 여부: \(allSiblingsCompleted)")
+                
+                if allSiblingsCompleted && !parent.isCompleted {
+                    let parentElapsed = todoElapsed[parent.id, default: 0]
+                    try parent.markAsCompleted(context: modelContext, elapsedSeconds: parentElapsed)
+                    print("    - 부모도 완료 처리됨")
+                }
+            }
+            
+        } catch {
+            print("❌ Todo 완료 처리 실패: \(error.localizedDescription)")
+        }
+        
+        // ✅ 다음 Todo로 이동
+        if index == currentIndex {
+            stopTimer()
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
+                self.moveToNextTodo()
+            }
+        }
+    }
+
     private func moveToNextTodo() {
+        // todos 중에서 아직 완료되지 않은 첫 번째 항목을 찾아 이동
         let next = todos.enumerated().first { (_, todo) in
             !todo.isCompleted
         }
         
-        if let (index, _) = next {
+        if let (index, nextTodo) = next {
             currentIndex = index
-            print("다음 할 일로 이동: \(todos[index].title)")
+            print("다음 할 일로 이동: \(nextTodo.title)")
             startTodoTimer()
         } else {
             print("모든 할 일 완료!")
@@ -320,24 +380,7 @@ final class FocusModeViewModel: ObservableObject {
         }
         print("----------------------------------")
     }
-    
-    func markTodoAsCompleted(at index: Int) {
-        guard todos.indices.contains(index) else { return }
-        let todo = todos[index]
-        
-        todo.isCompleted = true
-        
-        // 실제 경과 시간 그대로 유지
-        // todoElapsed는 건드리지 않음
-        
-        if index == currentIndex {
-            stopTimer()
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
-                self.moveToNextTodo()
-            }
-        }
-    }
-    
+
     // MARK: - 세션 종료
     func endFocusSession() {
         print("집중 세션 종료")
@@ -364,11 +407,12 @@ final class FocusModeViewModel: ObservableObject {
             print("- todoTimeSettings: \(todoTimeSettings)")
             print("- todoElapsed: \(todoElapsed)")
             
+            // ✅ FocusItem 생성 (리포트용)
             session.items = todos.enumerated().map { (index, todo) in
                 let setSeconds = todoTimeSettings[todo.id, default: 0] * 60
                 let elapsedSeconds = todoElapsed[todo.id, default: 0]
                 
-                print("FocusItem: \(todo.title) - 경과:\(elapsedSeconds)초")
+                print("FocusItem: \(todo.title) - 경과:\(elapsedSeconds)초, 완료:\(todo.isCompleted)")
                 
                 return FocusItem(
                     title: todo.title,
@@ -381,11 +425,23 @@ final class FocusModeViewModel: ObservableObject {
             
             session.breaks = breakSessions
             
+            // ✅ 모든 Todo의 elapsedTime 최종 업데이트
+            print("\n📝 Todo elapsedTime 최종 업데이트:")
+            for todo in todos {
+                let elapsedSeconds = todoElapsed[todo.id, default: 0]
+                todo.elapsedTime = elapsedSeconds
+                print("  - \(todo.title): \(elapsedSeconds)초, 완료: \(todo.isCompleted)")
+            }
+            
+            // ✅ 한 번에 모두 저장
             do {
                 try modelContext.save()
-                print("세션 저장 완료 - items 개수: \(session.items.count)")
+                print("✅ 세션 및 Todo 상태 최종 저장 완료")
+                print("  - FocusSession items: \(session.items.count)개")
+                print("  - Breaks: \(session.breaks.count)개")
+                print("  - 업데이트된 Todo: \(todos.count)개")
             } catch {
-                print("세션 저장 실패: \(error.localizedDescription)")
+                print("❌ 세션 저장 실패: \(error.localizedDescription)")
             }
             
             savedSession = session

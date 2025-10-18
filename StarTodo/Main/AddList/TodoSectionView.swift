@@ -37,7 +37,8 @@ struct TodoSectionView: View {
                 parent: parent,
                 children: visibleChildren.sorted(by: { $0.order < $1.order }),
                 onToggle: { todo in
-                    handleToggle(todo: todo)
+                    // ✅ ViewModel로 위임
+                    viewModel.toggleTodoCompletion(todo, context: context)
                 },
                 onLongPressEdit: { _ in
                     handleEdit(parent: parent)
@@ -56,25 +57,13 @@ struct TodoSectionView: View {
         }
     }
     
-    private func handleToggle(todo: Todo) {
-        todo.isCompleted.toggle()
-        if todo.isCompleted {
-            todo.performedDate = Date()
-        } else {
-            todo.performedDate = nil
-        }
-        
-        do {
-            try context.save()
-            // 완료 상태 변경 시에도 목록 갱신
-            viewModel.fetchParents(with: context)
-        } catch {
-            print("❌ 완료 상태 저장 실패: \(error.localizedDescription)")
-        }
-    }
-    
     private func handleEdit(parent: Todo) {
         viewModel.editingParent = parent
         viewModel.showModal = true
+    }
+    
+    private func handleToggle(todo: Todo) {
+        // ✅ ViewModel로 위임
+        viewModel.toggleTodoCompletion(todo, context: context)
     }
 }

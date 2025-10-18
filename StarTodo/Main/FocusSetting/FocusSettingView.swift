@@ -39,24 +39,30 @@ struct FocusSettingView: View {
 
                         VStack(spacing: 10) {
                             ForEach(focusSettingVM.focusParents) { parent in
-                                let children = parent.children
+                                // ✅ 미완료 자식만 필터링
+                                let uncompletedChildren = parent.children
                                     .filter { !$0.isCompleted }
                                     .sorted(by: { $0.order < $1.order })
 
-                                if children.isEmpty {
+                                // ✅ 자식이 없는 단일 항목 또는 미완료 자식이 있는 그룹만 표시
+                                if parent.children.isEmpty {
+                                    // 단일 항목
                                     FocusItemRowView(todo: parent, isChild: false)
                                         .onTapGesture {
                                             focusSettingVM.toggleSelection(of: parent)
                                         }
-                                } else {
-                                    let selectedCount = children.filter { focusSettingVM.isSelected($0.id) }.count
+                                } else if !uncompletedChildren.isEmpty {
+                                    // 미완료 자식이 있는 그룹
+                                    let selectedCount = uncompletedChildren.filter {
+                                        focusSettingVM.isSelected($0.id)
+                                    }.count
 
                                     FocusGroupCardView(
                                         parent: parent,
-                                        children: children,
+                                        children: uncompletedChildren,
                                         isExpanded: focusSettingVM.isExpanded(parent),
                                         selectedChildCount: selectedCount,
-                                        totalChildCount: children.count,
+                                        totalChildCount: uncompletedChildren.count,
                                         isSelected: focusSettingVM.isSelected(parent.id),
                                         onToggleExpand: {
                                             focusSettingVM.toggleExpanded(for: parent)
@@ -69,6 +75,7 @@ struct FocusSettingView: View {
                                         }
                                     )
                                 }
+                                // ✅ 모든 자식이 완료된 경우: 렌더링하지 않음
                             }
                         }
                         .padding(.horizontal, 18)
@@ -92,24 +99,38 @@ struct FocusSettingView: View {
                 }
             }
         }
-        // ✅ 최초 진입 시 (MainView의 onChange가 처리하지 못하는 첫 로드만)
+        // ✅ 최초 진입 시 + 스와이프 진입 시 모두 처리
         .onAppear {
-            print("🔄 FocusSettingView onAppear")
-            focusSettingVM.fetchUncompletedParents(with: context)
-            focusSettingVM.clearSelections()
+            print("📄 FocusSettingView onAppear - 데이터 불러오기 시작")
+            refreshData()
         }
         // ✅ 앱 포그라운드 복귀
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
-                print("🔄 FocusSettingView ScenePhase Active")
-                focusSettingVM.fetchUncompletedParents(with: context)
+                print("📄 FocusSettingView ScenePhase Active - 데이터 새로고침")
+                refreshData()
             }
         }
         // ✅ 완료 상태 변경 감지
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TodoCompletionChanged"))) { _ in
-            print("🔄 FocusSettingView TodoCompletionChanged")
-            focusSettingVM.fetchUncompletedParents(with: context)
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TodoCompletionChanged"))) { notification in
+            print("📄 FocusSettingView TodoCompletionChanged 알림 수신")
+            if let todoID = notification.userInfo?["todoID"] as? UUID {
+                print("  변경된 Todo ID: \(todoID)")
+            }
+            refreshData()
         }
+    }
+    
+    // ✅ 데이터 새로고침 헬퍼 함수
+    private func refreshData() {
+        print("🔄 데이터 새로고침 시작")
+        print("  이전 항목 수: \(focusSettingVM.focusParents.count)")
+        print("  이전 선택 수: \(focusSettingVM.selectedIDs.count)")
+        
+        focusSettingVM.fetchUncompletedParents(with: context)
+        
+        print("  새로운 항목 수: \(focusSettingVM.focusParents.count)")
+        print("  새로운 선택 수: \(focusSettingVM.selectedIDs.count)")
     }
 }
 

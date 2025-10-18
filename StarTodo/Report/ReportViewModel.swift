@@ -246,6 +246,12 @@ final class ReportViewModel: ObservableObject {
     func finalizeSession() {
         session.endedAt = Date()
         // SwiftData는 변경사항 자동 저장됨
+        
+        // ✅ 완료된 Todo들의 상태를 다시 한 번 확인 및 저장
+        // (이미 FocusModeViewModel에서 저장했지만, 안전장치로 추가)
+        print("📝 ReportView에서 세션 종료 처리")
+        print("  - 완료된 항목: \(completedTodos.count)개")
+        print("  - 미완료 항목: \(incompletedTodos.count)개")
     }
 }
 

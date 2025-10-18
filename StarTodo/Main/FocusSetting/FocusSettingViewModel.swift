@@ -66,10 +66,10 @@ final class FocusSettingViewModel: ObservableObject {
         focusParents = todos.filter { $0.parent == nil && !$0.isCompleted }
     }
     
-    // MARK: - ✨ 완료되지 않은 할 일 불러오기 (AddListViewModel 패턴 적용)
+    // MARK: - ✨ 완료되지 않은 할 일 불러오기
     func fetchUncompletedParents(with context: ModelContext) {
         do {
-            // ✨ 완료되지 않은 부모 항목만 가져오기
+            // ✅ 완료되지 않은 부모 항목만 가져오기
             let descriptor = FetchDescriptor<Todo>(
                 predicate: #Predicate { todo in
                     todo.parent == nil && !todo.isCompleted
@@ -77,25 +77,48 @@ final class FocusSettingViewModel: ObservableObject {
             )
             let fetchedTodos = try context.fetch(descriptor)
             
-            // ✨ 완료되지 않은 자식이 하나라도 있거나, 자식이 없는 부모만 필터링
-            let parentsToShow = fetchedTodos.filter { parent in
-                // 자식이 없거나, 완료되지 않은 자식이 있는 경우만 포함
-                parent.children.isEmpty || parent.children.contains { !$0.isCompleted }
+            print("📊 FocusSettingViewModel fetchUncompletedParents:")
+            print("  Fetch된 부모 항목: \(fetchedTodos.count)개")
+            
+            // ✅ 추가 필터링: 미완료 자식이 하나라도 있는 항목만 표시
+            let parentsWithUncompletedChildren = fetchedTodos.filter { parent in
+                // 자식이 없는 단일 항목은 항상 표시
+                if parent.children.isEmpty {
+                    return true
+                }
+                
+                // 자식이 있는 경우: 미완료 자식이 하나라도 있어야 함
+                let hasUncompletedChildren = parent.children.contains { !$0.isCompleted }
+                
+                if !hasUncompletedChildren {
+                    print("  ⚠️ 모든 자식이 완료되어 제외: \(parent.title)")
+                }
+                
+                return hasUncompletedChildren
             }
             
-            // 수동으로 정렬 적용 (AddListViewModel과 동일한 로직)
-            focusParents = parentsToShow.sorted { a, b in
-                // 1. order 순서
+            // ✅ 수동으로 정렬 적용
+            focusParents = parentsWithUncompletedChildren.sorted { a, b in
                 if a.order != b.order {
                     return a.order < b.order
                 }
-                // 2. 생성 시간
                 return a.createdAt < b.createdAt
             }
             
-            print("✅ FocusSettingViewModel: \(focusParents.count)개의 미완료 부모 할 일을 불러왔습니다.")
+            print("  최종 표시 항목: \(focusParents.count)개")
             
-            // ✨ 선택 상태 정리 - 완료된 항목이 선택되어 있다면 제거
+            // 디버깅
+            for parent in focusParents {
+                let childCount = parent.children.count
+                let uncompletedChildCount = parent.children.filter { !$0.isCompleted }.count
+                
+                if childCount == 0 {
+                    print("  - \(parent.title) (단일 항목)")
+                } else {
+                    print("  - \(parent.title) (미완료 자식: \(uncompletedChildCount)/\(childCount)개)")
+                }
+            }
+            
             cleanupCompletedSelections()
             
         } catch {
@@ -108,16 +131,25 @@ final class FocusSettingViewModel: ObservableObject {
     func resetExpansionStates() {
         expandedParentIDs.removeAll()
     }
-    
-    // MARK: - ✨ 완료된 항목 선택 상태 정리
+
+    // MARK: - ✨ 완료된 항목 선택 상태 정리 (개선)
     private func cleanupCompletedSelections() {
-        // 선택된 Todo 중 완료된 것들 제거
-        selectedTodos.removeAll { $0.isCompleted }
-        selectedIDs.removeAll { id in
-            selectedTodos.allSatisfy { $0.id != id }
+        let beforeCount = selectedIDs.count
+        
+        // 1. 완료된 Todo 제거
+        selectedTodos.removeAll { todo in
+            todo.isCompleted
+        }
+        
+        // 2. 남아있는 Todo의 ID만 유지
+        let validIDs = Set(selectedTodos.map { $0.id })
+        selectedIDs = selectedIDs.filter { validIDs.contains($0) }
+        
+        let afterCount = selectedIDs.count
+        if beforeCount != afterCount {
+            print("🧹 완료된 항목 \(beforeCount - afterCount)개를 선택에서 제거했습니다.")
         }
     }
-
     
     // MARK: - ✅ 선택 여부 확인
 
