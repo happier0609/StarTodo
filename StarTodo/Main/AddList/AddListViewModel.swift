@@ -165,42 +165,31 @@ final class AddListViewModel: ObservableObject {
     // MARK: - ✨ 부모 Todo 목록 갱신 (핵심 메서드)
     func fetchParents(with context: ModelContext) {
         do {
-            // SwiftData에서는 정렬을 직접 처리하는 것이 더 안정적
+            // ✅ 완료되지 않은 부모 항목만 가져오기
             let descriptor = FetchDescriptor<Todo>(
                 predicate: #Predicate { todo in
-                    todo.parent == nil
+                    todo.parent == nil && !todo.isCompleted
                 }
             )
             let fetchedTodos = try context.fetch(descriptor)
             
             print("📊 AddListViewModel fetchParents:")
             print("  전체 부모 항목: \(fetchedTodos.count)개")
-            
-            // 완료/미완료 카운트
-            let completedCount = fetchedTodos.filter { $0.isCompleted }.count
-            let incompletedCount = fetchedTodos.count - completedCount
-            print("  미완료: \(incompletedCount)개, 완료: \(completedCount)개")
+            print("  (완료된 항목은 제외됨)")
             
             // 수동으로 정렬 적용
             parents = fetchedTodos.sorted { a, b in
-                // 1. 완료 여부 (미완료가 먼저)
-                if a.isCompleted != b.isCompleted {
-                    return !a.isCompleted && b.isCompleted
-                }
-                // 2. order 순서
                 if a.order != b.order {
                     return a.order < b.order
                 }
-                // 3. 생성 시간
                 return a.createdAt < b.createdAt
             }
             
-            // 디버깅: 각 항목의 상태 출력
+            // 디버깅
             for parent in parents.prefix(5) {
-                let status = parent.isCompleted ? "✅ 완료" : "⏳ 미완료"
                 let childCount = parent.children.count
                 let visibleChildCount = getVisibleChildren(of: parent).count
-                print("  - \(status) \(parent.title) (자식: \(visibleChildCount)/\(childCount))")
+                print("  - ⏳ \(parent.title) (자식: \(visibleChildCount)/\(childCount))")
             }
             
             if parents.count > 5 {

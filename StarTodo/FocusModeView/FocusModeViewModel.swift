@@ -310,7 +310,7 @@ final class FocusModeViewModel: ObservableObject {
         // ✅ 경과 시간 가져오기
         let elapsedSeconds = todoElapsed[todo.id, default: 0]
         
-        // ✅ 통일된 메서드 사용
+        // ✅ 통일된 Extension 메서드 사용
         do {
             try todo.markAsCompleted(context: modelContext, elapsedSeconds: elapsedSeconds)
         } catch {

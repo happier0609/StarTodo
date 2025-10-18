@@ -37,26 +37,32 @@ struct FocusSettingView: View {
                         .padding(.leading, 18)
                         .padding(.vertical, 24)
 
+                        // body 내부 수정
                         VStack(spacing: 10) {
                             ForEach(focusSettingVM.focusParents) { parent in
-                                let children = parent.children
+                                // ✅ 미완료 자식만 필터링
+                                let uncompletedChildren = parent.children
                                     .filter { !$0.isCompleted }
                                     .sorted(by: { $0.order < $1.order })
 
-                                if children.isEmpty {
+                                // ✅ 자식이 없거나, 모든 자식이 완료된 경우 -> 단일 항목으로 표시
+                                if uncompletedChildren.isEmpty {
                                     FocusItemRowView(todo: parent, isChild: false)
                                         .onTapGesture {
                                             focusSettingVM.toggleSelection(of: parent)
                                         }
                                 } else {
-                                    let selectedCount = children.filter { focusSettingVM.isSelected($0.id) }.count
+                                    // ✅ 미완료 자식이 있는 경우 -> 그룹 카드로 표시
+                                    let selectedCount = uncompletedChildren.filter {
+                                        focusSettingVM.isSelected($0.id)
+                                    }.count
 
                                     FocusGroupCardView(
                                         parent: parent,
-                                        children: children,
+                                        children: uncompletedChildren,
                                         isExpanded: focusSettingVM.isExpanded(parent),
                                         selectedChildCount: selectedCount,
-                                        totalChildCount: children.count,
+                                        totalChildCount: uncompletedChildren.count,
                                         isSelected: focusSettingVM.isSelected(parent.id),
                                         onToggleExpand: {
                                             focusSettingVM.toggleExpanded(for: parent)

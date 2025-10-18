@@ -61,4 +61,9 @@ struct TodoSectionView: View {
         viewModel.editingParent = parent
         viewModel.showModal = true
     }
+    
+    private func handleToggle(todo: Todo) {
+        // ✅ ViewModel로 위임
+        viewModel.toggleTodoCompletion(todo, context: context)
+    }
 }

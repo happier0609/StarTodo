@@ -69,7 +69,7 @@ final class FocusSettingViewModel: ObservableObject {
     // MARK: - ✨ 완료되지 않은 할 일 불러오기 (AddListViewModel 패턴 적용)
     func fetchUncompletedParents(with context: ModelContext) {
         do {
-            // ✅ 1단계: 완료되지 않은 부모 항목만 가져오기
+            // ✅ 완료되지 않은 부모 항목만 가져오기
             let descriptor = FetchDescriptor<Todo>(
                 predicate: #Predicate { todo in
                     todo.parent == nil && !todo.isCompleted
@@ -77,37 +77,31 @@ final class FocusSettingViewModel: ObservableObject {
             )
             let fetchedTodos = try context.fetch(descriptor)
             
-            // ✅ 2단계: 자식이 있는 경우, 미완료 자식이 있는지 확인
-            // 자식이 없거나, 미완료 자식이 하나라도 있으면 표시
-            let parentsToShow = fetchedTodos.filter { parent in
-                if parent.children.isEmpty {
-                    // 자식이 없는 단일 항목 -> 항상 표시
-                    return true
-                } else {
-                    // 자식이 있는 경우 -> 미완료 자식이 하나라도 있으면 표시
-                    return parent.children.contains { !$0.isCompleted }
-                }
-            }
-            
-            // ✅ 3단계: 수동으로 정렬 적용 (AddListViewModel과 동일한 로직)
-            focusParents = parentsToShow.sorted { a, b in
-                // 1. order 순서
+            // ✅ 수동으로 정렬 적용
+            // 부모가 미완료면 자식 상태와 관계없이 모두 표시
+            focusParents = fetchedTodos.sorted { a, b in
                 if a.order != b.order {
                     return a.order < b.order
                 }
-                // 2. 생성 시간
                 return a.createdAt < b.createdAt
             }
             
             print("✅ FocusSettingViewModel: \(focusParents.count)개의 미완료 부모 할 일을 불러왔습니다.")
             
-            // 디버깅: 불러온 항목 출력
+            // 디버깅
             for parent in focusParents {
-                let childCount = parent.children.filter { !$0.isCompleted }.count
-                print("  - \(parent.title) (자식: \(childCount)개)")
+                let childCount = parent.children.count
+                let uncompletedChildCount = parent.children.filter { !$0.isCompleted }.count
+                
+                if childCount == 0 {
+                    print("  - \(parent.title) (단일 항목)")
+                } else if uncompletedChildCount == 0 {
+                    print("  - \(parent.title) (자식 모두 완료 → 부모만 표시)")
+                } else {
+                    print("  - \(parent.title) (미완료 자식: \(uncompletedChildCount)/\(childCount)개)")
+                }
             }
             
-            // ✅ 4단계: 선택 상태 정리 - 완료된 항목이 선택되어 있다면 제거
             cleanupCompletedSelections()
             
         } catch {
