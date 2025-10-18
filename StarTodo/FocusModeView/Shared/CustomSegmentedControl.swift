@@ -18,15 +18,16 @@ struct CustomSegmentedControl: View {
 
     var body: some View {
         ZStack {
-            Capsule()
+            RoundedRectangle(cornerRadius: 10)
                 .fill(Color("Cool900"))
 
             HStack(spacing: 0) {
                 ForEach(FocusTab.allCases, id: \.self) { tab in
                     ZStack {
                         if selectedTab == tab {
-                            RoundedRectangle(cornerRadius: 16)
+                            RoundedRectangle(cornerRadius: 10)
                                 .fill(Color("Warm400"))
+                                .frame(width: 62, height: 28)
                                 .matchedGeometryEffect(id: "segment", in: animation)
                         }
 
@@ -34,7 +35,7 @@ struct CustomSegmentedControl: View {
                             .foregroundColor(Color("App.White"))
                             .typo(selectedTab == tab ? .textSMEmphasized : .textSMRegular)
                             .frame(maxWidth: .infinity)
-                            .padding(.vertical, 10)
+                            .padding(.vertical, 4)
                     }
                     .contentShape(Rectangle()) // 탭 클릭 범위 확장
                     .onTapGesture {
@@ -45,11 +46,13 @@ struct CustomSegmentedControl: View {
                 }
             }
         }
-        .frame(width: 180, height: 40)
+        .frame(width: 132, height: 32)
         .padding(.horizontal)
     }
 }
 
+#if DEBUG
+import SwiftUI
 struct ExampleView: View {
     @State private var selectedTab: FocusTab = .timer
 
@@ -70,3 +73,4 @@ struct ExampleView: View {
 #Preview {
     ExampleView()
 }
+#endif

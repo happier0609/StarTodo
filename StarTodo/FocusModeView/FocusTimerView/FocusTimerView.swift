@@ -40,20 +40,201 @@ struct FocusTimerView: View {
     }
 }
 
-// 디버깅을 위한 추가 정보 표시 (개발 중에만)
+// MARK: - Preview Helpers
 #if DEBUG
-extension FocusTimerView {
-    private var debugInfo: some View {
-        VStack {
-            if let todo = viewModel.currentTodo {
-                Text("디버그: \(todo.title)")
-                Text("설정 시간: \(viewModel.currentSetMinutes)분")
-                Text("경과 시간: \(viewModel.currentElapsedSeconds)초")
-                Text("완료 상태: \(viewModel.isCurrentTodoCompleted ? "완료" : "진행중")")
+import SwiftData
+
+@MainActor
+private func createFocusTimerPreviewContainer() -> ModelContainer {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    guard let container = try? ModelContainer(
+        for: Todo.self, FocusSession.self, FocusItem.self, BreakSession.self,
+        configurations: config
+    ) else {
+        fatalError("⚠️ Failed to create focus timer preview container")
+    }
+    return container
+}
+
+@MainActor
+private func createTimerMockTodos(context: ModelContext) -> [(UUID, Int)] {
+    let todo1 = Todo(title: "프로젝트 기획서 작성", setTime: 45, order: 0)
+    let todo2 = Todo(title: "코드 리뷰 진행", setTime: 30, order: 1)
+    let todo3 = Todo(title: "시간 설정 없는 작업", setTime: 0, order: 2)
+    
+    [todo1, todo2, todo3].forEach { context.insert($0) }
+    try? context.save()
+    
+    return [
+        (todo1.id, 45),
+        (todo2.id, 30),
+        (todo3.id, 0)  // 시간 설정 없음
+    ]
+}
+
+@MainActor
+private func createTimerViewModel(
+    context: ModelContext,
+    todoPairs: [(UUID, Int)],
+    currentIndex: Int = 0,
+    elapsedSeconds: Int = 0,
+    isBreak: Bool = false,
+    breakMinutes: Int = 10,
+    simulateBreakProgress: Int = 0
+) -> FocusModeViewModel {
+    let store = SwiftDataSessionStore(context: context)
+    let viewModel = FocusModeViewModel(todoIDPairs: todoPairs, context: context, store: store)
+    
+    viewModel.currentIndex = currentIndex
+    
+    if viewModel.todos.indices.contains(currentIndex) {
+        let todoID = viewModel.todos[currentIndex].id
+        viewModel.todoElapsed[todoID] = elapsedSeconds
+    }
+    
+    if isBreak {
+        viewModel.breakPickedMinutes = breakMinutes
+        viewModel.startBreak()
+        
+        // 휴식 진행 상황 시뮬레이션
+        if simulateBreakProgress > 0 {
+            // breakElapsed를 직접 수정할 수 없으므로
+            // 타이머 틱을 시뮬레이션
+            for _ in 0..<simulateBreakProgress {
+                // private 메서드를 호출할 수 없으므로
+                // 프리뷰에서는 isBreakActive만 true로 설정
             }
         }
-        .font(.caption)
-        .foregroundColor(.yellow)
     }
+    
+    return viewModel
+}
+
+// MARK: - Previews
+#Preview("FocusTimerView - Just Started") {
+    let container = createFocusTimerPreviewContainer()
+    let context = container.mainContext
+    let todoPairs = createTimerMockTodos(context: context)
+    
+    let viewModel = createTimerViewModel(
+        context: context,
+        todoPairs: todoPairs,
+        currentIndex: 0,
+        elapsedSeconds: 30
+    )
+    
+    return FocusTimerView(viewModel: viewModel)
+        .modelContainer(container)
+        .background(Color("BgDark"))
+}
+
+#Preview("FocusTimerView - Mid Progress") {
+    let container = createFocusTimerPreviewContainer()
+    let context = container.mainContext
+    let todoPairs = createTimerMockTodos(context: context)
+    
+    let viewModel = createTimerViewModel(
+        context: context,
+        todoPairs: todoPairs,
+        currentIndex: 0,
+        elapsedSeconds: 1350  // 22분 30초 경과 (45분 중)
+    )
+    
+    return FocusTimerView(viewModel: viewModel)
+        .modelContainer(container)
+}
+
+#Preview("FocusTimerView - Almost Done") {
+    let container = createFocusTimerPreviewContainer()
+    let context = container.mainContext
+    let todoPairs = createTimerMockTodos(context: context)
+    
+    let viewModel = createTimerViewModel(
+        context: context,
+        todoPairs: todoPairs,
+        currentIndex: 0,
+        elapsedSeconds: 2640  // 44분 경과 (45분 중 1분 남음)
+    )
+    
+    return FocusTimerView(viewModel: viewModel)
+        .modelContainer(container)
+        .background(Color("BgDark"))
+}
+
+#Preview("FocusTimerView - Break Mode") {
+    let container = createFocusTimerPreviewContainer()
+    let context = container.mainContext
+    let todoPairs = createTimerMockTodos(context: context)
+    
+    let viewModel = createTimerViewModel(
+        context: context,
+        todoPairs: todoPairs,
+        currentIndex: 0,
+        elapsedSeconds: 1200,
+        isBreak: true,
+        breakMinutes: 10
+    )
+    
+    return FocusTimerView(viewModel: viewModel)
+        .modelContainer(container)
+        .background(Color("BgDark"))
+}
+
+#Preview("FocusTimerView - Break Almost Over") {
+    let container = createFocusTimerPreviewContainer()
+    let context = container.mainContext
+    let todoPairs = createTimerMockTodos(context: context)
+    
+    let viewModel = createTimerViewModel(
+        context: context,
+        todoPairs: todoPairs,
+        currentIndex: 0,
+        elapsedSeconds: 1200,
+        isBreak: true,
+        breakMinutes: 10
+    )
+    
+    return FocusTimerView(viewModel: viewModel)
+        .modelContainer(container)
+        .background(Color("BgDark"))
+}
+
+#Preview("FocusTimerView - No Time Set") {
+    let container = createFocusTimerPreviewContainer()
+    let context = container.mainContext
+    let todoPairs = createTimerMockTodos(context: context)
+    
+    let viewModel = createTimerViewModel(
+        context: context,
+        todoPairs: todoPairs,
+        currentIndex: 2,  // 시간 설정 없는 할 일
+        elapsedSeconds: 300
+    )
+    
+    return FocusTimerView(viewModel: viewModel)
+        .modelContainer(container)
+        .background(Color("BgDark"))
+}
+
+#Preview("FocusTimerView - Second Task") {
+    let container = createFocusTimerPreviewContainer()
+    let context = container.mainContext
+    let todoPairs = createTimerMockTodos(context: context)
+    
+    let viewModel = createTimerViewModel(
+        context: context,
+        todoPairs: todoPairs,
+        currentIndex: 1,  // 두 번째 할 일
+        elapsedSeconds: 600  // 10분 경과
+    )
+    
+    // 첫 번째 할 일은 완료 처리
+    if viewModel.todos.indices.contains(0) {
+        viewModel.todos[0].isCompleted = true
+    }
+    
+    return FocusTimerView(viewModel: viewModel)
+        .modelContainer(container)
+        .background(Color("BgDark"))
 }
 #endif
