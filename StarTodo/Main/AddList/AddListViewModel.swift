@@ -82,57 +82,6 @@ final class AddListViewModel: ObservableObject {
             .sorted(by: sortingRule)
     }
     
-    // MARK: - 완료 할 일 표시 여부 판단
-    /// 완료된 할 일이 UI에 표시되어야 하는지 판단
-    /// - Parameter todo: 확인할 Todo 객체
-    /// - Returns: UI에 표시할 경우 true
-    private func shouldShowCompletedTodo(_ todo: Todo) -> Bool {
-        // 미완료 항목은 항상 표시
-        guard todo.isCompleted else { return true }
-        
-        // 완료 날짜가 없으면 표시하지 않음
-        guard let performedDate = todo.performedDate else {
-            print("⚠️ 완료되었지만 performedDate가 없는 항목: \(todo.title)")
-            return false
-        }
-        
-        // 리셋 기준 시간 계산
-        let calendar = Calendar.current
-        let now = Date()
-        
-        // 오늘의 리셋 시간 (새벽 5시)
-        var todayResetComponents = calendar.dateComponents([.year, .month, .day], from: now)
-        todayResetComponents.hour = resetHour
-        todayResetComponents.minute = 0
-        todayResetComponents.second = 0
-        
-        guard let todayResetTime = calendar.date(from: todayResetComponents) else { return false }
-        
-        // 현재 시간이 오늘의 리셋 시간 이전이라면, 어제의 리셋 시간부터 확인
-        let effectiveResetTime: Date
-        if now < todayResetTime {
-            // 어제의 리셋 시간을 기준으로 함
-            effectiveResetTime = calendar.date(byAdding: .day, value: -1, to: todayResetTime) ?? todayResetTime
-        } else {
-            // 오늘의 리셋 시간을 기준으로 함
-            effectiveResetTime = todayResetTime
-        }
-        
-        // 완료 시간이 현재 기준 리셋 시간 이후인 경우만 표시
-        let shouldShow = performedDate >= effectiveResetTime
-        
-        if !shouldShow {
-            let formatter = DateFormatter()
-            formatter.dateStyle = .short
-            formatter.timeStyle = .short
-            print("🚫 리셋 기준 시간 이전 완료 항목 숨김: \(todo.title)")
-            print("   완료 시각: \(formatter.string(from: performedDate))")
-            print("   리셋 기준: \(formatter.string(from: effectiveResetTime))")
-        }
-        
-        return shouldShow
-    }
-    
     // MARK: - 표시 가능한 Todo 필터링
     /// 완료 기준 시간을 고려하여 표시할 Todo만 필터링
     private func filterVisibleTodos(from todos: [Todo]) -> [Todo] {
@@ -165,31 +114,47 @@ final class AddListViewModel: ObservableObject {
     // MARK: - ✨ 부모 Todo 목록 갱신 (핵심 메서드)
     func fetchParents(with context: ModelContext) {
         do {
-            // ✅ 완료되지 않은 부모 항목만 가져오기
+            // ✅ 부모 항목 전체 가져오기 (완료/미완료 모두)
             let descriptor = FetchDescriptor<Todo>(
                 predicate: #Predicate { todo in
-                    todo.parent == nil && !todo.isCompleted
+                    todo.parent == nil
                 }
             )
             let fetchedTodos = try context.fetch(descriptor)
             
             print("📊 AddListViewModel fetchParents:")
             print("  전체 부모 항목: \(fetchedTodos.count)개")
-            print("  (완료된 항목은 제외됨)")
+            
+            // ✅ 표시 가능한 항목만 필터링 (리셋 기준 시간 적용)
+            let visibleTodos = fetchedTodos.filter { shouldShowCompletedTodo($0) }
+            
+            print("  표시 가능한 항목: \(visibleTodos.count)개")
+            
+            // 완료/미완료 카운트
+            let completedCount = visibleTodos.filter { $0.isCompleted }.count
+            let incompletedCount = visibleTodos.count - completedCount
+            print("  미완료: \(incompletedCount)개, 완료: \(completedCount)개")
             
             // 수동으로 정렬 적용
-            parents = fetchedTodos.sorted { a, b in
+            parents = visibleTodos.sorted { a, b in
+                // 1. 완료 여부 (미완료가 먼저)
+                if a.isCompleted != b.isCompleted {
+                    return !a.isCompleted && b.isCompleted
+                }
+                // 2. order 순서
                 if a.order != b.order {
                     return a.order < b.order
                 }
+                // 3. 생성 시간
                 return a.createdAt < b.createdAt
             }
             
             // 디버깅
             for parent in parents.prefix(5) {
+                let status = parent.isCompleted ? "✅ 완료" : "⏳ 미완료"
                 let childCount = parent.children.count
                 let visibleChildCount = getVisibleChildren(of: parent).count
-                print("  - ⏳ \(parent.title) (자식: \(visibleChildCount)/\(childCount))")
+                print("  - \(status) \(parent.title) (자식: \(visibleChildCount)/\(childCount))")
             }
             
             if parents.count > 5 {
@@ -200,6 +165,66 @@ final class AddListViewModel: ObservableObject {
             print("❌ Todo fetch 실패: \(error.localizedDescription)")
             parents = []
         }
+    }
+
+    // MARK: - 완료 할 일 표시 여부 판단
+    /// 완료된 할 일이 UI에 표시되어야 하는지 판단
+    /// - Parameter todo: 확인할 Todo 객체
+    /// - Returns: UI에 표시할 경우 true
+    private func shouldShowCompletedTodo(_ todo: Todo) -> Bool {
+        // 미완료 항목은 항상 표시
+        guard todo.isCompleted else { return true }
+        
+        // 완료 날짜가 없으면 표시하지 않음
+        guard let performedDate = todo.performedDate else {
+            print("⚠️ 완료되었지만 performedDate가 없는 항목: \(todo.title)")
+            return false
+        }
+        
+        // ✅ 다음 리셋 시간 계산 (미래의 새벽 5시)
+        let nextResetTime = calculateNextResetTime(from: performedDate)
+        let now = Date()
+        
+        // 현재 시간이 다음 리셋 시간 이전이면 표시
+        let shouldShow = now < nextResetTime
+        
+        if !shouldShow {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .short
+            formatter.timeStyle = .short
+            print("🚫 리셋 시간 도달로 완료 항목 숨김: \(todo.title)")
+            print("   완료 시각: \(formatter.string(from: performedDate))")
+            print("   리셋 시각: \(formatter.string(from: nextResetTime))")
+        }
+        
+        return shouldShow
+    }
+
+    //// 완료 시각으로부터 다음 리셋 시간 계산 (미래의 새벽 5시)
+    private func calculateNextResetTime(from performedDate: Date) -> Date {
+        let calendar = Calendar.current
+        
+        // 완료 당일의 리셋 시간 계산
+        var sameDayResetComponents = calendar.dateComponents([.year, .month, .day], from: performedDate)
+        sameDayResetComponents.hour = resetHour
+        sameDayResetComponents.minute = 0
+        sameDayResetComponents.second = 0
+        
+        guard let sameDayResetTime = calendar.date(from: sameDayResetComponents) else {
+            return performedDate
+        }
+        
+        // 완료 시각이 당일 리셋 시간 이전이면 당일 리셋 시간 사용
+        if performedDate < sameDayResetTime {
+            return sameDayResetTime
+        }
+        
+        // 완료 시각이 당일 리셋 시간 이후면 다음날 리셋 시간 사용
+        guard let nextDayResetTime = calendar.date(byAdding: .day, value: 1, to: sameDayResetTime) else {
+            return performedDate
+        }
+        
+        return nextDayResetTime
     }
 
     // MARK: - 부모 할 일 fetch (async 버전 - 필요시 사용)
@@ -370,14 +395,42 @@ extension AddListViewModel {
 // MARK: - Todo 완료 처리
 extension AddListViewModel {
     
-    /// Todo의 완료 상태를 토글
+    /// Todo의 완료 상태를 토글 (상위-하위 연동)
     /// - Parameters:
     ///   - todo: 완료 상태를 변경할 Todo
     ///   - context: SwiftData ModelContext
     func toggleTodoCompletion(_ todo: Todo, context: ModelContext) {
         do {
-            // ✅ 통일된 Extension 메서드 사용
-            try todo.toggleCompletion(context: context)
+            if todo.isCompleted {
+                // ✅ 완료 취소
+                try todo.markAsIncomplete(context: context)
+                
+                // 부모가 있고, 부모가 완료 상태라면 부모도 미완료로
+                if let parent = todo.parent, parent.isCompleted {
+                    try parent.markAsIncomplete(context: context)
+                    print("  → 자식 미완료로 부모도 미완료 처리: \(parent.title)")
+                }
+            } else {
+                // ✅ 완료 처리
+                try todo.markAsCompleted(context: context)
+                
+                // 부모인 경우: 모든 자식도 완료 처리
+                if !todo.children.isEmpty {
+                    for child in todo.children where !child.isCompleted {
+                        try child.markAsCompleted(context: context)
+                        print("  → 부모 완료로 자식도 완료 처리: \(child.title)")
+                    }
+                }
+                
+                // 자식인 경우: 모든 형제가 완료되었는지 확인
+                if let parent = todo.parent {
+                    let allSiblingsCompleted = parent.children.allSatisfy { $0.isCompleted }
+                    if allSiblingsCompleted && !parent.isCompleted {
+                        try parent.markAsCompleted(context: context)
+                        print("  → 모든 자식 완료로 부모도 완료 처리: \(parent.title)")
+                    }
+                }
+            }
             
             print("🔄 AddListView에서 완료 상태 토글: \(todo.title)")
             print("  - 완료 여부: \(todo.isCompleted)")

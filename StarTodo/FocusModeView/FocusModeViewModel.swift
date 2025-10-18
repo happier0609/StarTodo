@@ -313,6 +313,25 @@ final class FocusModeViewModel: ObservableObject {
         // ✅ 통일된 Extension 메서드 사용
         do {
             try todo.markAsCompleted(context: modelContext, elapsedSeconds: elapsedSeconds)
+            
+            // ✅ 자식이 있는 경우: 모든 자식도 완료 처리
+            if !todo.children.isEmpty {
+                for child in todo.children where !child.isCompleted {
+                    let childElapsed = todoElapsed[child.id, default: 0]
+                    try child.markAsCompleted(context: modelContext, elapsedSeconds: childElapsed)
+                    print("  → 부모 완료로 자식도 완료 처리: \(child.title)")
+                }
+            }
+            
+            // ✅ 자식인 경우: 모든 형제가 완료되었는지 확인
+            if let parent = todo.parent {
+                let allSiblingsCompleted = parent.children.allSatisfy { $0.isCompleted }
+                if allSiblingsCompleted && !parent.isCompleted {
+                    let parentElapsed = todoElapsed[parent.id, default: 0]
+                    try parent.markAsCompleted(context: modelContext, elapsedSeconds: parentElapsed)
+                    print("  → 모든 자식 완료로 부모도 완료 처리: \(parent.title)")
+                }
+            }
         } catch {
             print("❌ Todo 완료 처리 실패: \(error.localizedDescription)")
         }

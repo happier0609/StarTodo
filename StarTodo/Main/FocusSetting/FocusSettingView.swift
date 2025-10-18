@@ -37,7 +37,6 @@ struct FocusSettingView: View {
                         .padding(.leading, 18)
                         .padding(.vertical, 24)
 
-                        // body 내부 수정
                         VStack(spacing: 10) {
                             ForEach(focusSettingVM.focusParents) { parent in
                                 // ✅ 미완료 자식만 필터링
@@ -45,14 +44,15 @@ struct FocusSettingView: View {
                                     .filter { !$0.isCompleted }
                                     .sorted(by: { $0.order < $1.order })
 
-                                // ✅ 자식이 없거나, 모든 자식이 완료된 경우 -> 단일 항목으로 표시
-                                if uncompletedChildren.isEmpty {
+                                // ✅ 자식이 없는 단일 항목 또는 미완료 자식이 있는 그룹만 표시
+                                if parent.children.isEmpty {
+                                    // 단일 항목
                                     FocusItemRowView(todo: parent, isChild: false)
                                         .onTapGesture {
                                             focusSettingVM.toggleSelection(of: parent)
                                         }
-                                } else {
-                                    // ✅ 미완료 자식이 있는 경우 -> 그룹 카드로 표시
+                                } else if !uncompletedChildren.isEmpty {
+                                    // 미완료 자식이 있는 그룹
                                     let selectedCount = uncompletedChildren.filter {
                                         focusSettingVM.isSelected($0.id)
                                     }.count
@@ -75,6 +75,7 @@ struct FocusSettingView: View {
                                         }
                                     )
                                 }
+                                // ✅ 모든 자식이 완료된 경우: 렌더링하지 않음
                             }
                         }
                         .padding(.horizontal, 18)

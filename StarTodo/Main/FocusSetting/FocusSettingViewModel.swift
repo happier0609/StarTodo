@@ -66,7 +66,7 @@ final class FocusSettingViewModel: ObservableObject {
         focusParents = todos.filter { $0.parent == nil && !$0.isCompleted }
     }
     
-    // MARK: - ✨ 완료되지 않은 할 일 불러오기 (AddListViewModel 패턴 적용)
+    // MARK: - ✨ 완료되지 않은 할 일 불러오기
     func fetchUncompletedParents(with context: ModelContext) {
         do {
             // ✅ 완료되지 않은 부모 항목만 가져오기
@@ -77,16 +77,35 @@ final class FocusSettingViewModel: ObservableObject {
             )
             let fetchedTodos = try context.fetch(descriptor)
             
+            print("📊 FocusSettingViewModel fetchUncompletedParents:")
+            print("  Fetch된 부모 항목: \(fetchedTodos.count)개")
+            
+            // ✅ 추가 필터링: 미완료 자식이 하나라도 있는 항목만 표시
+            let parentsWithUncompletedChildren = fetchedTodos.filter { parent in
+                // 자식이 없는 단일 항목은 항상 표시
+                if parent.children.isEmpty {
+                    return true
+                }
+                
+                // 자식이 있는 경우: 미완료 자식이 하나라도 있어야 함
+                let hasUncompletedChildren = parent.children.contains { !$0.isCompleted }
+                
+                if !hasUncompletedChildren {
+                    print("  ⚠️ 모든 자식이 완료되어 제외: \(parent.title)")
+                }
+                
+                return hasUncompletedChildren
+            }
+            
             // ✅ 수동으로 정렬 적용
-            // 부모가 미완료면 자식 상태와 관계없이 모두 표시
-            focusParents = fetchedTodos.sorted { a, b in
+            focusParents = parentsWithUncompletedChildren.sorted { a, b in
                 if a.order != b.order {
                     return a.order < b.order
                 }
                 return a.createdAt < b.createdAt
             }
             
-            print("✅ FocusSettingViewModel: \(focusParents.count)개의 미완료 부모 할 일을 불러왔습니다.")
+            print("  최종 표시 항목: \(focusParents.count)개")
             
             // 디버깅
             for parent in focusParents {
@@ -95,8 +114,6 @@ final class FocusSettingViewModel: ObservableObject {
                 
                 if childCount == 0 {
                     print("  - \(parent.title) (단일 항목)")
-                } else if uncompletedChildCount == 0 {
-                    print("  - \(parent.title) (자식 모두 완료 → 부모만 표시)")
                 } else {
                     print("  - \(parent.title) (미완료 자식: \(uncompletedChildCount)/\(childCount)개)")
                 }
