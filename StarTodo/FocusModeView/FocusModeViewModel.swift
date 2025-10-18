@@ -326,9 +326,15 @@ final class FocusModeViewModel: ObservableObject {
         let todo = todos[index]
         
         todo.isCompleted = true
+        todo.performedDate = Date() // 완료 시각도 기록
         
-        // 실제 경과 시간 그대로 유지
-        // todoElapsed는 건드리지 않음
+        // ✅ SwiftData에 저장
+        do {
+            try modelContext.save()
+            print("✅ Todo 완료 상태 저장: \(todo.title)")
+        } catch {
+            print("❌ Todo 저장 실패: \(error.localizedDescription)")
+        }
         
         if index == currentIndex {
             stopTimer()
