@@ -59,14 +59,21 @@ struct MainView: View {
         // ✅ selectedTab 변경 감지 - Start 탭으로 전환될 때마다 데이터 새로고침
         .onChange(of: selectedTab) { oldValue, newValue in
             if newValue == .start {
-                print("🔄 Start 탭 진입 - 데이터 새로고침")
+                print("📄 Start 탭 진입 - 데이터 새로고침")
+                print("  이전 탭: \(oldValue.rawValue)")
+                
+                // 1. 데이터 새로고침
                 mainVM.focusSettingViewModel.fetchUncompletedParents(with: context)
+                
+                // 2. 선택 초기화
                 mainVM.focusSettingViewModel.clearSelections()
                 
-                // ✅ 확장 상태 초기화 (약간의 딜레이 후)
+                // 3. 확장 상태 초기화
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
                     mainVM.focusSettingViewModel.resetExpansionStates()
                 }
+                
+                print("  불러온 항목: \(mainVM.focusSettingViewModel.focusParents.count)개")
             }
         }
     }

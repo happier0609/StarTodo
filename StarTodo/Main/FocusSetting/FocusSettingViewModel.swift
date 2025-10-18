@@ -69,7 +69,7 @@ final class FocusSettingViewModel: ObservableObject {
     // MARK: - ✨ 완료되지 않은 할 일 불러오기 (AddListViewModel 패턴 적용)
     func fetchUncompletedParents(with context: ModelContext) {
         do {
-            // ✨ 완료되지 않은 부모 항목만 가져오기
+            // ✅ 1단계: 완료되지 않은 부모 항목만 가져오기
             let descriptor = FetchDescriptor<Todo>(
                 predicate: #Predicate { todo in
                     todo.parent == nil && !todo.isCompleted
@@ -77,13 +77,19 @@ final class FocusSettingViewModel: ObservableObject {
             )
             let fetchedTodos = try context.fetch(descriptor)
             
-            // ✨ 완료되지 않은 자식이 하나라도 있거나, 자식이 없는 부모만 필터링
+            // ✅ 2단계: 자식이 있는 경우, 미완료 자식이 있는지 확인
+            // 자식이 없거나, 미완료 자식이 하나라도 있으면 표시
             let parentsToShow = fetchedTodos.filter { parent in
-                // 자식이 없거나, 완료되지 않은 자식이 있는 경우만 포함
-                parent.children.isEmpty || parent.children.contains { !$0.isCompleted }
+                if parent.children.isEmpty {
+                    // 자식이 없는 단일 항목 -> 항상 표시
+                    return true
+                } else {
+                    // 자식이 있는 경우 -> 미완료 자식이 하나라도 있으면 표시
+                    return parent.children.contains { !$0.isCompleted }
+                }
             }
             
-            // 수동으로 정렬 적용 (AddListViewModel과 동일한 로직)
+            // ✅ 3단계: 수동으로 정렬 적용 (AddListViewModel과 동일한 로직)
             focusParents = parentsToShow.sorted { a, b in
                 // 1. order 순서
                 if a.order != b.order {
@@ -95,7 +101,13 @@ final class FocusSettingViewModel: ObservableObject {
             
             print("✅ FocusSettingViewModel: \(focusParents.count)개의 미완료 부모 할 일을 불러왔습니다.")
             
-            // ✨ 선택 상태 정리 - 완료된 항목이 선택되어 있다면 제거
+            // 디버깅: 불러온 항목 출력
+            for parent in focusParents {
+                let childCount = parent.children.filter { !$0.isCompleted }.count
+                print("  - \(parent.title) (자식: \(childCount)개)")
+            }
+            
+            // ✅ 4단계: 선택 상태 정리 - 완료된 항목이 선택되어 있다면 제거
             cleanupCompletedSelections()
             
         } catch {
@@ -108,16 +120,25 @@ final class FocusSettingViewModel: ObservableObject {
     func resetExpansionStates() {
         expandedParentIDs.removeAll()
     }
-    
-    // MARK: - ✨ 완료된 항목 선택 상태 정리
+
+    // MARK: - ✨ 완료된 항목 선택 상태 정리 (개선)
     private func cleanupCompletedSelections() {
-        // 선택된 Todo 중 완료된 것들 제거
-        selectedTodos.removeAll { $0.isCompleted }
-        selectedIDs.removeAll { id in
-            selectedTodos.allSatisfy { $0.id != id }
+        let beforeCount = selectedIDs.count
+        
+        // 1. 완료된 Todo 제거
+        selectedTodos.removeAll { todo in
+            todo.isCompleted
+        }
+        
+        // 2. 남아있는 Todo의 ID만 유지
+        let validIDs = Set(selectedTodos.map { $0.id })
+        selectedIDs = selectedIDs.filter { validIDs.contains($0) }
+        
+        let afterCount = selectedIDs.count
+        if beforeCount != afterCount {
+            print("🧹 완료된 항목 \(beforeCount - afterCount)개를 선택에서 제거했습니다.")
         }
     }
-
     
     // MARK: - ✅ 선택 여부 확인
 

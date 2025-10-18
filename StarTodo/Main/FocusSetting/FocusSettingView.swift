@@ -92,22 +92,27 @@ struct FocusSettingView: View {
                 }
             }
         }
-        // ✅ 최초 진입 시 (MainView의 onChange가 처리하지 못하는 첫 로드만)
+        // ✅ 최초 진입 시
         .onAppear {
-            print("🔄 FocusSettingView onAppear")
+            print("📄 FocusSettingView onAppear")
+            print("현재 선택된 항목: \(focusSettingVM.selectedIDs.count)개")
             focusSettingVM.fetchUncompletedParents(with: context)
-            focusSettingVM.clearSelections()
         }
+
         // ✅ 앱 포그라운드 복귀
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {
-                print("🔄 FocusSettingView ScenePhase Active")
+                print("📄 FocusSettingView ScenePhase Active")
                 focusSettingVM.fetchUncompletedParents(with: context)
             }
         }
-        // ✅ 완료 상태 변경 감지
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TodoCompletionChanged"))) { _ in
-            print("🔄 FocusSettingView TodoCompletionChanged")
+
+        // ✅ 완료 상태 변경 감지 (더 명확한 로깅)
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TodoCompletionChanged"))) { notification in
+            print("📄 FocusSettingView TodoCompletionChanged 알림 수신")
+            if let todoID = notification.userInfo?["todoID"] as? UUID {
+                print("  변경된 Todo ID: \(todoID)")
+            }
             focusSettingVM.fetchUncompletedParents(with: context)
         }
     }
