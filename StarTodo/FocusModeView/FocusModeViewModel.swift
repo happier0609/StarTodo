@@ -302,40 +302,41 @@ final class FocusModeViewModel: ObservableObject {
     func completeCurrentTodo() {
         markTodoAsCompleted(at: currentIndex)
     }
-    
-    // todos 중에서 아직 완료되지 않은 첫 번째 항목을 찾아 이동
-    private func moveToNextTodo() {
-        let next = todos.enumerated().first { (_, todo) in
-            !todo.isCompleted
-        }
-        
-        if let (index, _) = next {
-            currentIndex = index
-            print("다음 할 일로 이동: \(todos[index].title)")
-            startTodoTimer()
-        } else {
-            print("모든 할 일 완료!")
-            isRunning = false
-            endFocusSession()
-        }
-        print("----------------------------------")
-    }
-    
+
     func markTodoAsCompleted(at index: Int) {
         guard todos.indices.contains(index) else { return }
         let todo = todos[index]
         
-        todo.isCompleted = true
-        todo.performedDate = Date() // 완료 시각도 기록
+        print("✅ Todo 완료 처리: \(todo.title)")
         
-        // ✅ SwiftData에 저장
+        // ✅ 1. Todo 상태 변경
+        todo.isCompleted = true
+        todo.performedDate = Date()
+        
+        // ✅ 2. elapsedTime 업데이트 (실제 경과 시간 저장)
+        let elapsedSeconds = todoElapsed[todo.id, default: 0]
+        todo.elapsedTime = elapsedSeconds
+        
+        print("  - 경과 시간: \(elapsedSeconds)초")
+        print("  - 완료 시각: \(todo.performedDate?.description ?? "nil")")
+        
+        // ✅ 3. SwiftData에 저장
         do {
             try modelContext.save()
-            print("✅ Todo 완료 상태 저장: \(todo.title)")
+            print("✅ Todo 완료 상태 저장 성공: \(todo.title)")
+            
+            // ✅ 4. 알림 발송 (다른 뷰가 감지할 수 있도록)
+            NotificationCenter.default.post(
+                name: NSNotification.Name("TodoCompletionChanged"),
+                object: nil,
+                userInfo: ["todoID": todo.id, "isCompleted": true]
+            )
+            
         } catch {
             print("❌ Todo 저장 실패: \(error.localizedDescription)")
         }
         
+        // ✅ 5. 다음 Todo로 이동
         if index == currentIndex {
             stopTimer()
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
@@ -343,7 +344,7 @@ final class FocusModeViewModel: ObservableObject {
             }
         }
     }
-    
+
     // MARK: - 세션 종료
     func endFocusSession() {
         print("집중 세션 종료")
@@ -370,11 +371,12 @@ final class FocusModeViewModel: ObservableObject {
             print("- todoTimeSettings: \(todoTimeSettings)")
             print("- todoElapsed: \(todoElapsed)")
             
+            // ✅ FocusItem 생성 (리포트용)
             session.items = todos.enumerated().map { (index, todo) in
                 let setSeconds = todoTimeSettings[todo.id, default: 0] * 60
                 let elapsedSeconds = todoElapsed[todo.id, default: 0]
                 
-                print("FocusItem: \(todo.title) - 경과:\(elapsedSeconds)초")
+                print("FocusItem: \(todo.title) - 경과:\(elapsedSeconds)초, 완료:\(todo.isCompleted)")
                 
                 return FocusItem(
                     title: todo.title,
@@ -387,11 +389,23 @@ final class FocusModeViewModel: ObservableObject {
             
             session.breaks = breakSessions
             
+            // ✅ 모든 Todo의 elapsedTime 최종 업데이트
+            print("\n📝 Todo elapsedTime 최종 업데이트:")
+            for todo in todos {
+                let elapsedSeconds = todoElapsed[todo.id, default: 0]
+                todo.elapsedTime = elapsedSeconds
+                print("  - \(todo.title): \(elapsedSeconds)초, 완료: \(todo.isCompleted)")
+            }
+            
+            // ✅ 한 번에 모두 저장
             do {
                 try modelContext.save()
-                print("세션 저장 완료 - items 개수: \(session.items.count)")
+                print("✅ 세션 및 Todo 상태 최종 저장 완료")
+                print("  - FocusSession items: \(session.items.count)개")
+                print("  - Breaks: \(session.breaks.count)개")
+                print("  - 업데이트된 Todo: \(todos.count)개")
             } catch {
-                print("세션 저장 실패: \(error.localizedDescription)")
+                print("❌ 세션 저장 실패: \(error.localizedDescription)")
             }
             
             savedSession = session

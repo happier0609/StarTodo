@@ -10,6 +10,7 @@ import SwiftData
 
 struct AddListView: View {
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel = AddListViewModel()
     
     // 타이머 추가 - 매분마다 UI 갱신을 위해
@@ -28,11 +29,30 @@ struct AddListView: View {
                 resetInfoText
             }
         }
-        .onAppear { refreshData() }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
+        .onAppear {
+            print("📄 AddListView onAppear")
             refreshData()
         }
-        .onReceive(timer) { _ in refreshData() }
+        // ✅ 앱 포그라운드 복귀
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                print("📄 AddListView ScenePhase Active")
+                refreshData()
+            }
+        }
+        // ✅ 매분마다 리셋 기준 시간 체크
+        .onReceive(timer) { _ in
+            print("⏰ AddListView 타이머 새로고침")
+            refreshData()
+        }
+        // ✅ Todo 완료 상태 변경 감지 (FocusMode에서 완료 처리 시)
+        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TodoCompletionChanged"))) { notification in
+            print("📄 AddListView TodoCompletionChanged 알림 수신")
+            if let todoID = notification.userInfo?["todoID"] as? UUID {
+                print("  변경된 Todo ID: \(todoID)")
+            }
+            refreshData()
+        }
         .sheet(isPresented: $viewModel.showModal) {
             addTaskModalSheet
         }
@@ -140,10 +160,18 @@ struct AddListView: View {
     
     // MARK: - Helper Methods
     private func refreshData() {
+        print("🔄 AddListView 데이터 새로고침")
+        print("  이전 부모 항목 수: \(viewModel.parents.count)")
+        
         viewModel.fetchParents(with: context)
+        
+        print("  새로운 부모 항목 수: \(viewModel.parents.count)")
+        print("  오늘 항목: \(viewModel.todayParents.count)개")
+        print("  이전 항목: \(viewModel.previousParents.count)개")
     }
 }
 
+// MARK: - 프리뷰
 #if DEBUG
 import SwiftUI
 import SwiftData

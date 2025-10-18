@@ -91,7 +91,10 @@ final class AddListViewModel: ObservableObject {
         guard todo.isCompleted else { return true }
         
         // 완료 날짜가 없으면 표시하지 않음
-        guard let performedDate = todo.performedDate else { return false }
+        guard let performedDate = todo.performedDate else {
+            print("⚠️ 완료되었지만 performedDate가 없는 항목: \(todo.title)")
+            return false
+        }
         
         // 리셋 기준 시간 계산
         let calendar = Calendar.current
@@ -116,7 +119,18 @@ final class AddListViewModel: ObservableObject {
         }
         
         // 완료 시간이 현재 기준 리셋 시간 이후인 경우만 표시
-        return performedDate >= effectiveResetTime
+        let shouldShow = performedDate >= effectiveResetTime
+        
+        if !shouldShow {
+            let formatter = DateFormatter()
+            formatter.dateStyle = .short
+            formatter.timeStyle = .short
+            print("🚫 리셋 기준 시간 이전 완료 항목 숨김: \(todo.title)")
+            print("   완료 시각: \(formatter.string(from: performedDate))")
+            print("   리셋 기준: \(formatter.string(from: effectiveResetTime))")
+        }
+        
+        return shouldShow
     }
     
     // MARK: - 표시 가능한 Todo 필터링
@@ -159,6 +173,14 @@ final class AddListViewModel: ObservableObject {
             )
             let fetchedTodos = try context.fetch(descriptor)
             
+            print("📊 AddListViewModel fetchParents:")
+            print("  전체 부모 항목: \(fetchedTodos.count)개")
+            
+            // 완료/미완료 카운트
+            let completedCount = fetchedTodos.filter { $0.isCompleted }.count
+            let incompletedCount = fetchedTodos.count - completedCount
+            print("  미완료: \(incompletedCount)개, 완료: \(completedCount)개")
+            
             // 수동으로 정렬 적용
             parents = fetchedTodos.sorted { a, b in
                 // 1. 완료 여부 (미완료가 먼저)
@@ -172,6 +194,19 @@ final class AddListViewModel: ObservableObject {
                 // 3. 생성 시간
                 return a.createdAt < b.createdAt
             }
+            
+            // 디버깅: 각 항목의 상태 출력
+            for parent in parents.prefix(5) {
+                let status = parent.isCompleted ? "✅ 완료" : "⏳ 미완료"
+                let childCount = parent.children.count
+                let visibleChildCount = getVisibleChildren(of: parent).count
+                print("  - \(status) \(parent.title) (자식: \(visibleChildCount)/\(childCount))")
+            }
+            
+            if parents.count > 5 {
+                print("  ... 외 \(parents.count - 5)개")
+            }
+            
         } catch {
             print("❌ Todo fetch 실패: \(error.localizedDescription)")
             parents = []
