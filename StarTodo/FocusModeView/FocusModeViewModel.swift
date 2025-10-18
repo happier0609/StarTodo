@@ -344,6 +344,25 @@ final class FocusModeViewModel: ObservableObject {
             }
         }
     }
+    
+    // ✅ 추가: 다음 할 일로 이동하는 메서드
+    private func moveToNextTodo() {
+        // todos 중에서 아직 완료되지 않은 첫 번째 항목을 찾아 이동
+        let next = todos.enumerated().first { (_, todo) in
+            !todo.isCompleted
+        }
+        
+        if let (index, nextTodo) = next {
+            currentIndex = index
+            print("다음 할 일로 이동: \(nextTodo.title)")
+            startTodoTimer()
+        } else {
+            print("모든 할 일 완료!")
+            isRunning = false
+            endFocusSession()
+        }
+        print("----------------------------------")
+    }
 
     // MARK: - 세션 종료
     func endFocusSession() {
