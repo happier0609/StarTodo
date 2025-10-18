@@ -51,6 +51,11 @@ struct AddListView: View {
             if let todoID = notification.userInfo?["todoID"] as? UUID {
                 print("  변경된 Todo ID: \(todoID)")
             }
+            if let isCompleted = notification.userInfo?["isCompleted"] as? Bool {
+                print("  완료 여부: \(isCompleted)")
+            }
+            
+            print("🔄 데이터 새로고침 시작...")
             refreshData()
         }
         .sheet(isPresented: $viewModel.showModal) {

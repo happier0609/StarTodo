@@ -307,6 +307,11 @@ final class FocusModeViewModel: ObservableObject {
         guard todos.indices.contains(index) else { return }
         let todo = todos[index]
         
+        print("🎯 FocusMode 완료 처리 시작: \(todo.title)")
+        print("  이전 상태:")
+        print("    - isCompleted: \(todo.isCompleted)")
+        print("    - performedDate: \(todo.performedDate?.description ?? "nil")")
+        
         // ✅ 경과 시간 가져오기
         let elapsedSeconds = todoElapsed[todo.id, default: 0]
         
@@ -314,24 +319,37 @@ final class FocusModeViewModel: ObservableObject {
         do {
             try todo.markAsCompleted(context: modelContext, elapsedSeconds: elapsedSeconds)
             
+            print("  완료 처리 후:")
+            print("    - isCompleted: \(todo.isCompleted)")
+            print("    - performedDate: \(todo.performedDate?.description ?? "nil")")
+            
+            // ✅ context가 제대로 저장되었는지 확인
+            print("  ModelContext 저장 확인:")
+            print("    - hasChanges: \(modelContext.hasChanges)")
+            
             // ✅ 자식이 있는 경우: 모든 자식도 완료 처리
             if !todo.children.isEmpty {
+                print("  자식 완료 처리:")
                 for child in todo.children where !child.isCompleted {
                     let childElapsed = todoElapsed[child.id, default: 0]
                     try child.markAsCompleted(context: modelContext, elapsedSeconds: childElapsed)
-                    print("  → 부모 완료로 자식도 완료 처리: \(child.title)")
+                    print("    - \(child.title): 완료 처리됨")
                 }
             }
             
             // ✅ 자식인 경우: 모든 형제가 완료되었는지 확인
             if let parent = todo.parent {
                 let allSiblingsCompleted = parent.children.allSatisfy { $0.isCompleted }
+                print("  부모 확인: \(parent.title)")
+                print("    - 모든 형제 완료 여부: \(allSiblingsCompleted)")
+                
                 if allSiblingsCompleted && !parent.isCompleted {
                     let parentElapsed = todoElapsed[parent.id, default: 0]
                     try parent.markAsCompleted(context: modelContext, elapsedSeconds: parentElapsed)
-                    print("  → 모든 자식 완료로 부모도 완료 처리: \(parent.title)")
+                    print("    - 부모도 완료 처리됨")
                 }
             }
+            
         } catch {
             print("❌ Todo 완료 처리 실패: \(error.localizedDescription)")
         }

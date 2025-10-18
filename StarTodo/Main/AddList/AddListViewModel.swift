@@ -125,6 +125,16 @@ final class AddListViewModel: ObservableObject {
             print("📊 AddListViewModel fetchParents:")
             print("  전체 부모 항목: \(fetchedTodos.count)개")
             
+            // ✅ 각 항목의 완료 상태 디버깅
+            for todo in fetchedTodos {
+                print("  🔍 \(todo.title):")
+                print("     - isCompleted: \(todo.isCompleted)")
+                print("     - performedDate: \(todo.performedDate?.description ?? "nil")")
+                if todo.isCompleted && todo.performedDate == nil {
+                    print("     ⚠️ 경고: 완료되었지만 performedDate가 없음!")
+                }
+            }
+            
             // ✅ 표시 가능한 항목만 필터링 (리셋 기준 시간 적용)
             let visibleTodos = fetchedTodos.filter { shouldShowCompletedTodo($0) }
             
@@ -149,16 +159,13 @@ final class AddListViewModel: ObservableObject {
                 return a.createdAt < b.createdAt
             }
             
-            // 디버깅
-            for parent in parents.prefix(5) {
+            // 디버깅: 최종 표시 항목
+            print("\n  📋 최종 표시 항목:")
+            for parent in parents {
                 let status = parent.isCompleted ? "✅ 완료" : "⏳ 미완료"
                 let childCount = parent.children.count
-                let visibleChildCount = getVisibleChildren(of: parent).count
-                print("  - \(status) \(parent.title) (자식: \(visibleChildCount)/\(childCount))")
-            }
-            
-            if parents.count > 5 {
-                print("  ... 외 \(parents.count - 5)개")
+                let completedChildren = parent.children.filter { $0.isCompleted }.count
+                print("  - \(status) \(parent.title) (자식: \(completedChildren)/\(childCount) 완료)")
             }
             
         } catch {
@@ -173,11 +180,15 @@ final class AddListViewModel: ObservableObject {
     /// - Returns: UI에 표시할 경우 true
     private func shouldShowCompletedTodo(_ todo: Todo) -> Bool {
         // 미완료 항목은 항상 표시
-        guard todo.isCompleted else { return true }
+        guard todo.isCompleted else {
+            return true
+        }
+        
+        print("  🔍 완료 항목 체크: \(todo.title)")
         
         // 완료 날짜가 없으면 표시하지 않음
         guard let performedDate = todo.performedDate else {
-            print("⚠️ 완료되었지만 performedDate가 없는 항목: \(todo.title)")
+            print("     ⚠️ performedDate 없음 → 숨김")
             return false
         }
         
@@ -185,17 +196,18 @@ final class AddListViewModel: ObservableObject {
         let nextResetTime = calculateNextResetTime(from: performedDate)
         let now = Date()
         
+        let formatter = DateFormatter()
+        formatter.dateStyle = .short
+        formatter.timeStyle = .medium
+        formatter.locale = Locale(identifier: "ko_KR")
+        
+        print("     완료 시각: \(formatter.string(from: performedDate))")
+        print("     리셋 시각: \(formatter.string(from: nextResetTime))")
+        print("     현재 시각: \(formatter.string(from: now))")
+        
         // 현재 시간이 다음 리셋 시간 이전이면 표시
         let shouldShow = now < nextResetTime
-        
-        if !shouldShow {
-            let formatter = DateFormatter()
-            formatter.dateStyle = .short
-            formatter.timeStyle = .short
-            print("🚫 리셋 시간 도달로 완료 항목 숨김: \(todo.title)")
-            print("   완료 시각: \(formatter.string(from: performedDate))")
-            print("   리셋 시각: \(formatter.string(from: nextResetTime))")
-        }
+        print("     결과: \(shouldShow ? "표시" : "숨김")")
         
         return shouldShow
     }
