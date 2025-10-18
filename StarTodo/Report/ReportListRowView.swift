@@ -19,9 +19,8 @@ struct ReportListRowView: View {
     let viewModel: ReportViewModel
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
             icon
-                .padding(.top, 2)
 
             HStack {
                 Text(title)
@@ -39,7 +38,7 @@ struct ReportListRowView: View {
 
             Spacer()
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 12)
     }
 
     private var icon: some View {
@@ -82,7 +81,7 @@ struct ReportListRowView: View {
         case .incompleted:
             return Color("Cool100")
         case .breakSession:
-            return Color("Info200")
+            return Color("BgLight")
         }
     }
 
@@ -100,9 +99,109 @@ struct ReportListRowView: View {
     private var subtitleColor: Color {
         switch type {
         case .breakSession(let session):
-            return session.isOverdue ? Color("Warning200") : Color("Cool100")
+            return session.isOverdue ? Color("Warning200") : Color("Info200")
         default:
             return Color("Info200")
         }
     }
 }
+
+#if DEBUG
+import SwiftUI
+import SwiftData
+
+// MARK: - 기본 프리뷰 (완료 + 미완료 혼합)
+#Preview("기본 - 타임라인 + 미완료") {
+    let session = PreviewReportListRowData.createBasicSession()
+    let viewModel = ReportViewModel(session: session)
+    
+    ReportListView(
+        timelineItems: viewModel.timelineItems,
+        incompletedTodos: viewModel.incompletedTodos,
+        viewModel: viewModel
+    )
+    .background(Color("BgDark"))
+    .modelContainer(for: [
+        FocusSession.self,
+        FocusItem.self,
+        BreakSession.self
+    ], inMemory: true)
+}
+
+// MARK: - Preview Data Factory
+enum PreviewReportListRowData {
+    
+    // MARK: - 기본 세션
+    @MainActor
+    static func createBasicSession() -> FocusSession {
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try! ModelContainer(
+            for: FocusSession.self,
+            FocusItem.self,
+            BreakSession.self,
+            configurations: config
+        )
+        let context = ModelContext(container)
+        
+        let session = FocusSession(
+            startedAt: Date().addingTimeInterval(-3600),
+            endedAt: Date()
+        )
+        context.insert(session)
+        
+        // 완료 2개
+        let completed1 = FocusItem(
+            title: "코드 리뷰",
+            setSeconds: 1800,
+            elapsedSeconds: 2100,
+            isCompleted: true,
+            order: 0
+        )
+        context.insert(completed1)
+        session.items.append(completed1)
+        
+        let completed2 = FocusItem(
+            title: "문서 작성",
+            setSeconds: 1200,
+            elapsedSeconds: 1000,
+            isCompleted: true,
+            order: 1
+        )
+        context.insert(completed2)
+        session.items.append(completed2)
+        
+        // 미완료 2개
+        let incompleted1 = FocusItem(
+            title: "운동하기",
+            setSeconds: 1800,
+            elapsedSeconds: 300,
+            isCompleted: false,
+            order: 2
+        )
+        context.insert(incompleted1)
+        session.items.append(incompleted1)
+        
+        let incompleted2 = FocusItem(
+            title: "책 읽기",
+            setSeconds: 1200,
+            elapsedSeconds: 0,
+            isCompleted: false,
+            order: 3
+        )
+        context.insert(incompleted2)
+        session.items.append(incompleted2)
+        
+        // 휴식 1개
+        let breakSession = BreakSession(
+            start: Date().addingTimeInterval(-2000),
+            end: Date().addingTimeInterval(-1700),
+            isOverdue: false
+        )
+        context.insert(breakSession)
+        session.breaks.append(breakSession)
+        
+        try? context.save()
+        return session
+    }
+}
+#endif
