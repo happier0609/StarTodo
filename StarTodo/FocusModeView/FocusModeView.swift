@@ -117,3 +117,173 @@ struct FocusModeView: View {
     }
 }
 
+// MARK: - Preview Helpers
+#if DEBUG
+import SwiftData
+
+@MainActor
+private func createFocusModePreviewContainer() -> ModelContainer {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    guard let container = try? ModelContainer(
+        for: Todo.self, FocusSession.self, FocusItem.self, BreakSession.self,
+        configurations: config
+    ) else {
+        fatalError("⚠️ Failed to create focus mode preview container")
+    }
+    return container
+}
+
+@MainActor
+private func createFocusModeMockTodos(context: ModelContext) -> [Todo] {
+    let todos = [
+        Todo(title: "프로젝트 기획서 작성", setTime: 45, order: 0),
+        Todo(title: "UI 디자인 완성하기", setTime: 30, order: 1),
+        Todo(title: "코드 리뷰 진행", setTime: 25, order: 2),
+        Todo(title: "문서 업데이트", setTime: 20, order: 3)
+    ]
+    
+    todos.forEach { context.insert($0) }
+    try? context.save()
+    
+    return todos
+}
+
+@MainActor
+private func createFocusTodoInput(todos: [Todo]) -> FocusTodoInput {
+    let pairs = todos.map { ($0.id, $0.setTime) }
+    return FocusTodoInput(todoIDPairs: pairs)
+}
+
+// MARK: - Previews
+#Preview("FocusModeView - Just Started (Timer)") {
+    let container = createFocusModePreviewContainer()
+    let context = container.mainContext
+    let todos = createFocusModeMockTodos(context: context)
+    let input = createFocusTodoInput(todos: todos)
+    
+    return FocusModeView(input: input)
+        .environmentObject(MainCoordinator.shared)
+        .modelContainer(container)
+}
+
+#Preview("FocusModeView - In Progress (List)") {
+    let container = createFocusModePreviewContainer()
+    let context = container.mainContext
+    let todos = createFocusModeMockTodos(context: context)
+    let input = createFocusTodoInput(todos: todos)
+    
+    return FocusModeView(input: input)
+        .environmentObject(MainCoordinator.shared)
+        .modelContainer(container)
+}
+
+#Preview("FocusModeView - Mid Session") {
+    let container = createFocusModePreviewContainer()
+    let context = container.mainContext
+    let todos = createFocusModeMockTodos(context: context)
+    
+    // 첫 번째 할 일 완료 처리
+    if let firstTodo = todos.first {
+        firstTodo.isCompleted = true
+    }
+    try? context.save()
+    
+    let input = createFocusTodoInput(todos: todos)
+    
+    return FocusModeView(input: input)
+        .environmentObject(MainCoordinator.shared)
+        .modelContainer(container)
+}
+
+#Preview("FocusModeView - Many Tasks") {
+    let container = createFocusModePreviewContainer()
+    let context = container.mainContext
+    
+    // 더 많은 할 일 생성
+    let todos = (0..<8).map { index in
+        let todo = Todo(
+            title: "할 일 \(index + 1)",
+            setTime: [25, 30, 45, 20, 35, 40, 30, 25][index],
+            order: index
+        )
+        context.insert(todo)
+        return todo
+    }
+    
+    try? context.save()
+    
+    let input = createFocusTodoInput(todos: todos)
+    
+    return FocusModeView(input: input)
+        .environmentObject(MainCoordinator.shared)
+        .modelContainer(container)
+}
+
+#Preview("FocusModeView - Almost Complete") {
+    let container = createFocusModePreviewContainer()
+    let context = container.mainContext
+    let todos = createFocusModeMockTodos(context: context)
+    
+    // 처음 3개 완료 처리
+    for i in 0..<3 {
+        if i < todos.count {
+            todos[i].isCompleted = true
+        }
+    }
+    try? context.save()
+    
+    let input = createFocusTodoInput(todos: todos)
+    
+    return FocusModeView(input: input)
+        .environmentObject(MainCoordinator.shared)
+        .modelContainer(container)
+}
+
+#Preview("FocusModeView - Mixed Time Settings") {
+    let container = createFocusModePreviewContainer()
+    let context = container.mainContext
+    
+    let todos = [
+        Todo(title: "빠른 작업", setTime: 10, order: 0),
+        Todo(title: "시간 설정 없음", setTime: 0, order: 1),
+        Todo(title: "긴 작업", setTime: 60, order: 2),
+        Todo(title: "중간 작업", setTime: 30, order: 3)
+    ]
+    
+    todos.forEach { context.insert($0) }
+    try? context.save()
+    
+    let input = createFocusTodoInput(todos: todos)
+    
+    return FocusModeView(input: input)
+        .environmentObject(MainCoordinator.shared)
+        .modelContainer(container)
+}
+
+#Preview("FocusModeView - Single Task") {
+    let container = createFocusModePreviewContainer()
+    let context = container.mainContext
+    
+    let todo = Todo(title: "하나의 중요한 작업", setTime: 45, order: 0)
+    context.insert(todo)
+    try? context.save()
+    
+    let input = FocusTodoInput(todoIDPairs: [(todo.id, todo.setTime)])
+    
+    return FocusModeView(input: input)
+        .environmentObject(MainCoordinator.shared)
+        .modelContainer(container)
+}
+
+#Preview("FocusModeView - Dark Mode") {
+    let container = createFocusModePreviewContainer()
+    let context = container.mainContext
+    let todos = createFocusModeMockTodos(context: context)
+    let input = createFocusTodoInput(todos: todos)
+    
+    return FocusModeView(input: input)
+        .environmentObject(MainCoordinator.shared)
+        .modelContainer(container)
+        .preferredColorScheme(.dark)
+}
+#endif
