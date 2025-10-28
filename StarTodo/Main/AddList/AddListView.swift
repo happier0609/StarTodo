@@ -75,8 +75,9 @@ struct AddListView: View {
             AddListEmptyView()
         } else {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
                     todaySection
+                        .padding(.vertical, 8)
                     previousSection
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
