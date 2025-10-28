@@ -37,9 +37,11 @@ struct AddTaskModalView: View {
                 navigationBar
                 
                 ScrollView {
-                    VStack(spacing:0) {
+                    VStack(spacing:12) {
                         titleSection
+                            .padding(.horizontal, 8)
                         childrenSection
+                            .padding(.horizontal, 12)
                     }
                     .padding()
                 }
@@ -77,7 +79,7 @@ struct AddTaskModalView: View {
     
     // MARK: - Title Section
     private var titleSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading) {
             HStack(spacing: 0) {
                 if viewModel.childrenCount > 0 {
                     Image("List")
@@ -90,13 +92,13 @@ struct AddTaskModalView: View {
                         Text("여기에 새로운 할 일을 추가하세요")
                             .foregroundColor(Color("Cool300"))
                             .typo(.textMDRegular)
-                            .padding()
+                            .padding(8)
                     }
                     
                     TextField("", text: $viewModel.title)
                         .typo(.textMDRegular)
                         .foregroundColor(Color("Cool1100"))
-                        .padding()
+                        .padding(8)
                 }
             }
             //            .background(Color("App.White"))
@@ -106,7 +108,7 @@ struct AddTaskModalView: View {
     
     // MARK: - Children Section
     private var childrenSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        VStack(alignment: .leading, spacing: 8) {
             ForEach(viewModel.children.indices, id: \.self) { index in
                 childItemRow(at: index)
                 
@@ -117,9 +119,9 @@ struct AddTaskModalView: View {
     
     @ViewBuilder
     private func childItemRow(at index: Int) -> some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .center, spacing: 8) {
             Image(systemName: "circle")
-                .foregroundColor(.gray)
+                .foregroundColor(Color("Info1400"))
                 .font(.system(size: 20))
             
             ZStack(alignment: .leading) {
@@ -127,13 +129,11 @@ struct AddTaskModalView: View {
                     Text("하위 작업 입력하기")
                         .foregroundColor(Color("Cool300"))
                         .typo(.textSMRegular)
-                        .padding(.vertical, 8)
                 }
                 
                 TextField("", text: $viewModel.children[index])
                     .foregroundColor(Color("Cool1100"))
                     .typo(.textSMRegular)
-                    .padding(.vertical, 8)
             }
             
             if viewModel.canRemoveChild(at: index) {
@@ -146,7 +146,6 @@ struct AddTaskModalView: View {
                 }
             }
         }
-        .padding(.horizontal, 12)
         //        .background(Color("App.White"))
         //        .cornerRadius(10)
     }
@@ -163,8 +162,7 @@ struct AddTaskModalView: View {
             }
             .foregroundColor(Color("Primary600"))
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 12)
-            .padding(.leading, 12)
+            .padding(.vertical, 8)
             //            .background(Color("App.White"))
             //            .cornerRadius(10)
         }
