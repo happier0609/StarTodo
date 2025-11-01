@@ -67,7 +67,6 @@ struct BreakTimeAlert: View {
             .background(Color("Cool1000"))
             .clipShape(RoundedRectangle(cornerRadius: 14))
             .padding(.horizontal, 60)
-            .shadow(radius: 30)
             .transition(.scale.combined(with: .opacity))
         }
     }
@@ -97,6 +96,10 @@ import SwiftUI
         StatefulPreviewWrapper(10) { minutes in
             ZStack {
                 Color.black.ignoresSafeArea()
+                
+                Image("Kapi")
+                    .resizable()
+                    .frame(width: 100, height: 150)
                 
                 // 실제 Alert 뷰
                 BreakTimeAlert(
