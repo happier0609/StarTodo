@@ -121,7 +121,7 @@ struct CircularTimerView: View {
     }
     
     private var outerCircleSize: CGFloat {
-        280 // 외부 원 크기 (내부 원보다 30pt 더 큼)
+        320 // 외부 원 크기
     }
 
     // MARK: - 내부 원 계산
