@@ -29,6 +29,9 @@ final class FocusModeViewModel: ObservableObject {
     @Published var isRunning: Bool = false
     private var todoTimer: Timer?
     
+    // NEW: 120분 도달 알림용
+    @Published var show120MinAlert: Bool = false // NEW
+    
     // 현재 진행 중인 할 일
     var currentTodo: Todo? {
         guard todos.indices.contains(currentIndex) else { return nil }
@@ -272,20 +275,25 @@ final class FocusModeViewModel: ObservableObject {
         print("----------------------------------")
     }
     
+    // CHANGED: 120분 자동 완료 로직으로 변경
     private func onTodoTimerTick() {
         guard let todo = currentTodo else { return }
+        guard !isBreakActive else { return } // NEW: 휴식 중에는 증가하지 않음
         
         let currentElapsed = todoElapsed[todo.id, default: 0] + 1
         todoElapsed[todo.id] = currentElapsed
         
-        let setSeconds = todoTimeSettings[todo.id, default: 0] * 60
-        
-        // 시간이 설정되어 있고, 설정된 시간에 도달한 경우
-        if setSeconds > 0 && currentElapsed >= setSeconds {
-            print("할 일 완료: \(todo.title)")
+        // CHANGED: 120분(7200초) 도달 시 자동 완료
+        if currentElapsed >= 120 * 60 { // 7200초
+            print("⏰ 120분 진행 완료: \(todo.title)")
+            print("  경과 시간: \(currentElapsed)초")
+            
+            // NEW: 알림 표시
+            show120MinAlert = true
+            
+            // NEW: 자동 완료 처리
             completeCurrentTodo()
         }
-        print("----------------------------------")
     }
     
     func startFocusSessionIfNeeded() {
@@ -482,14 +490,15 @@ final class FocusModeViewModel: ObservableObject {
         return currentElapsedSeconds
     }
     
+    // CHANGED: 120분 기준으로 남은 시간 표시
     var remainingTimeString: String {
         if isBreakActive {
             let remaining = max(0, breakTotalSeconds - breakElapsed)
             return formatTime(seconds: remaining)
         } else {
-            let setSeconds = currentSetMinutes * 60
-            if setSeconds == 0 { return "∞" } // 시간 설정이 없는 경우
-            let remaining = max(0, setSeconds - currentElapsedSeconds)
+            let elapsed = currentElapsedSeconds
+            let maxSeconds = 120 * 60 // 120분 = 7200초
+            let remaining = max(0, maxSeconds - elapsed)
             return formatTime(seconds: remaining)
         }
     }
