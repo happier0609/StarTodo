@@ -37,6 +37,12 @@ struct FocusTimerView: View {
             )
         }
         .animation(.easeInOut(duration: 0.25), value: viewModel.isBreakActive)
+        // 120분 완료 알림
+        .alert("120분 진행 완료", isPresented: $viewModel.show120MinAlert) {
+            Button("확인", role: .cancel) { }
+        } message: {
+            Text("현재 할 일이 자동으로 완료되고 다음 할 일로 이동합니다.")
+        }
     }
 }
 
@@ -154,6 +160,42 @@ private func createTimerViewModel(
         todoPairs: todoPairs,
         currentIndex: 0,
         elapsedSeconds: 2640  // 44분 경과 (45분 중 1분 남음)
+    )
+    
+    return FocusTimerView(viewModel: viewModel)
+        .modelContainer(container)
+        .background(Color("BgDark"))
+}
+
+// NEW: 60분 초과 프리뷰
+#Preview("FocusTimerView - Over 60min") {
+    let container = createFocusTimerPreviewContainer()
+    let context = container.mainContext
+    let todoPairs = createTimerMockTodos(context: context)
+    
+    let viewModel = createTimerViewModel(
+        context: context,
+        todoPairs: todoPairs,
+        currentIndex: 0,
+        elapsedSeconds: 4200  // 70분 경과 (외부 원 10분 진행)
+    )
+    
+    return FocusTimerView(viewModel: viewModel)
+        .modelContainer(container)
+        .background(Color("BgDark"))
+}
+
+// NEW: 거의 120분 도달 프리뷰
+#Preview("FocusTimerView - Almost 120min") {
+    let container = createFocusTimerPreviewContainer()
+    let context = container.mainContext
+    let todoPairs = createTimerMockTodos(context: context)
+    
+    let viewModel = createTimerViewModel(
+        context: context,
+        todoPairs: todoPairs,
+        currentIndex: 0,
+        elapsedSeconds: 7140  // 119분 경과 (120분 중 1분 남음)
     )
     
     return FocusTimerView(viewModel: viewModel)
