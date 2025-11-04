@@ -248,24 +248,47 @@ final class ReportViewModel: ObservableObject {
     }
     
     // MARK: - 세션 종료 처리
-    func finalizeSession() {
+    
+    // FIX: async로 변경하여 저장 완료를 보장
+    func finalizeSession() async {
         session.endedAt = Date()
-        // SwiftData는 변경사항 자동 저장됨
         
-        // ✅ 완료된 Todo들의 상태를 다시 한 번 확인 및 저장
-        // (이미 FocusModeViewModel에서 저장했지만, 안전장치로 추가)
-        print("📝 ReportView에서 세션 종료 처리")
+        print("📝 ReportViewModel: 세션 종료 처리 시작")
         print("  - 완료된 항목: \(completedTodos.count)개")
         print("  - 미완료 항목: \(incompletedTodos.count)개")
+        
+        // FIX: SwiftData 저장 보장 (동기적으로 완료될 때까지 대기)
+        do {
+            try modelContext.save()
+            print("✅ ReportViewModel: 세션 데이터 저장 성공")
+            
+            // FIX: 저장 완료 후 짧은 대기로 변경사항 전파 보장
+            // SwiftData의 변경 알림이 다른 컨텍스트에 전파되는 시간 확보
+            try? await Task.sleep(nanoseconds: 100_000_000) // 0.1초
+            
+            print("✅ ReportViewModel: 변경사항 전파 대기 완료")
+            
+        } catch {
+            print("❌ ReportViewModel: 세션 데이터 저장 실패 - \(error.localizedDescription)")
+        }
+        
+        // REFRESH: 완료 상태 변경 노티피케이션 발송
+        await MainActor.run {
+            NotificationCenter.default.post(
+                name: NSNotification.Name("TodoCompletionChanged"),
+                object: nil,
+                userInfo: ["source": "ReportViewModel"]
+            )
+            print("📢 ReportViewModel: TodoCompletionChanged 노티피케이션 발송 완료")
+        }
     }
 }
 
 extension ReportViewModel {
     
     /// `PersistentIdentifier` 기반으로 SwiftData에서 FocusSession을 불러와 ViewModel을 초기화
-    convenience init(sessionID: PersistentIdentifier) {
-        
-        let context = defaultContext
+    // FIX: context를 파라미터로 받도록 수정
+    convenience init(sessionID: PersistentIdentifier, context: ModelContext) {
         
         let descriptor = FetchDescriptor<FocusSession>(
             predicate: #Predicate { $0.persistentModelID == sessionID },
@@ -279,6 +302,6 @@ extension ReportViewModel {
         print("🟢 ReportViewModel 초기화 - sessionID: \(session.persistentModelID)")
         print("🟢 휴식 기록 개수: \(session.breaks.count)")
         
-        self.init(session: session)
+        self.init(session: session, context: context)
     }
 }
