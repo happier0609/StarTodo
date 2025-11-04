@@ -43,7 +43,6 @@ final class MainViewModel: ObservableObject {
         focusSettingViewModel = FocusSettingViewModel()
     }
     
-    
     // MARK: - SwiftData 관련
     
     private let context: ModelContext
@@ -53,7 +52,7 @@ final class MainViewModel: ObservableObject {
         fetchTodos()
     }
     
-    // MARK: - Fetch 로직
+    // MARK: - ✅ 단일 Fetch 로직
     
     func fetchTodos() {
         do {
@@ -70,30 +69,21 @@ final class MainViewModel: ObservableObject {
             
             // 3. 상태 반영
             todoEntities = list
+            
+            print("✅ MainViewModel.fetchTodos: \(list.count)개 로드됨")
         } catch {
             print("❌ SwiftData fetch 실패:", error.localizedDescription)
             todoEntities = []
         }
     }
     
-    // MARK: - REFRESH: Report 복귀 후 명시적 새로고침
+    // MARK: - ✅ 명시적 새로고침
     
     /// Report 복귀 및 앱 재진입 시 명시적으로 호출하여 Todo 목록 갱신
     func refreshTodos() {
-        print("🔄 MainViewModel: refreshTodos() 호출")
-        print("  이전 Todo 개수: \(todoEntities.count)")
-        
+        print("🔄 MainViewModel.refreshTodos 호출")
         fetchTodos()
-        
-        print("  새로운 Todo 개수: \(todoEntities.count)")
-        
-        // REFRESH: 하위 ViewModel들도 갱신
-        // FocusSettingViewModel은 자체적으로 fetch를 수행하므로 알림만 전송
-        NotificationCenter.default.post(
-            name: NSNotification.Name("TodoCompletionChanged"),
-            object: nil,
-            userInfo: ["source": "MainViewModel.refreshTodos"]
-        )
+        // ❌ 노티피케이션 제거 - @Published가 자동으로 UI 갱신
     }
     
     // MARK: - 리셋 기준 시각 계산
@@ -112,6 +102,26 @@ final class MainViewModel: ObservableObject {
             fetchTodos()
         } catch {
             print("❌ SwiftData save 실패:", error.localizedDescription)
+        }
+    }
+    
+    // MARK: - ✅ Computed Properties (하위 뷰모델용)
+    
+    /// AddListView용: 부모 할 일만 필터링
+    var parentTodos: [Todo] {
+        todoEntities.filter { $0.parent == nil }
+    }
+    
+    /// FocusSettingView용: 미완료 부모 할 일만 필터링
+    var uncompletedParentTodos: [Todo] {
+        todoEntities.filter { parent in
+            guard parent.parent == nil && !parent.isCompleted else { return false }
+            
+            // 자식이 없으면 표시
+            if parent.children.isEmpty { return true }
+            
+            // 미완료 자식이 하나라도 있으면 표시
+            return parent.children.contains { !$0.isCompleted }
         }
     }
 }

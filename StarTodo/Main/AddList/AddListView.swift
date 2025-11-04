@@ -10,11 +10,22 @@ import SwiftData
 
 struct AddListView: View {
     @Environment(\.modelContext) private var context
-    @Environment(\.scenePhase) private var scenePhase
-    @StateObject private var viewModel = AddListViewModel()
+    @EnvironmentObject var mainVM: MainViewModel
     
-    // 타이머 추가 - 매분마다 UI 갱신을 위해
+    // ✅ MainViewModel을 참조하는 ViewModel 생성
+    @StateObject private var viewModel: AddListViewModel
+    
+    // ✅ 수정: mainViewModel을 optional로 전달
+    init() {
+        _viewModel = StateObject(wrappedValue: AddListViewModel(
+            context: defaultContext,
+            mainViewModel: nil  // ✅ optional이므로 nil 가능
+        ))
+    }
+    
+    // ✅ 스마트 타이머: 리셋 시간 1시간 전부터만 동작
     @State private var timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+    @State private var isNearResetTime = false
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
@@ -29,34 +40,25 @@ struct AddListView: View {
                 resetInfoText
             }
         }
+        // ✅ onAppear에서 MainViewModel 연결만 수행
         .onAppear {
-            print("📄 AddListView onAppear")
-            refreshData()
-        }
-        // ✅ 앱 포그라운드 복귀
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active {
-                print("📄 AddListView ScenePhase Active")
-                refreshData()
+            if viewModel.mainViewModel == nil {
+                viewModel.mainViewModel = mainVM
             }
+            checkResetTime()
         }
-        // ✅ 매분마다 리셋 기준 시간 체크
+        // ❌ scenePhase 제거 - MainView에서 처리
+        // ❌ onAppear에서 refreshData() 제거 - MainViewModel이 자동으로 갱신
+        // ❌ TodoCompletionChanged 제거 - @Published 구독으로 자동 갱신
+        
+        // ✅ 스마트 타이머: 리셋 시간 근처에만 UI 갱신
         .onReceive(timer) { _ in
-            print("⏰ AddListView 타이머 새로고침")
-            refreshData()
-        }
-        // ✅ Todo 완료 상태 변경 감지 (FocusMode에서 완료 처리 시)
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TodoCompletionChanged"))) { notification in
-            print("📄 AddListView TodoCompletionChanged 알림 수신")
-            if let todoID = notification.userInfo?["todoID"] as? UUID {
-                print("  변경된 Todo ID: \(todoID)")
+            checkResetTime()
+            if isNearResetTime {
+                print("⏰ 리셋 시간 근처 - UI 갱신")
+                // ✅ 수정: viewModel의 objectWillChange 사용
+                viewModel.objectWillChange.send()
             }
-            if let isCompleted = notification.userInfo?["isCompleted"] as? Bool {
-                print("  완료 여부: \(isCompleted)")
-            }
-            
-            print("🔄 데이터 새로고침 시작...")
-            refreshData()
         }
         .sheet(isPresented: $viewModel.showModal) {
             addTaskModalSheet
@@ -65,6 +67,34 @@ struct AddListView: View {
             deleteAlertButtons(for: parent)
         } message: { parent in
             deleteAlertMessage(for: parent)
+        }
+    }
+    
+    // MARK: - Helper: 리셋 시간 체크
+    private func checkResetTime() {
+        let now = Date()
+        let calendar = Calendar.current
+        
+        var resetComponents = calendar.dateComponents([.year, .month, .day], from: now)
+        resetComponents.hour = mainVM.resetHour
+        resetComponents.minute = 0
+        
+        guard let todayReset = calendar.date(from: resetComponents),
+              let tomorrowReset = calendar.date(byAdding: .day, value: 1, to: todayReset) else {
+            isNearResetTime = false
+            return
+        }
+        
+        // 현재 시간이 오늘 리셋 시간 1시간 전 ~ 내일 리셋 시간 1시간 후 사이인지 체크
+        let oneHourBefore = calendar.date(byAdding: .hour, value: -1, to: todayReset)!
+        let oneHourAfterTomorrow = calendar.date(byAdding: .hour, value: 1, to: tomorrowReset)!
+        
+        let wasNear = isNearResetTime
+        isNearResetTime = (now >= oneHourBefore && now <= todayReset) ||
+                          (now >= tomorrowReset && now <= oneHourAfterTomorrow)
+        
+        if isNearResetTime != wasNear {
+            print("🔔 리셋 시간 근접 상태 변경: \(isNearResetTime)")
         }
     }
     
@@ -163,49 +193,34 @@ struct AddListView: View {
     private func deleteAlertMessage(for parent: Todo) -> some View {
         Text("\"\(parent.title)\"의 하위 항목 \(parent.children.count)개도 함께 삭제됩니다.")
     }
-    
-    // MARK: - Helper Methods
-    private func refreshData() {
-        print("🔄 AddListView 데이터 새로고침")
-        print("  이전 부모 항목 수: \(viewModel.parents.count)")
-        
-        viewModel.fetchParents(with: context)
-        
-        print("  새로운 부모 항목 수: \(viewModel.parents.count)")
-        print("  오늘 항목: \(viewModel.todayParents.count)개")
-        print("  이전 항목: \(viewModel.previousParents.count)개")
-    }
 }
 
-// MARK: - 프리뷰
+// MARK: - Preview
 #if DEBUG
 import SwiftUI
 import SwiftData
 
 #Preview("AddListView - 기본 + 계층") {
-    // 인메모리 SwiftData 컨테이너 생성
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
     let container = try! ModelContainer(
         for: Todo.self,
         configurations: config
     )
 
-    // 1. 기본 샘플 Todo
     let flatTodos = PreviewData.makeSampleTodos()
     for todo in flatTodos {
         container.mainContext.insert(todo)
     }
 
-    // 2. 계층 구조 Todo (부모 + 자식)
     let hierarchicalTodos = PreviewData.makeTodosWithHierarchy()
     for todo in hierarchicalTodos {
         container.mainContext.insert(todo)
     }
 
-    // AddListView와 연결
     return AddListView()
         .modelContainer(container)
         .environmentObject(MainCoordinator.shared)
+        .environmentObject(MainViewModel(context: container.mainContext))
         .previewDisplayName("할 일 목록 (기본 + 계층)")
         .previewLayout(.device)
         .previewDevice("iPhone 15 Pro")
