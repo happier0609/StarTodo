@@ -173,7 +173,7 @@ enum PreviewViewModelFactory {
         let todos = withHierarchy
             ? PreviewData.makeTodosWithHierarchy()
             : PreviewData.makeSampleTodos()
-        vm.loadFrom(todos)
+//        vm.loadFrom(todos)
         return vm
     }
     

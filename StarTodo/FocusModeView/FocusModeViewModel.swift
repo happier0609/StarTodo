@@ -97,7 +97,7 @@ final class FocusModeViewModel: ObservableObject {
         
         print("Todo 로딩 시작...")
         
-        for (index, (id, setTimeMinutes)) in todoPairs.enumerated() {
+        for (_, (id, setTimeMinutes)) in todoPairs.enumerated() {
             do {
                 let descriptor = FetchDescriptor<Todo>(
                     predicate: #Predicate { todo in todo.id == id }

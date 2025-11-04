@@ -26,7 +26,7 @@ struct AddTaskModalView: View {
         // 하지만 init에서는 접근 불가하므로 임시 객체 생성
         self._viewModel = StateObject(wrappedValue: AddTaskModalViewModel(
             editingParent: editingParent,
-            parentViewModel: AddListViewModel(),
+            parentViewModel: AddListViewModel(context: defaultContext, mainViewModel: nil),
             context: defaultContext
         ))
     }
@@ -190,66 +190,132 @@ struct AddTaskModalView: View {
 
 // MARK: - Preview
 #if DEBUG
-struct AddTaskModalView_Previews: PreviewProvider {
-    static var previews: some View {
-        Group {
-            AddTaskModalView(
-                isPresented: .constant(true),
-                editingParent: nil
-            )
-            .previewDisplayName("새 할 일 추가")
-            
-            AddTaskModalView(
-                isPresented: .constant(true),
-                editingParent: createSampleTodo()
-            )
-            .previewDisplayName("할 일 수정")
-        }
-        .environmentObject(AddListViewModel())
-        .modelContainer(for: Todo.self, inMemory: true)
-    }
+#Preview("할 일 추가") {
+    // 1. 인메모리 컨테이너 생성
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: Todo.self, configurations: config)
+    let context = container.mainContext
     
-    static func createSampleTodo() -> Todo {
-        // 상위 할 일 생성
-        let parentTodo = Todo(
-            title: "A프로젝트: SNS 캠페인 이미지 제작",
-            isCompleted: false,
-            setTime: 25,
-            elapsedTime: 0,
-            createdAt: .now,
-            performedDate: nil,
-            order: 0,
-            parent: nil
-        )
-        
-        // 하위 할 일 1
-        let child1 = Todo(
-            title: "참고 이미지 수집하기",
-            isCompleted: false,
-            setTime: 10,
-            elapsedTime: 0,
-            createdAt: .now,
-            performedDate: nil,
-            order: 0,
-            parent: parentTodo
-        )
-        
-        // 하위 할 일 2
-        let child2 = Todo(
-            title: "포토샵 레이아웃 잡기",
-            isCompleted: false,
-            setTime: 15,
-            elapsedTime: 0,
-            createdAt: .now,
-            performedDate: nil,
-            order: 1,
-            parent: parentTodo
-        )
-        
-        // 관계 설정
-        parentTodo.children = [child1, child2]
-        
-        return parentTodo
+    // 2. ViewModels 초기화
+    let mainVM = MainViewModel(context: context)
+    let addListVM = AddListViewModel(context: context, mainViewModel: mainVM)
+    
+    // 3. View 반환
+    return AddTaskModalView(
+        isPresented: .constant(true),
+        editingParent: nil
+    )
+    .environmentObject(addListVM)
+    .environmentObject(mainVM)
+    .modelContainer(container)
+    .previewDisplayName("할 일 추가")
+}
+
+#Preview("할 일 수정") {
+    // 1. 인메모리 컨테이너 생성
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: Todo.self, configurations: config)
+    let context = container.mainContext
+    
+    // 2. ViewModels 초기화
+    let mainVM = MainViewModel(context: context)
+    let addListVM = AddListViewModel(context: context, mainViewModel: mainVM)
+    
+    // 3. 샘플 Todo 생성
+    let sampleParent = Todo(
+        title: "프로젝트 완성하기",
+        isCompleted: false,
+        setTime: 60,
+        elapsedTime: 0,
+        createdAt: .now,
+        performedDate: nil,
+        order: 0,
+        parent: nil
+    )
+    
+    // 자식 Todo들
+    let child1 = Todo(
+        title: "UI 디자인",
+        isCompleted: false,
+        setTime: 30,
+        elapsedTime: 0,
+        createdAt: .now,
+        performedDate: nil,
+        order: 0,
+        parent: sampleParent
+    )
+    
+    let child2 = Todo(
+        title: "API 연동",
+        isCompleted: false,
+        setTime: 30,
+        elapsedTime: 0,
+        createdAt: .now,
+        performedDate: nil,
+        order: 1,
+        parent: sampleParent
+    )
+    
+    sampleParent.children = [child1, child2]
+    
+    // Context에 삽입
+    context.insert(sampleParent)
+    context.insert(child1)
+    context.insert(child2)
+    
+    // 4. View 반환
+    return AddTaskModalView(
+        isPresented: .constant(true),
+        editingParent: sampleParent
+    )
+    .environmentObject(addListVM)
+    .environmentObject(mainVM)
+    .modelContainer(container)
+    .previewDisplayName("할 일 수정")
+}
+
+#Preview("할 일 수정 - 단일 항목") {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: Todo.self, configurations: config)
+    let context = container.mainContext
+    
+    let mainVM = MainViewModel(context: context)
+    let addListVM = AddListViewModel(context: context, mainViewModel: mainVM)
+    
+    // 자식이 없는 단일 할 일
+    let singleTodo = Todo(
+        title: "운동하기",
+        isCompleted: false,
+        setTime: 30,
+        elapsedTime: 0,
+        createdAt: .now,
+        performedDate: nil,
+        order: 0,
+        parent: nil
+    )
+    
+    context.insert(singleTodo)
+    
+    return AddTaskModalView(
+        isPresented: .constant(true),
+        editingParent: singleTodo
+    )
+    .environmentObject(addListVM)
+    .environmentObject(mainVM)
+    .modelContainer(container)
+    .previewDisplayName("할 일 수정 - 단일")
+}
+
+// MARK: - 헬퍼 함수 (선택사항)
+
+extension AddTaskModalView {
+    static func createPreviewEnvironment() -> (ModelContainer, MainViewModel, AddListViewModel) {
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try! ModelContainer(for: Todo.self, configurations: config)
+        let context = container.mainContext
+        let mainVM = MainViewModel(context: context)
+        let addListVM = AddListViewModel(context: context, mainViewModel: mainVM)
+        return (container, mainVM, addListVM)
     }
 }
 #endif

@@ -51,7 +51,7 @@ import SwiftUI
         print("버튼 눌림")
     }
     .padding()
-    .previewLayout(.sizeThatFits)
+//    .previewLayout(.sizeThatFits)
 }
 
 #Preview("선택된 항목 없음") {
@@ -59,7 +59,7 @@ import SwiftUI
         print("버튼 눌림")
     }
     .padding()
-    .previewLayout(.sizeThatFits)
+//    .previewLayout(.sizeThatFits)
 }
 
 #endif
