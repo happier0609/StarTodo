@@ -77,7 +77,8 @@ import SwiftData
 // MARK: - 기본 프리뷰 (완료 + 미완료 혼합)
 #Preview("기본 - 타임라인 + 미완료") {
     let session = PreviewReportListData.createBasicSession()
-    let viewModel = ReportViewModel(session: session)
+    let context = PreviewReportListData.getContext()  // FIX: context 가져오기
+    let viewModel = ReportViewModel(session: session, context: context)  // FIX: context 전달
     
     ReportListView(
         timelineItems: viewModel.timelineItems,
@@ -95,7 +96,8 @@ import SwiftData
 // MARK: - 타임라인만 (완료 항목 + 휴식)
 #Preview("타임라인만 - 미완료 없음") {
     let session = PreviewReportListData.createTimelineOnlySession()
-    let viewModel = ReportViewModel(session: session)
+    let context = PreviewReportListData.getContext()  // FIX: context 가져오기
+    let viewModel = ReportViewModel(session: session, context: context)  // FIX: context 전달
     
     ReportListView(
         timelineItems: viewModel.timelineItems,
@@ -113,7 +115,8 @@ import SwiftData
 // MARK: - 미완료만
 #Preview("미완료만 - 타임라인 없음") {
     let session = PreviewReportListData.createIncompletedOnlySession()
-    let viewModel = ReportViewModel(session: session)
+    let context = PreviewReportListData.getContext()  // FIX: context 가져오기
+    let viewModel = ReportViewModel(session: session, context: context)  // FIX: context 전달
     
     ReportListView(
         timelineItems: viewModel.timelineItems,
@@ -131,7 +134,8 @@ import SwiftData
 // MARK: - 휴식 포함 타임라인
 #Preview("휴식 많음 - 4개 휴식") {
     let session = PreviewReportListData.createManyBreaksSession()
-    let viewModel = ReportViewModel(session: session)
+    let context = PreviewReportListData.getContext()  // FIX: context 가져오기
+    let viewModel = ReportViewModel(session: session, context: context)  // FIX: context 전달
     
     ReportListView(
         timelineItems: viewModel.timelineItems,
@@ -149,7 +153,8 @@ import SwiftData
 // MARK: - 긴 리스트
 #Preview("긴 리스트 - 스크롤 테스트") {
     let session = PreviewReportListData.createLongListSession()
-    let viewModel = ReportViewModel(session: session)
+    let context = PreviewReportListData.getContext()  // FIX: context 가져오기
+    let viewModel = ReportViewModel(session: session, context: context)  // FIX: context 전달
     
     ReportListView(
         timelineItems: viewModel.timelineItems,
@@ -167,7 +172,8 @@ import SwiftData
 // MARK: - 빈 상태
 #Preview("빈 상태 - 항목 없음") {
     let session = PreviewReportListData.createEmptySession()
-    let viewModel = ReportViewModel(session: session)
+    let context = PreviewReportListData.getContext()  // FIX: context 가져오기
+    let viewModel = ReportViewModel(session: session, context: context)  // FIX: context 전달
     
     ReportListView(
         timelineItems: viewModel.timelineItems,
@@ -184,6 +190,19 @@ import SwiftData
 
 // MARK: - Preview Data Factory
 enum PreviewReportListData {
+    
+    // FIX: context를 재사용하기 위한 헬퍼 메서드 추가
+    @MainActor
+    static func getContext() -> ModelContext {
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try! ModelContainer(
+            for: FocusSession.self,
+            FocusItem.self,
+            BreakSession.self,
+            configurations: config
+        )
+        return ModelContext(container)
+    }
     
     // MARK: - 기본 세션
     @MainActor
