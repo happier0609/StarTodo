@@ -113,12 +113,13 @@ final class FocusSettingViewModel: ObservableObject {
                 let uncompletedChildCount = parent.children.filter { !$0.isCompleted }.count
                 
                 if childCount == 0 {
-                    print("  - \(parent.title) (단일 항목)")
+                    print("  - \(parent.title) (단일 항목, 완료: \(parent.isCompleted))")
                 } else {
                     print("  - \(parent.title) (미완료 자식: \(uncompletedChildCount)/\(childCount)개)")
                 }
             }
             
+            // REFRESH: 완료된 항목을 선택 목록에서 정리
             cleanupCompletedSelections()
             
         } catch {
@@ -183,6 +184,7 @@ final class FocusSettingViewModel: ObservableObject {
                     // 부모 선택 해제
                     selectedIDs.removeAll { $0 == todo.id }
                     selectedTodos.removeAll { $0.id == todo.id }
+                    print("  ❌ 선택 해제: \(todo.title)")
                 } else {
                     // 부모 선택
                     if !selectedIDs.contains(todo.id) {
@@ -191,6 +193,7 @@ final class FocusSettingViewModel: ObservableObject {
                     if !selectedTodos.contains(where: { $0.id == todo.id }) {
                         selectedTodos.append(todo)
                     }
+                    print("  ✅ 선택: \(todo.title)")
                 }
             }
             // ✨ 자식이 있는 부모의 경우: 자식들만 토글
@@ -208,6 +211,7 @@ final class FocusSettingViewModel: ObservableObject {
                     selectedTodos.removeAll { selectedTodo in
                         uncompletedChildren.contains { $0.id == selectedTodo.id }
                     }
+                    print("  ❌ 그룹 선택 해제: \(todo.title) (\(uncompletedChildren.count)개 자식)")
                 } else {
                     // 모든 미완료 자식 선택
                     for child in uncompletedChildren {
@@ -218,6 +222,7 @@ final class FocusSettingViewModel: ObservableObject {
                             selectedTodos.append(child)
                         }
                     }
+                    print("  ✅ 그룹 선택: \(todo.title) (\(uncompletedChildren.count)개 자식)")
                 }
             }
         } else {
@@ -228,6 +233,7 @@ final class FocusSettingViewModel: ObservableObject {
 
     /// 선택 상태를 모두 초기화
     func clearSelections() {
+        print("🧹 선택 상태 초기화")
         selectedTodos.removeAll()
         selectedIDs.removeAll()
         timeSettings.removeAll() // 시간 설정도 초기화
@@ -285,9 +291,11 @@ final class FocusSettingViewModel: ObservableObject {
         if select {
             if !selectedIDs.contains(child.id) { selectedIDs.append(child.id) }
             if !selectedTodos.contains(where: { $0.id == child.id }) { selectedTodos.append(child) }
+            print("  ✅ 자식 선택: \(child.title)")
         } else {
             selectedIDs.removeAll { $0 == child.id }
             selectedTodos.removeAll { $0.id == child.id }
+            print("  ❌ 자식 선택 해제: \(child.title)")
         }
     }
 
@@ -326,6 +334,7 @@ final class FocusSettingViewModel: ObservableObject {
             }
         }
         
+        print("📦 pickedTodos: \(result.count)개 항목 선택됨")
         return result
     }
 
@@ -335,5 +344,6 @@ final class FocusSettingViewModel: ObservableObject {
     /// ✅ 위의 pickedTodos() 함수를 활용해 집중 모드 대상 할 일들을 설정
     func prepareFocusTarget() {
         selectedFocusTodos = pickedTodos(from: focusParents)
+        print("🎯 집중 모드 준비 완료: \(selectedFocusTodos.count)개 할 일")
     }
 }
