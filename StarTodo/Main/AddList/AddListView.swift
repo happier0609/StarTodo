@@ -1,6 +1,8 @@
 //
-//  AddListView.swift (Refactored)
+//  AddListView.swift
 //  JPS_3
+//
+//  Created by ChoMinKyung on 4/1/25.
 //
 
 import SwiftUI
@@ -13,11 +15,11 @@ struct AddListView: View {
     // ✅ MainViewModel을 참조하는 ViewModel 생성
     @StateObject private var viewModel: AddListViewModel
     
+    // ✅ 수정: mainViewModel을 optional로 전달
     init() {
-        // StateObject 초기화는 클로저 방식으로 해야 EnvironmentObject 접근 가능
         _viewModel = StateObject(wrappedValue: AddListViewModel(
             context: defaultContext,
-            mainViewModel: nil
+            mainViewModel: nil  // ✅ optional이므로 nil 가능
         ))
     }
     
@@ -54,7 +56,8 @@ struct AddListView: View {
             checkResetTime()
             if isNearResetTime {
                 print("⏰ 리셋 시간 근처 - UI 갱신")
-                objectWillChange.send() // ✅ 뷰 강제 갱신
+                // ✅ 수정: viewModel의 objectWillChange 사용
+                viewModel.objectWillChange.send()
             }
         }
         .sheet(isPresented: $viewModel.showModal) {
