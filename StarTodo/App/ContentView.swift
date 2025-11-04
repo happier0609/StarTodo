@@ -39,6 +39,9 @@ struct ContentView: View {
     @State private var selectedTab: TabBarType = .main
     @ObservedObject private var mainCoordinator = MainCoordinator.shared
     
+    // ModelContext 추가
+    @Environment(\.modelContext) private var modelContext
+    
     init() {
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
@@ -89,10 +92,12 @@ struct ContentView: View {
             switch screen {
             case .focusMode(let input):
                 FocusModeView(input: input)
+                    .environment(\.modelContext, modelContext) // context 전달
                     .focusLocked() // 탭바 숨기기 + 스와이프 금지
                 
             case .report(let sessionID):
-                let vm = ReportViewModel(sessionID: sessionID)
+                // context 전달하도록 수정
+                let vm = ReportViewModel(sessionID: sessionID, context: modelContext)
                 ReportView(
                     viewModel: vm,
                     onComplete: {
@@ -100,10 +105,8 @@ struct ContentView: View {
                         mainCoordinator.popToRoot()
                     }
                 )
+                .environment(\.modelContext, modelContext) // context 전달
                 .focusLocked()
-                
-            default:
-                EmptyView() // 안전 처리용
             }
         }
     }

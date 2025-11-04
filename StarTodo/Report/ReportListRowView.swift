@@ -113,7 +113,8 @@ import SwiftData
 // MARK: - 기본 프리뷰 (완료 + 미완료 혼합)
 #Preview("기본 - 타임라인 + 미완료") {
     let session = PreviewReportListRowData.createBasicSession()
-    let viewModel = ReportViewModel(session: session)
+    let context = PreviewReportListRowData.getContext()  // FIX: context 가져오기
+    let viewModel = ReportViewModel(session: session, context: context)  // FIX: context 전달
     
     ReportListView(
         timelineItems: viewModel.timelineItems,
@@ -130,6 +131,19 @@ import SwiftData
 
 // MARK: - Preview Data Factory
 enum PreviewReportListRowData {
+    
+    // FIX: context를 재사용하기 위한 헬퍼 메서드 추가
+    @MainActor
+    static func getContext() -> ModelContext {
+        let config = ModelConfiguration(isStoredInMemoryOnly: true)
+        let container = try! ModelContainer(
+            for: FocusSession.self,
+            FocusItem.self,
+            BreakSession.self,
+            configurations: config
+        )
+        return ModelContext(container)
+    }
     
     // MARK: - 기본 세션
     @MainActor

@@ -76,6 +76,26 @@ final class MainViewModel: ObservableObject {
         }
     }
     
+    // MARK: - REFRESH: Report 복귀 후 명시적 새로고침
+    
+    /// Report 복귀 및 앱 재진입 시 명시적으로 호출하여 Todo 목록 갱신
+    func refreshTodos() {
+        print("🔄 MainViewModel: refreshTodos() 호출")
+        print("  이전 Todo 개수: \(todoEntities.count)")
+        
+        fetchTodos()
+        
+        print("  새로운 Todo 개수: \(todoEntities.count)")
+        
+        // REFRESH: 하위 ViewModel들도 갱신
+        // FocusSettingViewModel은 자체적으로 fetch를 수행하므로 알림만 전송
+        NotificationCenter.default.post(
+            name: NSNotification.Name("TodoCompletionChanged"),
+            object: nil,
+            userInfo: ["source": "MainViewModel.refreshTodos"]
+        )
+    }
+    
     // MARK: - 리셋 기준 시각 계산
     
     var completionResetTime: Date {
