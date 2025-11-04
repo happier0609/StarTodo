@@ -114,4 +114,24 @@ final class MainViewModel: ObservableObject {
             print("❌ SwiftData save 실패:", error.localizedDescription)
         }
     }
+    
+    // MARK: - ✅ Computed Properties (하위 뷰모델용)
+    
+    /// AddListView용: 부모 할 일만 필터링
+    var parentTodos: [Todo] {
+        todoEntities.filter { $0.parent == nil }
+    }
+    
+    /// FocusSettingView용: 미완료 부모 할 일만 필터링
+    var uncompletedParentTodos: [Todo] {
+        todoEntities.filter { parent in
+            guard parent.parent == nil && !parent.isCompleted else { return false }
+            
+            // 자식이 없으면 표시
+            if parent.children.isEmpty { return true }
+            
+            // 미완료 자식이 하나라도 있으면 표시
+            return parent.children.contains { !$0.isCompleted }
+        }
+    }
 }
