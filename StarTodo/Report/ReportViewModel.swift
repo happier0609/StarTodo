@@ -13,6 +13,8 @@ import SwiftData
 @MainActor
 final class ReportViewModel: ObservableObject {
     
+    // ModelContext를 인스턴스 변수로 저장하여 일관성 보장
+    private let modelContext: ModelContext
     private var session: FocusSession
     
     // 전체 할 일 목록
@@ -29,7 +31,10 @@ final class ReportViewModel: ObservableObject {
     @Published var breaks: [BreakSession] = []
     
     // MARK: - 초기화
-    init(session: FocusSession) {
+    
+    // ModelContext를 주입받아 저장
+    init(session: FocusSession, context: ModelContext) {
+        self.modelContext = context
         
         print("리포트 초기화 - 휴식 기록 개수: \(session.breaks.count)")
         
