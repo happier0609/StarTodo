@@ -5,7 +5,7 @@
 //  Created by 조민경 on 9/1/25.
 //
 
-/// 역할: 할 일 목록 필터링 (오늘/이전), 삭제, 추가/편집 모달
+/// 역할: MainViewModel 데이터를 가공하여 표시 (오늘/이전 필터링)
 
 import Foundation
 import SwiftUI
@@ -14,10 +14,7 @@ import SwiftData
 @MainActor
 final class AddListViewModel: ObservableObject {
 
-    // MARK: - ❌ 수동 관리 제거 - MainViewModel에서 가져옴
-    // @Published var parents: [Todo] = []
-    
-    // ✅ MainViewModel 참조
+    // MARK: - ✅ MainViewModel 참조 (Optional로 변경)
     weak var mainViewModel: MainViewModel?
     
     // ✅ Computed Property: MainViewModel의 데이터를 필터링
@@ -39,7 +36,8 @@ final class AddListViewModel: ObservableObject {
     // MARK: - SwiftData Context
     private var context: ModelContext
     
-    init(context: ModelContext, mainViewModel: MainViewModel) {
+    // ✅ 수정: mainViewModel을 optional로 받음
+    init(context: ModelContext, mainViewModel: MainViewModel? = nil) {
         self.context = context
         self.mainViewModel = mainViewModel
     }
