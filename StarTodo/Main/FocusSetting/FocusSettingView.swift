@@ -14,7 +14,6 @@ struct FocusSettingView: View {
     @EnvironmentObject var mainVM: MainViewModel
     @EnvironmentObject var coordinator: MainCoordinator
     @Environment(\.modelContext) private var context
-    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         ZStack {
@@ -39,20 +38,18 @@ struct FocusSettingView: View {
 
                         VStack(spacing: 10) {
                             ForEach(focusSettingVM.focusParents) { parent in
-                                // ✅ 미완료 자식만 필터링
+                                // 미완료 자식만 필터링
                                 let uncompletedChildren = parent.children
                                     .filter { !$0.isCompleted }
                                     .sorted(by: { $0.order < $1.order })
 
-                                // ✅ 자식이 없는 단일 항목 또는 미완료 자식이 있는 그룹만 표시
+                                // 자식이 없는 단일 항목 또는 미완료 자식이 있는 그룹만 표시
                                 if parent.children.isEmpty {
-                                    // 단일 항목
                                     FocusItemRowView(todo: parent, isChild: false)
                                         .onTapGesture {
                                             focusSettingVM.toggleSelection(of: parent)
                                         }
                                 } else if !uncompletedChildren.isEmpty {
-                                    // 미완료 자식이 있는 그룹
                                     let selectedCount = uncompletedChildren.filter {
                                         focusSettingVM.isSelected($0.id)
                                     }.count
@@ -75,7 +72,6 @@ struct FocusSettingView: View {
                                         }
                                     )
                                 }
-                                // ✅ 모든 자식이 완료된 경우: 렌더링하지 않음
                             }
                         }
                         .padding(.horizontal, 18)
@@ -99,38 +95,15 @@ struct FocusSettingView: View {
                 }
             }
         }
-        // ✅ 최초 진입 시 + 스와이프 진입 시 모두 처리
+        // ✅ onAppear에서 MainViewModel 연결만 수행
         .onAppear {
-            print("📄 FocusSettingView onAppear - 데이터 불러오기 시작")
-            refreshData()
-        }
-        // ✅ 앱 포그라운드 복귀
-        .onChange(of: scenePhase) { _, newPhase in
-            if newPhase == .active {
-                print("📄 FocusSettingView ScenePhase Active - 데이터 새로고침")
-                refreshData()
+            if focusSettingVM.mainViewModel == nil {
+                focusSettingVM.mainViewModel = mainVM
             }
         }
-        // ✅ 완료 상태 변경 감지
-        .onReceive(NotificationCenter.default.publisher(for: NSNotification.Name("TodoCompletionChanged"))) { notification in
-            print("📄 FocusSettingView TodoCompletionChanged 알림 수신")
-            if let todoID = notification.userInfo?["todoID"] as? UUID {
-                print("  변경된 Todo ID: \(todoID)")
-            }
-            refreshData()
-        }
-    }
-    
-    // ✅ 데이터 새로고침 헬퍼 함수
-    private func refreshData() {
-        print("🔄 데이터 새로고침 시작")
-        print("  이전 항목 수: \(focusSettingVM.focusParents.count)")
-        print("  이전 선택 수: \(focusSettingVM.selectedIDs.count)")
-        
-        focusSettingVM.fetchUncompletedParents(with: context)
-        
-        print("  새로운 항목 수: \(focusSettingVM.focusParents.count)")
-        print("  새로운 선택 수: \(focusSettingVM.selectedIDs.count)")
+        // ❌ scenePhase 제거 - MainView에서 처리
+        // ❌ onAppear에서 fetchUncompletedParents 제거 - MainViewModel이 자동으로 갱신
+        // ❌ TodoCompletionChanged 제거 - @Published 구독으로 자동 갱신
     }
 }
 
@@ -190,8 +163,6 @@ private func setupManyItems(context: ModelContext) {
     try? context.save()
 }
 
-// MARK: - ViewBuilder Helper
-
 @MainActor
 private func makeFocusSettingPreview(using setup: (ModelContext) -> Void) -> some View {
     let container = createPreviewContainer()
@@ -203,15 +174,15 @@ private func makeFocusSettingPreview(using setup: (ModelContext) -> Void) -> som
     mainVM.fetchTodos()
     
     let focusVM = FocusSettingViewModel()
-    focusVM.fetchUncompletedParents(with: context)
+    focusVM.mainViewModel = mainVM
     
     return FocusSettingView()
         .environmentObject(focusVM)
         .environmentObject(mainVM)
+        .environmentObject(MainCoordinator.shared)
         .modelContainer(container)
 }
 
-// MARK: - Preview
 #Preview("FocusSettingView - With Data") {
     makeFocusSettingPreview(using: setupMockData)
 }
@@ -221,6 +192,6 @@ private func makeFocusSettingPreview(using setup: (ModelContext) -> Void) -> som
 }
 
 #Preview("FocusSettingView - Empty State") {
-    makeFocusSettingPreview(using: { _ in })  // 데이터 없이 초기화
+    makeFocusSettingPreview(using: { _ in })
 }
 #endif
