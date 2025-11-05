@@ -1,6 +1,6 @@
 //
-//  JPS_3App.swift
-//  JPS_3
+//  StarTodoApp.swift
+//  StarTodo
 //
 //  Created by ChoMinKyung on 3/12/25.
 //
@@ -14,13 +14,14 @@ struct StarTodoApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ModelContextProvider { context in
-                RootView()
-                    .environment(\.modelContext, context)
-                    .environmentObject(coordinator)
-                    .environmentObject(MainViewModel(context: context)) // ✅ 여기서 context 주입
-            }
+            ContentView()
+                .environmentObject(coordinator)
         }
-        .modelContainer(for: [Todo.self, FocusSession.self, FocusItem.self, BreakSession.self])
+        .modelContainer(for: [
+            Todo.self,
+            FocusSession.self,
+            FocusItem.self,
+            BreakSession.self
+        ])
     }
 }
