@@ -32,9 +32,12 @@ struct FocusListView: View {
                         }
                     }
                 }
-                .background(
-                    RoundedRectangle(cornerRadius: 10)
+                .background(                      // ⬅️ 배경은 유지
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
                         .fill(Color("Cool1000"))
+                )
+                .mask(                            // ⬅️ 이 줄 추가: 자식까지 둥글게 클리핑
+                    RoundedRectangle(cornerRadius: 10, style: .continuous)
                 )
                 .padding(.horizontal)
             }
