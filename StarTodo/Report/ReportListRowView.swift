@@ -20,51 +20,53 @@ struct ReportListRowView: View {
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
+            // 아이콘
             icon
+                .frame(width: 20, height: 20)
 
-            HStack {
-                Text(title)
-                    .typo(.textMDRegular)
-                    .foregroundColor(titleColor)
-                
-                Spacer()
-
-                if let subtitle = subtitle {
-                    Text(subtitle)
-                        .typo(.textSMEmphasized)
-                        .foregroundColor(subtitleColor)
-                }
-            }
-
+            // 타이틀
+            Text(title)
+                .typo(.textMDRegular)
+                .foregroundColor(titleColor)
+            
             Spacer()
+
+            // 서브타이틀 (시간 정보)
+            if let subtitle = subtitle {
+                Text(subtitle)
+                    .typo(.textSMEmphasized)
+                    .foregroundColor(subtitleColor)
+            }
         }
         .padding(.vertical, 12)
     }
 
+    // MARK: - 아이콘
+    
     private var icon: some View {
-        switch type {
-        case .completed:
-            return AnyView(Circle()
-                .fill(Color("App.White"))
-                .frame(width: 20, height: 20)
-                .shadow(color: Color("App.White").opacity(0.8), radius: 6))
+        Group {
+            switch type {
+            case .completed:
+                // 완료: 채워진 흰색 원 + 그림자
+                Circle()
+                    .fill(Color("App.White"))
+                    .shadow(color: Color("App.White").opacity(0.8), radius: 6)
 
-        case .incompleted:
-            return AnyView(Circle()
-                .stroke(Color("Cool100"), lineWidth: 2)
-                .frame(width: 20, height: 20))
+            case .incompleted:
+                // 미완료: 빈 원 (테두리만)
+                Circle()
+                    .stroke(Color("Cool100"), lineWidth: 2)
 
-        case .breakSession:
-            return AnyView(
-                ZStack {
-                    Circle()
-                        .fill(Color.clear)
-                        .frame(width: 20, height: 20)
-                }
-            )
+            case .breakSession:
+                // 휴식: 빈 공간
+                Circle()
+                    .fill(Color.clear)
+            }
         }
     }
 
+    // MARK: - 타이틀
+    
     private var title: String {
         switch type {
         case .completed(let todo), .incompleted(let todo):
@@ -85,6 +87,8 @@ struct ReportListRowView: View {
         }
     }
 
+    // MARK: - 서브타이틀 (시간 정보)
+    
     private var subtitle: String? {
         switch type {
         case .completed(let todo):
@@ -106,33 +110,132 @@ struct ReportListRowView: View {
     }
 }
 
+// MARK: - Preview
+
 #if DEBUG
 import SwiftUI
 import SwiftData
 
-// MARK: - 기본 프리뷰 (완료 + 미완료 혼합)
-#Preview("기본 - 타임라인 + 미완료") {
-    let session = PreviewReportListRowData.createBasicSession()
-    let context = PreviewReportListRowData.getContext()  // FIX: context 가져오기
-    let viewModel = ReportViewModel(session: session, context: context)  // FIX: context 전달
+// MARK: - 완료 항목 프리뷰
+#Preview("완료 항목") {
+    let session = PreviewReportRowData.createBasicSession()
+    let context = PreviewReportRowData.getContext()
+    let viewModel = ReportViewModel(session: session, context: context)
     
-    ReportListView(
-        timelineItems: viewModel.timelineItems,
-        incompletedTodos: viewModel.incompletedTodos,
-        viewModel: viewModel
-    )
-    .background(Color("BgDark"))
-    .modelContainer(for: [
-        FocusSession.self,
-        FocusItem.self,
-        BreakSession.self
-    ], inMemory: true)
+    VStack(spacing: 0) {
+        ReportListRowView(
+            type: .completed(viewModel.completedTodos[0]),
+            viewModel: viewModel
+        )
+        
+        Divider()
+            .background(Color("Cool100").opacity(0.3))
+        
+        ReportListRowView(
+            type: .completed(viewModel.completedTodos[1]),
+            viewModel: viewModel
+        )
+    }
+    .padding()
+    .background(Color("Cool1000"))
+}
+
+// MARK: - 미완료 항목 프리뷰
+#Preview("미완료 항목") {
+    let session = PreviewReportRowData.createBasicSession()
+    let context = PreviewReportRowData.getContext()
+    let viewModel = ReportViewModel(session: session, context: context)
+    
+    VStack(spacing: 0) {
+        ReportListRowView(
+            type: .incompleted(viewModel.incompletedTodos[0]),
+            viewModel: viewModel
+        )
+        
+        Divider()
+            .background(Color("Cool100").opacity(0.3))
+        
+        ReportListRowView(
+            type: .incompleted(viewModel.incompletedTodos[1]),
+            viewModel: viewModel
+        )
+    }
+    .padding()
+    .background(Color("Cool1000"))
+}
+
+// MARK: - 휴식 항목 프리뷰
+#Preview("휴식 항목") {
+    let session = PreviewReportRowData.createBasicSession()
+    let context = PreviewReportRowData.getContext()
+    let viewModel = ReportViewModel(session: session, context: context)
+    
+    VStack(spacing: 0) {
+        ReportListRowView(
+            type: .breakSession(session.breaks[0]),
+            viewModel: viewModel
+        )
+    }
+    .padding()
+    .background(Color("Cool1000"))
+}
+
+// MARK: - 전체 혼합 프리뷰
+#Preview("전체 혼합") {
+    let session = PreviewReportRowData.createBasicSession()
+    let context = PreviewReportRowData.getContext()
+    let viewModel = ReportViewModel(session: session, context: context)
+    
+    VStack(spacing: 0) {
+        // 완료 항목
+        ReportListRowView(
+            type: .completed(viewModel.completedTodos[0]),
+            viewModel: viewModel
+        )
+        
+        Divider()
+            .background(Color("Cool100").opacity(0.3))
+        
+        // 휴식
+        ReportListRowView(
+            type: .breakSession(session.breaks[0]),
+            viewModel: viewModel
+        )
+        
+        Divider()
+            .background(Color("Cool100").opacity(0.3))
+        
+        // 완료 항목
+        ReportListRowView(
+            type: .completed(viewModel.completedTodos[1]),
+            viewModel: viewModel
+        )
+        
+        Divider()
+            .background(Color("Cool100").opacity(0.3))
+        
+        // 미완료 항목
+        ReportListRowView(
+            type: .incompleted(viewModel.incompletedTodos[0]),
+            viewModel: viewModel
+        )
+        
+        Divider()
+            .background(Color("Cool100").opacity(0.3))
+        
+        ReportListRowView(
+            type: .incompleted(viewModel.incompletedTodos[1]),
+            viewModel: viewModel
+        )
+    }
+    .padding()
+    .background(Color("Cool1000"))
 }
 
 // MARK: - Preview Data Factory
-enum PreviewReportListRowData {
+enum PreviewReportRowData {
     
-    // FIX: context를 재사용하기 위한 헬퍼 메서드 추가
+    // context를 재사용하기 위한 헬퍼 메서드
     @MainActor
     static func getContext() -> ModelContext {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)

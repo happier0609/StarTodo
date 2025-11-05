@@ -1,6 +1,6 @@
 //
 //  ReportViewModel.swift
-//  JPS_3
+//  StarTodo
 //
 //  Created by ChoMinKyung on 5/11/25.
 //
@@ -13,38 +13,49 @@ import SwiftData
 @MainActor
 final class ReportViewModel: ObservableObject {
     
-    // ✅ Coordinator 참조
+    // MARK: - Dependencies
+    
+    /// Coordinator 참조 (화면 전환용)
     weak var coordinator: MainCoordinator?
     
-    // ✅ MainViewModel 참조 (리팩토링 후 추가)
+    /// MainViewModel 참조 (데이터 갱신용)
     weak var mainViewModel: MainViewModel?
     
-    // ModelContext를 인스턴스 변수로 저장하여 일관성 보장
+    // MARK: - Properties
+    
+    /// ModelContext를 인스턴스 변수로 저장하여 일관성 보장
     private let modelContext: ModelContext
+    
+    /// 원본 FocusSession 참조
     private var session: FocusSession
     
-    // 전체 할 일 목록
+    // MARK: - Published Properties
+    
+    /// 전체 할 일 목록
     @Published var todos: [ReportItem] = []
     
-    // 타임라인용 통합 리스트 (할 일 + 휴식) - ReportRowType 사용
+    /// 타임라인용 통합 리스트 (할 일 + 휴식)
     @Published var timelineItems: [ReportRowType] = []
     
-    // 완료/미완료 분리 리스트 (UI 편의용)
+    /// 완료된 할 일 목록
     @Published var completedTodos: [ReportItem] = []
+    
+    /// 미완료된 할 일 목록
     @Published var incompletedTodos: [ReportItem] = []
     
-    // 휴식 기록
+    /// 휴식 기록
     @Published var breaks: [BreakSession] = []
     
     // MARK: - 초기화
     
     init(session: FocusSession, context: ModelContext) {
         self.modelContext = context
-        
-        print("리포트 초기화 - 휴식 기록 개수: \(session.breaks.count)")
-        
         self.session = session
         self.breaks = session.breaks
+        
+        print("📊 ReportViewModel 초기화")
+        print("  - 휴식 기록 개수: \(session.breaks.count)")
+        print("  - FocusItem 개수: \(session.items.count)")
         
         // FocusItem을 ReportItem으로 변환하면서 완료 시간 추정
         var cumulativeTime: TimeInterval = 0
@@ -75,12 +86,16 @@ final class ReportViewModel: ObservableObject {
         self.completedTodos = todos.filter { $0.isCompleted }
         self.incompletedTodos = todos.filter { !$0.isCompleted }
         
+        print("  - 완료된 항목: \(completedTodos.count)개")
+        print("  - 미완료 항목: \(incompletedTodos.count)개")
+        
         // 타임라인 구성
         buildTimeline()
     }
     
     // MARK: - 타임라인 빌드
     
+    /// 완료된 할 일과 휴식을 시간순으로 정렬하여 타임라인 생성
     private func buildTimeline() {
         var timeline: [ReportRowType] = []
         
@@ -121,10 +136,13 @@ final class ReportViewModel: ObservableObject {
         }
         
         self.timelineItems = timeline
+        
+        print("  - 타임라인 항목: \(timeline.count)개")
     }
     
-    // MARK: - 데이터 로딩
+    // MARK: - 데이터 로딩 (구버전 호환용)
     
+    /// Todo 모델로부터 데이터를 가져오는 메서드 (현재는 사용하지 않음)
     func fetchTodos(from allTodos: [Todo]) {
         let performed = allTodos.filter { $0.performedDate != nil }
         
@@ -158,39 +176,49 @@ final class ReportViewModel: ObservableObject {
     
     // MARK: - 총합/통계
     
+    /// 총 집중 시간 (초 단위)
     var totalFocusedSeconds: Int {
         todos.reduce(0) { $0 + $1.elapsedSeconds }
     }
     
+    /// 총 집중 시간 (분 단위)
     var totalFocusedMinutes: Int {
         totalFocusedSeconds / 60
     }
     
+    /// 총 휴식 시간 (분 단위)
     var totalBreakMinutes: Int {
         session.totalBreakSeconds / 60
     }
     
+    /// 휴식 횟수
     var breakCount: Int {
         breaks.count
     }
     
+    /// 총 집중 시간 텍스트 (예: "1시간 35분")
     var totalFocusedTimeText: String {
         let hours = totalFocusedMinutes / 60
         let minutes = totalFocusedMinutes % 60
         return "\(hours)시간 \(minutes)분"
     }
     
+    /// 전체 할 일 개수
     var totalCount: Int { todos.count }
+    
+    /// 완료한 할 일 개수
     var completedCount: Int { completedTodos.count }
     
     // MARK: - 계획 시간 관련
     
+    /// 총 계획 시간 (분 단위) - 모든 할 일에 계획 시간이 있는 경우에만 반환
     var totalPlannedMinutes: Int? {
         let mins = todos.map { $0.setSeconds / 60 }
         guard mins.allSatisfy({ $0 > 0 }) else { return nil }
         return mins.reduce(0, +)
     }
     
+    /// 계획 대비 실제 시간 비교 메시지
     var timeComparisonMessage: String? {
         guard let planned = totalPlannedMinutes else { return nil }
         
@@ -204,6 +232,7 @@ final class ReportViewModel: ObservableObject {
         }
     }
     
+    /// 개별 할 일의 시간 설명 (예: "5분 더 집중", "10분 일찍 완료")
     func timeDescription(for item: ReportItem) -> String? {
         guard item.isCompleted else { return nil }
         
@@ -221,6 +250,7 @@ final class ReportViewModel: ObservableObject {
         }
     }
     
+    /// 휴식 시간 설명 (예: "10분 충전", "5분 초과")
     func breakDescription(for breakSession: BreakSession) -> String {
         let duration = Int(breakSession.duration)
         let minutes = duration / 60
@@ -235,6 +265,7 @@ final class ReportViewModel: ObservableObject {
     
     // MARK: - 세션 종료 처리
     
+    /// 세션을 종료하고 데이터를 저장
     func finalizeSession() async {
         session.endedAt = Date()
         
@@ -246,6 +277,7 @@ final class ReportViewModel: ObservableObject {
             try modelContext.save()
             print("✅ ReportViewModel: 세션 데이터 저장 성공")
             
+            // 변경사항 전파를 위한 짧은 대기
             try? await Task.sleep(nanoseconds: 100_000_000) // 0.1초
             print("✅ ReportViewModel: 변경사항 전파 대기 완료")
             
@@ -253,7 +285,7 @@ final class ReportViewModel: ObservableObject {
             print("❌ ReportViewModel: 세션 데이터 저장 실패 - \(error.localizedDescription)")
         }
         
-        // ✅ 리팩토링 후: MainViewModel 갱신으로 변경
+        // MainViewModel 갱신
         await MainActor.run {
             mainViewModel?.fetchTodos()
             print("✅ ReportViewModel: MainViewModel 갱신 완료")
@@ -262,6 +294,7 @@ final class ReportViewModel: ObservableObject {
     
     // MARK: - 화면 닫기
     
+    /// 리포트 화면을 닫고 메인 화면으로 돌아감
     func dismissReport() {
         print("📊 ReportView 닫기")
         coordinator?.dismissFullScreen()
@@ -273,7 +306,12 @@ final class ReportViewModel: ObservableObject {
 
 extension ReportViewModel {
     
-    /// `PersistentIdentifier` 기반으로 FocusSession을 불러와 ReportViewModel 생성
+    /// PersistentIdentifier 기반으로 FocusSession을 불러와 ReportViewModel 생성
+    /// - Parameters:
+    ///   - sessionID: 불러올 FocusSession의 PersistentIdentifier
+    ///   - context: ModelContext
+    ///   - coordinator: MainCoordinator (옵션)
+    ///   - mainViewModel: MainViewModel (옵션)
     /// - Returns: 생성에 실패한 경우 nil 반환
     @MainActor
     static func load(
@@ -305,13 +343,14 @@ extension ReportViewModel {
                     }
                 }
                 
-                // ✅ 이전 화면으로 (안전하게)
+                // 이전 화면으로 (안전하게)
                 coordinator?.pop()
                 return nil
             }
             
             print("✅ FocusSession 로딩 성공")
-            print("  휴식 기록: \(session.breaks.count)개")
+            print("  - 아이템 수: \(session.items.count)")
+            print("  - 휴식 기록: \(session.breaks.count)개")
             
             // ViewModel 생성
             let viewModel = ReportViewModel(session: session, context: context)
