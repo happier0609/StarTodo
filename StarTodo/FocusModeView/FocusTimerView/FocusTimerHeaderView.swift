@@ -10,7 +10,8 @@ import SwiftUI
 struct FocusTimerHeaderView: View {
     let title: String
     let isCompleted: Bool
-    let remainingTime: String
+    let labelText: String          // "남은 시간" / "추가 시간" / "시간을 설정하지 않았습니다"
+    let timeText: String?          // "MM:SS" (없으면 nil)
     let onComplete: () -> Void
     
     var body: some View {
@@ -25,7 +26,7 @@ struct FocusTimerHeaderView: View {
                     Text(title)
                         .typo(.titleLGEmphasized)
                         .foregroundColor(Color("BgLight"))
-
+                    
                     GeometryReader { geo in
                         Rectangle()
                             .fill(Color("App.White"))
@@ -39,14 +40,16 @@ struct FocusTimerHeaderView: View {
                 .fixedSize() // ⬅️ 텍스트 크기만큼만 ZStack 크기 고정
             }
             
-            HStack(spacing: 0){
-                Text("남은 시간 ")
+            HStack(spacing: 6) {
+                Text(labelText)
                     .typo(.textSMRegular)
                     .foregroundColor(Color("Cool300"))
                 
-                Text("\(remainingTime)")
-                    .typo(.textSMEmphasized)
-                    .foregroundColor(Color("Info1100"))
+                if let time = timeText {
+                    Text(time)
+                        .typo(.textSMEmphasized)
+                        .foregroundColor(Color("Info1100"))
+                }
             }
         }
         .padding(.horizontal)

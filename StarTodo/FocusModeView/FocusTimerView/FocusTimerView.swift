@@ -20,7 +20,8 @@ struct FocusTimerView: View {
                 FocusTimerHeaderView(
                     title: current.title,
                     isCompleted: viewModel.isCurrentTodoCompleted,
-                    remainingTime: viewModel.remainingTimeString,
+                    labelText: viewModel.headerLabelText,   // ← 뷰모델 계산 프로퍼티
+                    timeText: viewModel.headerTimeText,     // ← 뷰모델 계산 프로퍼티
                     onComplete: {
                         viewModel.completeCurrentTodo()
                     }

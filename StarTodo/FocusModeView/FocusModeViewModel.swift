@@ -68,6 +68,14 @@ final class FocusModeViewModel: ObservableObject {
     private var breakTimer: Timer?
     private var breakStartDate: Date?
     
+    // MARK: - 헤더 시간 정보
+    private enum TimeHeaderStatus {
+        case plannedRemaining(Int)  // 설정 > 진행 → 남은 시간(초)
+        case plannedOvertime(Int)   // 설정 < 진행 → 추가 시간(초)
+        case noPlan                 // 설정 없음
+        case breakRemaining(Int)    // 휴식 중 → 남은 시간(초)
+    }
+    
     // MARK: - 초기화
     init(modelContext: ModelContext) {
         self.modelContext = modelContext
@@ -470,6 +478,27 @@ final class FocusModeViewModel: ObservableObject {
         self.store = store
     }
     
+    // MARK: - 남은/추가 시간 계산
+    var headerLabelText: String {
+        switch timeHeaderStatus {
+        case .plannedRemaining: return "남은 시간"
+        case .plannedOvertime:  return "추가 시간"
+        case .noPlan:           return "시간을 설정하지 않았습니다"
+        case .breakRemaining:   return "남은 시간"
+        }
+    }
+
+    var headerTimeText: String? {
+        switch timeHeaderStatus {
+        case .plannedRemaining(let sec),
+             .plannedOvertime(let sec),
+             .breakRemaining(let sec):
+            return formatTime(seconds: sec)
+        case .noPlan:
+            return nil
+        }
+    }
+    
     // MARK: - 텍스트 표시용
     var headerStatusText: String {
         if isBreakActive {
@@ -490,16 +519,27 @@ final class FocusModeViewModel: ObservableObject {
         return currentElapsedSeconds
     }
     
-    // CHANGED: 120분 기준으로 남은 시간 표시
-    var remainingTimeString: String {
+    private var timeHeaderStatus: TimeHeaderStatus {
+        // 1) 휴식 중
         if isBreakActive {
-            let remaining = max(0, breakTotalSeconds - breakElapsed)
-            return formatTime(seconds: remaining)
+            let remaining = max(breakTotalSeconds - breakElapsed, 0)
+            return .breakRemaining(remaining)
+        }
+
+        // 2) 설정 시간이 '없음'인 경우
+        let plannedSeconds = currentSetMinutes * 60
+        if plannedSeconds <= 0 {
+            return .noPlan
+        }
+
+        // 3) 설정 시간 있음 → 남은/추가 시간 계산
+        let elapsed = currentElapsedSeconds
+        if elapsed < plannedSeconds {
+            return .plannedRemaining(plannedSeconds - elapsed)
+        } else if elapsed > plannedSeconds {
+            return .plannedOvertime(elapsed - plannedSeconds)
         } else {
-            let elapsed = currentElapsedSeconds
-            let maxSeconds = 120 * 60 // 120분 = 7200초
-            let remaining = max(0, maxSeconds - elapsed)
-            return formatTime(seconds: remaining)
+            return .plannedRemaining(0)
         }
     }
     
