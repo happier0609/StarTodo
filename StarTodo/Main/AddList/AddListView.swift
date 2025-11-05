@@ -37,7 +37,6 @@ struct AddListView: View {
                     Spacer()
                     addButton
                 }
-                resetInfoText
             }
         }
         // ✅ onAppear에서 MainViewModel 연결만 수행
@@ -47,9 +46,6 @@ struct AddListView: View {
             }
             checkResetTime()
         }
-        // ❌ scenePhase 제거 - MainView에서 처리
-        // ❌ onAppear에서 refreshData() 제거 - MainViewModel이 자동으로 갱신
-        // ❌ TodoCompletionChanged 제거 - @Published 구독으로 자동 갱신
         
         // ✅ 스마트 타이머: 리셋 시간 근처에만 UI 갱신
         .onReceive(timer) { _ in
@@ -112,6 +108,9 @@ struct AddListView: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top)
+                
+                resetInfoText
+                    .padding(8)
             }
         }
     }
