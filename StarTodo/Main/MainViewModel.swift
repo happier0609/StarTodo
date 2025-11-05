@@ -29,6 +29,10 @@ final class MainViewModel: ObservableObject {
     /// 현재 앱 화면 상태 (탭 또는 단계)
     @Published var currentPage: MainPage = .addTodo
     
+    // ✅ private(set)으로 외부 접근은 허용하되 수정은 내부에서만
+    private(set) var modelContext: ModelContext
+    private(set) var repository: TodoRepository
+    
     /// FocusSettingView에서 선택한 Todo의 UUID 목록
     /// - TimerSettingView 등에서 사용하기 위한 공유 상태 (Coordinator 패턴과 연계 가능)
     @Published var selectedIDs: [UUID] = []
@@ -45,11 +49,24 @@ final class MainViewModel: ObservableObject {
     
     // MARK: - SwiftData 관련
     
-    private let context: ModelContext
-    
     init(context: ModelContext) {
-        self.context = context
+        // ✅ 1. 먼저 모든 stored property 초기화
+        self.modelContext = context
+        self.repository = TodoRepository(context: context)
+        
+        // ✅ 2. 초기화 완료 후에는 fetchTodos를 호출하지 않음
+        // (updateContext에서 호출됨)
+    }
+    
+    /// ContentView의 실제 ModelContext로 업데이트
+    func updateContext(_ context: ModelContext) {
+        self.modelContext = context
+        self.repository = TodoRepository(context: context)
+        
+        // 초기 데이터 로드
         fetchTodos()
+        
+        print("✅ MainViewModel: Context 업데이트 완료")
     }
     
     // MARK: - ✅ 단일 Fetch 로직
@@ -58,7 +75,7 @@ final class MainViewModel: ObservableObject {
         do {
             // 1. 전체 할 일 Fetch (정렬 없음)
             let fd = FetchDescriptor<Todo>()
-            var list = try context.fetch(fd)
+            var list = try modelContext.fetch(fd)
             
             // 2. 메모리 내 정렬 (미완료 → 완료 → order → createdAt)
             list.sort {
@@ -98,7 +115,7 @@ final class MainViewModel: ObservableObject {
     
     func saveContextAndRefresh() {
         do {
-            try context.save()
+            try modelContext.save()
             fetchTodos()
         } catch {
             print("❌ SwiftData save 실패:", error.localizedDescription)

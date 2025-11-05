@@ -1,6 +1,6 @@
 //
 //  ReportView.swift
-//  JPS_3
+//  StarTodo
 //
 //  Created by ChoMinKyung on 5/11/25.
 //
@@ -9,30 +9,91 @@ import SwiftUI
 import SwiftData
 
 struct ReportView: View {
-    @EnvironmentObject private var coordinator: MainCoordinator
-    @ObservedObject var viewModel: ReportViewModel
-    var onComplete: () -> Void
+    let sessionID: PersistentIdentifier
     
-    // FIX: 저장 중 상태 표시를 위한 변수
+    @Environment(\.modelContext) private var context
+    @EnvironmentObject var coordinator: MainCoordinator
+    @EnvironmentObject var mainViewModel: MainViewModel
+    
+    // ✅ 더 나은 방법: @State + optional
+    @State private var viewModel: ReportViewModel?
+    @State private var isLoading = true
+    @State private var loadFailed = false
     @State private var isSaving = false
     
     var body: some View {
+        ZStack {
+            if loadFailed {
+                errorView
+            } else if isLoading {
+                loadingView
+            } else if let vm = viewModel {
+                reportContent(viewModel: vm)
+            }
+        }
+        .background(Color("BgDark"))
+        .navigationBarBackButtonHidden(true)
+        .focusLocked()
+        .onAppear {
+            loadSession()
+        }
+    }
+    
+    // MARK: - Loading View
+    
+    private var loadingView: some View {
         VStack(spacing: 20) {
-            // 상단 요약 헤더 (기존 ReportHeaderView 그대로 사용)
+            ProgressView()
+            Text("리포트를 불러오는 중...")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+        }
+    }
+    
+    // MARK: - Error View
+    
+    private var errorView: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "exclamationmark.triangle")
+                .font(.system(size: 50))
+                .foregroundColor(.red)
+            
+            Text("리포트를 불러올 수 없습니다")
+                .font(.headline)
+            
+            Text("세션 데이터를 찾을 수 없습니다.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+            
+            Button("돌아가기") {
+                coordinator.dismissFullScreen()
+                coordinator.popToRoot()
+            }
+            .buttonStyle(.borderedProminent)
+        }
+        .padding()
+    }
+    
+    // MARK: - Report Content
+    
+    @ViewBuilder
+    private func reportContent(viewModel: ReportViewModel) -> some View {
+        VStack(spacing: 20) {
+            // 상단 요약 헤더
             ReportHeaderView(
                 totalTasks: viewModel.todos.count,
                 completedTasks: viewModel.completedCount,
                 totalHours: viewModel.totalFocusedMinutes / 60,
                 totalMinutes: viewModel.totalFocusedMinutes % 60
             )
-            .padding(.bottom)
+            .padding(.bottom, 4)
             
+            // 리스트 영역 (둥근 박스)
             ZStack {
                 Rectangle()
                     .cornerRadius(16)
                     .foregroundColor(Color("Cool1000"))
                 
-                // ✅ 리스트 뷰 (타임라인 형식으로 업데이트)
                 ReportListView(
                     timelineItems: viewModel.timelineItems,
                     incompletedTodos: viewModel.incompletedTodos,
@@ -42,7 +103,7 @@ struct ReportView: View {
             }
             .frame(maxHeight: 420)
             
-            // FIX: 완료 버튼 - 비동기 처리로 저장 완료 보장
+            // 완료하기 버튼
             Button {
                 Task {
                     isSaving = true
@@ -82,19 +143,41 @@ struct ReportView: View {
                 .foregroundColor(Color("App.White"))
                 .cornerRadius(16)
             }
-            .disabled(isSaving) // 저장 중에는 버튼 비활성화
+            .disabled(isSaving)
             .padding(.horizontal)
             
             Spacer()
         }
         .padding()
-        .background(Color("BgDark"))
+    }
+    
+    // MARK: - Load Session
+    
+    private func loadSession() {
+        print("📊 ReportView: 세션 로딩 시작")
         
-        // Back 버튼 숨기기, 잠금 상태 만들기
-        .navigationBarBackButtonHidden(true)
-        .focusLocked()
+        // ✅ Static factory method로 세션 로드
+        if let vm = ReportViewModel.load(
+            sessionID: sessionID,
+            context: context,
+            coordinator: coordinator,
+            mainViewModel: mainViewModel
+        ) {
+            viewModel = vm
+            isLoading = false
+            loadFailed = false
+            
+            print("✅ ReportView: 세션 로딩 완료")
+        } else {
+            isLoading = false
+            loadFailed = true
+            
+            print("⚠️ ReportView: 세션 로딩 실패")
+        }
     }
 }
+
+// MARK: - Preview
 
 #if DEBUG
 import SwiftUI
@@ -102,88 +185,109 @@ import SwiftData
 
 // MARK: - 기본 프리뷰
 #Preview("기본 - 완료/미완료 혼합") {
-    let session = PreviewReportData.createSimpleMockSession()
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: FocusSession.self, configurations: config)
-    let viewModel = ReportViewModel(session: session, context: container.mainContext)
+    let container = try! ModelContainer(for: FocusSession.self, FocusItem.self, BreakSession.self, configurations: config)
+    let context = container.mainContext
     
-    ReportView(
-        viewModel: viewModel,
-        onComplete: { print("완료 버튼 탭됨") }
-    )
-    .environmentObject(MainCoordinator.shared)
-    .modelContainer(for: [
-        Todo.self,
-        FocusSession.self,
-        FocusItem.self,
-        BreakSession.self
-    ], inMemory: true)
+    // ✅ 샘플 세션 생성
+    let session = PreviewReportData.createSimpleMockSession(in: context)
+    try? context.save()
+    
+    let mainVM = MainViewModel(context: context)
+    
+    return ReportView(sessionID: session.persistentModelID)
+        .environmentObject(MainCoordinator.shared)
+        .environmentObject(mainVM)
+        .modelContainer(container)
 }
 
 // MARK: - 전체 데이터 프리뷰
 #Preview("전체 - 5개 할일 + 2개 휴식") {
-    let session = PreviewReportData.createMockSession()
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
-    let container = try! ModelContainer(for: FocusSession.self, configurations: config)
-    let viewModel = ReportViewModel(session: session, context: container.mainContext)
+    let container = try! ModelContainer(for: FocusSession.self, FocusItem.self, BreakSession.self, configurations: config)
+    let context = container.mainContext
     
-    ReportView(
-        viewModel: viewModel,
-        onComplete: { print("완료 버튼 탭됨") }
-    )
-    .environmentObject(MainCoordinator.shared)
-    .modelContainer(for: [
-        Todo.self,
-        FocusSession.self,
-        FocusItem.self,
-        BreakSession.self
-    ], inMemory: true)
+    let session = PreviewReportData.createMockSession(in: context)
+    try? context.save()
+    
+    let mainVM = MainViewModel(context: context)
+    
+    return ReportView(sessionID: session.persistentModelID)
+        .environmentObject(MainCoordinator.shared)
+        .environmentObject(mainVM)
+        .modelContainer(container)
 }
 
-// MARK: - Preview Data Factory for Report (단순화)
+// MARK: - 휴식 많음 프리뷰
+#Preview("휴식 많음 - 6개 할일 + 4개 휴식") {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: FocusSession.self, FocusItem.self, BreakSession.self, configurations: config)
+    let context = container.mainContext
+    
+    let session = PreviewReportData.createManyBreaksSession(in: context)
+    try? context.save()
+    
+    let mainVM = MainViewModel(context: context)
+    
+    return ReportView(sessionID: session.persistentModelID)
+        .environmentObject(MainCoordinator.shared)
+        .environmentObject(mainVM)
+        .modelContainer(container)
+}
+
+// MARK: - Preview Data Factory for Report
 enum PreviewReportData {
     
     // MARK: - 단순한 Mock Session (디버깅용)
     @MainActor
-    static func createSimpleMockSession() -> FocusSession {
-        // 인메모리 컨테이너 생성
-        let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try! ModelContainer(
-            for: FocusSession.self,
-            FocusItem.self,
-            BreakSession.self,
-            configurations: config
-        )
-        let context = ModelContext(container)
-        
-        // 세션 생성
+    static func createSimpleMockSession(in context: ModelContext) -> FocusSession {
         let session = FocusSession(
             startedAt: Date().addingTimeInterval(-3600),
             endedAt: Date()
         )
         context.insert(session)
         
-        // 완료된 할 일 1개만
-        let completedItem = FocusItem(
+        // 완료된 할 일 2개
+        let completedItem1 = FocusItem(
             title: "알고리즘 문제 풀기",
             setSeconds: 1800,
             elapsedSeconds: 2100,
             isCompleted: true,
             order: 0
         )
-        context.insert(completedItem)
-        session.items.append(completedItem)
+        context.insert(completedItem1)
+        session.items.append(completedItem1)
         
-        // 미완료 할 일 1개
-        let incompletedItem = FocusItem(
+        let completedItem2 = FocusItem(
+            title: "프로젝트 문서 작성",
+            setSeconds: 1200,
+            elapsedSeconds: 900,
+            isCompleted: true,
+            order: 1
+        )
+        context.insert(completedItem2)
+        session.items.append(completedItem2)
+        
+        // 미완료 할 일 2개
+        let incompletedItem1 = FocusItem(
+            title: "운동하기",
+            setSeconds: 1800,
+            elapsedSeconds: 300,
+            isCompleted: false,
+            order: 2
+        )
+        context.insert(incompletedItem1)
+        session.items.append(incompletedItem1)
+        
+        let incompletedItem2 = FocusItem(
             title: "책 읽기",
             setSeconds: 1200,
             elapsedSeconds: 0,
             isCompleted: false,
-            order: 1
+            order: 3
         )
-        context.insert(incompletedItem)
-        session.items.append(incompletedItem)
+        context.insert(incompletedItem2)
+        session.items.append(incompletedItem2)
         
         // 휴식 1개
         let breakSession = BreakSession(
@@ -194,24 +298,12 @@ enum PreviewReportData {
         context.insert(breakSession)
         session.breaks.append(breakSession)
         
-        // 컨텍스트 저장 시도
-        try? context.save()
-        
         return session
     }
     
     // MARK: - 기본 Mock Session
     @MainActor
-    static func createMockSession() -> FocusSession {
-        let config = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try! ModelContainer(
-            for: FocusSession.self,
-            FocusItem.self,
-            BreakSession.self,
-            configurations: config
-        )
-        let context = ModelContext(container)
-        
+    static func createMockSession(in context: ModelContext) -> FocusSession {
         let session = FocusSession(
             startedAt: Date().addingTimeInterval(-3600),
             endedAt: Date()
@@ -251,7 +343,7 @@ enum PreviewReportData {
         
         // 미완료 할 일 추가
         let incompletedItem1 = FocusItem(
-            title: "운동하기",
+            title: "영어 공부",
             setSeconds: 1800,
             elapsedSeconds: 600,
             isCompleted: false,
@@ -282,12 +374,75 @@ enum PreviewReportData {
         let break2 = BreakSession(
             start: Date().addingTimeInterval(-1200),
             end: Date().addingTimeInterval(-600),
-            isOverdue: true
+            isOverdue: false
         )
         context.insert(break2)
         session.breaks.append(break2)
         
-        try? context.save()
+        return session
+    }
+    
+    // MARK: - 휴식 많은 세션
+    @MainActor
+    static func createManyBreaksSession(in context: ModelContext) -> FocusSession {
+        let session = FocusSession(
+            startedAt: Date().addingTimeInterval(-7200),
+            endedAt: Date()
+        )
+        context.insert(session)
+        
+        // 완료 항목 4개
+        let completedTitles = [
+            "코드 리뷰",
+            "알고리즘 문제 풀기",
+            "문서 작성",
+            "프로젝트 기획"
+        ]
+        
+        for (index, title) in completedTitles.enumerated() {
+            let item = FocusItem(
+                title: title,
+                setSeconds: 1500,
+                elapsedSeconds: 1500 + (index * 200),
+                isCompleted: true,
+                order: index
+            )
+            context.insert(item)
+            session.items.append(item)
+        }
+        
+        // 미완료 항목 2개
+        let incompletedTitles = ["운동하기", "책 읽기"]
+        
+        for (index, title) in incompletedTitles.enumerated() {
+            let item = FocusItem(
+                title: title,
+                setSeconds: 1200,
+                elapsedSeconds: index == 0 ? 400 : 0,
+                isCompleted: false,
+                order: 4 + index
+            )
+            context.insert(item)
+            session.items.append(item)
+        }
+        
+        // 휴식 4개 (일반 3개, 초과 1개)
+        let breaks = [
+            (Date().addingTimeInterval(-6000), Date().addingTimeInterval(-5700), false),
+            (Date().addingTimeInterval(-4500), Date().addingTimeInterval(-4200), false),
+            (Date().addingTimeInterval(-3000), Date().addingTimeInterval(-2400), true), // 초과
+            (Date().addingTimeInterval(-1200), Date().addingTimeInterval(-900), false)
+        ]
+        
+        for breakData in breaks {
+            let breakSession = BreakSession(
+                start: breakData.0,
+                end: breakData.1,
+                isOverdue: breakData.2
+            )
+            context.insert(breakSession)
+            session.breaks.append(breakSession)
+        }
         
         return session
     }

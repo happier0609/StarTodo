@@ -1,6 +1,6 @@
 //
 //  ReportHeaderView.swift
-//  JPS_3
+//  StarTodo
 //
 //  Created by ChoMinKyung on 8/3/25.
 //
@@ -39,9 +39,9 @@ struct ReportHeaderView: View {
                     .typo(.textSMEmphasized)
                     .foregroundColor(Color("Cool300"))
             }
-            .frame(maxWidth: .infinity, alignment: .center) // ✅ 컨테이너도 중앙 정렬
+            .frame(maxWidth: .infinity, alignment: .center)
 
-            // ⏱ 총 집중 시간 타이틀
+            // ⏱ 총 집중 시간
             VStack(spacing: 4) {
                 Text("총 집중 시간")
                     .typo(.textMDRegular)
@@ -64,24 +64,28 @@ struct ReportHeaderView: View {
     }
 }
 
-// GlowingText.swift
+// MARK: - Glowing Text Component
+
 struct GlowingText: View {
     let text: String
     let fontSize: CGFloat
 
     var body: some View {
         Text(text)
-            .font(.system(size: fontSize, weight: .heavy)) // ✅ 실제로 사용
-            .monospacedDigit()                             // ✅ 숫자 자간 고정
+            .font(.system(size: fontSize, weight: .heavy))
+            .monospacedDigit()
             .foregroundColor(Color("BgLight"))
             .shadow(color: .white.opacity(0.8), radius: 4)
     }
 }
 
+// MARK: - Preview
+
 #if DEBUG
 struct ReportHeaderView_Previews: PreviewProvider {
     static var previews: some View {
-        VStack {
+        Group {
+            // 기본 프리뷰
             ReportHeaderView(
                 totalTasks: 5,
                 completedTasks: 3,
@@ -90,8 +94,41 @@ struct ReportHeaderView_Previews: PreviewProvider {
             )
             .padding()
             .background(Color("BgDark"))
+            .previewDisplayName("기본 - 5개 중 3개 완료")
+            
+            // 전체 완료 프리뷰
+            ReportHeaderView(
+                totalTasks: 6,
+                completedTasks: 6,
+                totalHours: 3,
+                totalMinutes: 20
+            )
+            .padding()
+            .background(Color("BgDark"))
+            .previewDisplayName("전체 완료 - 6개 중 6개")
+            
+            // 긴 시간 프리뷰
+            ReportHeaderView(
+                totalTasks: 10,
+                completedTasks: 8,
+                totalHours: 5,
+                totalMinutes: 47
+            )
+            .padding()
+            .background(Color("BgDark"))
+            .previewDisplayName("긴 시간 - 5시간 47분")
+            
+            // 0개 완료 프리뷰
+            ReportHeaderView(
+                totalTasks: 4,
+                completedTasks: 0,
+                totalHours: 0,
+                totalMinutes: 25
+            )
+            .padding()
+            .background(Color("BgDark"))
+            .previewDisplayName("0개 완료")
         }
-        .previewDisplayName("Report Header")
     }
 }
 #endif

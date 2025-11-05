@@ -14,6 +14,7 @@ struct FocusModeView: View {
     @StateObject private var viewModel: FocusModeViewModel
     @State private var selectedTab: FocusTab = .timer
     @State private var todoIDPairs: [(UUID, Int)]
+    @State private var isContextReady = false  // ✅ context 준비 완료 플래그
     
     // FocusTodoInput을 받아 ViewModel 초기화
     init(input: FocusTodoInput) {
@@ -22,10 +23,9 @@ struct FocusModeView: View {
         print("FocusModeView 초기화 시작")
         print("받은 데이터: \(input.todoIDPairs)")
         
+        // ✅ 타이머를 시작하지 않는 임시 ViewModel 생성
         _viewModel = StateObject(wrappedValue: FocusModeViewModel(
-            todoIDPairs: input.todoIDPairs,
-            context: defaultContext,
-            store: SwiftDataSessionStore(context: defaultContext)
+            modelContext: defaultContext
         ))
     }
     
@@ -92,11 +92,21 @@ struct FocusModeView: View {
             }
         }
         .onAppear {
+            // ✅ context 준비가 안된 경우에만 실행
+            guard !isContextReady else { return }
+            
             print("FocusModeView 나타남")
             print("전달된 데이터: \(todoIDPairs)")
             
-            // 환경에서 실제 ModelContext를 가져와서 ViewModel 업데이트
-            updateViewModelContext()
+            // ✅ 1. 먼저 실제 ModelContext로 교체
+            viewModel.modelContext = context
+            viewModel.replaceStoreWithContext()
+            
+            // ✅ 2. 그 다음 Todos 로드 및 타이머 시작
+            viewModel.reloadTodos(todoPairs: todoIDPairs)
+            
+            // ✅ 3. context 준비 완료 표시
+            isContextReady = true
             
             print("현재 로드된 할 일 개수: \(viewModel.todos.count)")
             for (index, todo) in viewModel.todos.enumerated() {
@@ -108,12 +118,6 @@ struct FocusModeView: View {
         // Back 버튼 숨기기, 잠금 상태 만들기
         .navigationBarBackButtonHidden(true)
         .focusLocked()
-    }
-    
-    private func updateViewModelContext() {
-        // 환경의 context를 ViewModel에 설정
-        viewModel.modelContext = context
-        viewModel.replaceStoreWithContext()
     }
 }
 

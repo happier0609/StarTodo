@@ -1,6 +1,6 @@
 //
 //  ReportListView.swift
-//  JPS_3
+//  StarTodo
 //
 //  Created by ChoMinKyung on 5/11/25.
 //
@@ -23,6 +23,7 @@ struct ReportListView: View {
                             viewModel: viewModel
                         )
                         
+                        // 마지막 항목이 아니면 구분선 추가
                         if index < timelineItems.count - 1 {
                             Divider()
                                 .background(Color("Cool100").opacity(0.3))
@@ -30,34 +31,22 @@ struct ReportListView: View {
                     }
                 }
                 
-                // MARK: - 미완료 섹션
+                // MARK: - 미완료 섹션 (헤더 없이 바로 아이템 표시)
                 if !incompletedTodos.isEmpty {
-                    // 구분선
+                    // 타임라인과 미완료 사이 구분선
                     if !timelineItems.isEmpty {
-                        HStack {
-                            Rectangle()
-                                .fill(Color("Cool100").opacity(0.3))
-                                .frame(height: 1)
-                        }
-                        .padding(.vertical, 16)
+                        Divider()
+                            .background(Color("Cool100").opacity(0.3))
                     }
                     
-                    // 미완료 헤더
-                    HStack {
-                        Text("미완료 항목")
-                            .typo(.textSMEmphasized)
-                            .foregroundColor(Color("Cool100"))
-                        Spacer()
-                    }
-                    .padding(.bottom, 8)
-                    
-                    // 미완료 아이템들
+                    // 미완료 아이템들 (헤더 없이)
                     ForEach(Array(incompletedTodos.enumerated()), id: \.element.id) { index, todo in
                         ReportListRowView(
                             type: .incompleted(todo),
                             viewModel: viewModel
                         )
                         
+                        // 마지막 항목이 아니면 구분선 추가
                         if index < incompletedTodos.count - 1 {
                             Divider()
                                 .background(Color("Cool100").opacity(0.3))
@@ -70,6 +59,8 @@ struct ReportListView: View {
     }
 }
 
+// MARK: - Preview
+
 #if DEBUG
 import SwiftUI
 import SwiftData
@@ -77,15 +68,15 @@ import SwiftData
 // MARK: - 기본 프리뷰 (완료 + 미완료 혼합)
 #Preview("기본 - 타임라인 + 미완료") {
     let session = PreviewReportListData.createBasicSession()
-    let context = PreviewReportListData.getContext()  // FIX: context 가져오기
-    let viewModel = ReportViewModel(session: session, context: context)  // FIX: context 전달
+    let context = PreviewReportListData.getContext()
+    let viewModel = ReportViewModel(session: session, context: context)
     
     ReportListView(
         timelineItems: viewModel.timelineItems,
         incompletedTodos: viewModel.incompletedTodos,
         viewModel: viewModel
     )
-    .background(Color("BgDark"))
+    .background(Color("Cool1000"))
     .modelContainer(for: [
         FocusSession.self,
         FocusItem.self,
@@ -96,15 +87,15 @@ import SwiftData
 // MARK: - 타임라인만 (완료 항목 + 휴식)
 #Preview("타임라인만 - 미완료 없음") {
     let session = PreviewReportListData.createTimelineOnlySession()
-    let context = PreviewReportListData.getContext()  // FIX: context 가져오기
-    let viewModel = ReportViewModel(session: session, context: context)  // FIX: context 전달
+    let context = PreviewReportListData.getContext()
+    let viewModel = ReportViewModel(session: session, context: context)
     
     ReportListView(
         timelineItems: viewModel.timelineItems,
         incompletedTodos: viewModel.incompletedTodos,
         viewModel: viewModel
     )
-    .background(Color("BgDark"))
+    .background(Color("Cool1000"))
     .modelContainer(for: [
         FocusSession.self,
         FocusItem.self,
@@ -115,15 +106,15 @@ import SwiftData
 // MARK: - 미완료만
 #Preview("미완료만 - 타임라인 없음") {
     let session = PreviewReportListData.createIncompletedOnlySession()
-    let context = PreviewReportListData.getContext()  // FIX: context 가져오기
-    let viewModel = ReportViewModel(session: session, context: context)  // FIX: context 전달
+    let context = PreviewReportListData.getContext()
+    let viewModel = ReportViewModel(session: session, context: context)
     
     ReportListView(
         timelineItems: viewModel.timelineItems,
         incompletedTodos: viewModel.incompletedTodos,
         viewModel: viewModel
     )
-    .background(Color("BgDark"))
+    .background(Color("Cool1000"))
     .modelContainer(for: [
         FocusSession.self,
         FocusItem.self,
@@ -134,15 +125,15 @@ import SwiftData
 // MARK: - 휴식 포함 타임라인
 #Preview("휴식 많음 - 4개 휴식") {
     let session = PreviewReportListData.createManyBreaksSession()
-    let context = PreviewReportListData.getContext()  // FIX: context 가져오기
-    let viewModel = ReportViewModel(session: session, context: context)  // FIX: context 전달
+    let context = PreviewReportListData.getContext()
+    let viewModel = ReportViewModel(session: session, context: context)
     
     ReportListView(
         timelineItems: viewModel.timelineItems,
         incompletedTodos: viewModel.incompletedTodos,
         viewModel: viewModel
     )
-    .background(Color("BgDark"))
+    .background(Color("Cool1000"))
     .modelContainer(for: [
         FocusSession.self,
         FocusItem.self,
@@ -153,15 +144,15 @@ import SwiftData
 // MARK: - 긴 리스트
 #Preview("긴 리스트 - 스크롤 테스트") {
     let session = PreviewReportListData.createLongListSession()
-    let context = PreviewReportListData.getContext()  // FIX: context 가져오기
-    let viewModel = ReportViewModel(session: session, context: context)  // FIX: context 전달
+    let context = PreviewReportListData.getContext()
+    let viewModel = ReportViewModel(session: session, context: context)
     
     ReportListView(
         timelineItems: viewModel.timelineItems,
         incompletedTodos: viewModel.incompletedTodos,
         viewModel: viewModel
     )
-    .background(Color("BgDark"))
+    .background(Color("Cool1000"))
     .modelContainer(for: [
         FocusSession.self,
         FocusItem.self,
@@ -172,15 +163,15 @@ import SwiftData
 // MARK: - 빈 상태
 #Preview("빈 상태 - 항목 없음") {
     let session = PreviewReportListData.createEmptySession()
-    let context = PreviewReportListData.getContext()  // FIX: context 가져오기
-    let viewModel = ReportViewModel(session: session, context: context)  // FIX: context 전달
+    let context = PreviewReportListData.getContext()
+    let viewModel = ReportViewModel(session: session, context: context)
     
     ReportListView(
         timelineItems: viewModel.timelineItems,
         incompletedTodos: viewModel.incompletedTodos,
         viewModel: viewModel
     )
-    .background(Color("BgDark"))
+    .background(Color("Cool1000"))
     .modelContainer(for: [
         FocusSession.self,
         FocusItem.self,
@@ -191,7 +182,7 @@ import SwiftData
 // MARK: - Preview Data Factory
 enum PreviewReportListData {
     
-    // FIX: context를 재사용하기 위한 헬퍼 메서드 추가
+    // context를 재사용하기 위한 헬퍼 메서드
     @MainActor
     static func getContext() -> ModelContext {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)

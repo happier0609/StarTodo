@@ -60,6 +60,6 @@ struct Star {
 }
 
 
-#Preview {
-    SplashView()
-}
+//#Preview {
+//    SplashView()
+//}
