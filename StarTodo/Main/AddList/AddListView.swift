@@ -30,9 +30,16 @@ struct AddListView: View {
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             mainContent
-            VStack(spacing: -15) {
+            VStack(alignment: .trailing, spacing: -15) {
                 Spacer()
-                
+
+                // 할 일이 하나도 없을 때 추가 버튼 위에 안내 말풍선 표시
+                if viewModel.parents.isEmpty {
+                    SpeechBubbleView(text: "머릿속에 있는 할 일을 꺼내\n목록에 추가해봅시다.")
+                        .padding(.trailing, 16)
+                        .transition(.opacity)
+                }
+
                 HStack {
                     Spacer()
                     addButton

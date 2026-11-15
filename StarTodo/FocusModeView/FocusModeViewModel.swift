@@ -237,24 +237,18 @@ final class FocusModeViewModel: ObservableObject {
     }
     
     // MARK: - 정렬된 할 일 목록
+    /// 목록 탭 표시 순서: 처음 고른 순서를 유지하고, 완료한 일만 아래로 내림
+    /// (이전에는 '목표 시간이 다 찬 일'을 위로 올려서, 시간이 지나거나 목표 시간이 '없음'이면
+    ///  완료하지 않았는데도 순서가 바뀌었음)
     var sortedTodosForListView: [Todo] {
-        let completed = todos.enumerated().filter { (_, todo) in
-            todoElapsed[todo.id, default: 0] >= (todoTimeSettings[todo.id, default: 0] * 60)
-        }
-        
-        let remaining = todos.enumerated().filter { (_, todo) in
-            todoElapsed[todo.id, default: 0] < (todoTimeSettings[todo.id, default: 0] * 60)
-        }
-        
-        let sortedCompleted = completed.sorted { $0.offset < $1.offset }
-        let result = (sortedCompleted + remaining).map { $0.element }
-        
-        return result
+        todos.filter { !$0.isCompleted } + todos.filter { $0.isCompleted }
     }
     
     /// 화면 정렬 순서와 무관하게 id로 할 일을 선택
     func selectTodo(id: UUID) {
         guard let index = todos.firstIndex(where: { $0.id == id }) else { return }
+        // 이미 완료한 일은 다시 선택하지 않음 (선택되면 완료한 일에 시간이 계속 쌓임)
+        guard !todos[index].isCompleted else { return }
         selectTodo(at: index)
     }
 

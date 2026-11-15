@@ -38,12 +38,7 @@ struct FocusTimerView: View {
             )
         }
         .animation(.easeInOut(duration: 0.25), value: viewModel.isBreakActive)
-        // 120분 완료 알림
-        .alert("120분 진행 완료", isPresented: $viewModel.show120MinAlert) {
-            Button("확인", role: .cancel) { }
-        } message: {
-            Text("현재 할 일이 자동으로 완료되고 다음 할 일로 이동합니다.")
-        }
+        // 120분 완료 알림은 목록 탭에서도 보이도록 FocusModeView에서 띄움
     }
 }
 

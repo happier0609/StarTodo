@@ -77,6 +77,12 @@ struct FocusModeView: View {
                 viewModel.startBreak()
             }
         )
+        // 120분 완료 알림: 타이머/목록 어느 탭을 보고 있어도 표시
+        .alert("120분 진행 완료", isPresented: $viewModel.show120MinAlert) {
+            Button("확인", role: .cancel) { }
+        } message: {
+            Text("현재 할 일이 자동으로 완료되고 다음 할 일로 이동합니다.")
+        }
         .disabled(viewModel.showBreakEndOverlay)
         .overlay {
             if viewModel.showBreakEndOverlay {
