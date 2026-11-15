@@ -616,7 +616,10 @@ final class FocusModeViewModel: ObservableObject {
     }
     
     var expectedEndTimeString: String {
-        let taskRemainingSeconds = todos[currentIndex...].reduce(0) { result, todo in
+        // 완료하지 않은 모든 할 일의 남은 계획 시간을 합산
+        // (이전: 현재 할 일부터 뒤쪽만 더해서, 목록에서 순서를 건너뛰어 고르면 앞쪽 미완료 일이 빠지고
+        //  이미 완료한 일의 남은 시간은 더해지는 문제가 있었음)
+        let taskRemainingSeconds = todos.filter { !$0.isCompleted }.reduce(0) { result, todo in
             let setSeconds = todoTimeSettings[todo.id, default: 0] * 60
             let elapsed = todoElapsed[todo.id, default: 0]
             return result + max(0, setSeconds - elapsed)

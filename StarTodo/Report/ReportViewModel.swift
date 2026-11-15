@@ -59,7 +59,8 @@ final class ReportViewModel: ObservableObject {
         
         // FocusItem을 ReportItem으로 변환하면서 완료 시간 추정
         var cumulativeTime: TimeInterval = 0
-        let items = session.items.map { item -> ReportItem in
+        // SwiftData 관계 배열은 순서가 보장되지 않으므로 집중모드에서 진행한 순서(order)로 정렬
+        let items = session.items.sorted { $0.order < $1.order }.map { item -> ReportItem in
             if item.isCompleted && item.elapsedSeconds > 0 {
                 cumulativeTime += TimeInterval(item.elapsedSeconds)
                 return ReportItem(
