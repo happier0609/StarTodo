@@ -78,7 +78,7 @@ struct FocusSettingView: View {
                     }
 
                     FocusStartButton(
-                        selectedCount: focusSettingVM.selectedIDs.count,
+                        selectedCount: focusSettingVM.activeSelectedCount,
                         action: {
                             let picked = focusSettingVM.pickedTodos(from: focusSettingVM.focusParents)
                             mainVM.selectedIDs = picked.map(\.id)

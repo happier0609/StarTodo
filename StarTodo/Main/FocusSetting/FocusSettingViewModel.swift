@@ -30,6 +30,12 @@ final class FocusSettingViewModel: ObservableObject {
     // MARK: - 선택된 할 일 목록
     @Published var selectedTodos: [Todo] = []
     @Published var selectedIDs: [UUID] = []
+
+    /// 집중모드 시작 버튼 뱃지용: 선택한 것 중 아직 완료하지 않은 할 일 개수
+    /// (집중모드에서 완료한 일이 선택 목록에 남아 있어도 개수에 포함되지 않도록)
+    var activeSelectedCount: Int {
+        selectedTodos.filter { !$0.isCompleted && selectedIDs.contains($0.id) }.count
+    }
     
     // MARK: - 시간 설정 캐시
     @Published var timeSettings: [UUID: Int] = [:]
@@ -205,7 +211,10 @@ final class FocusSettingViewModel: ObservableObject {
             if isSelected(parent.id) && parent.children.isEmpty {
                 result.append(parent)
             } else {
+                // SwiftData 관계 배열은 순서가 보장되지 않으므로 order로 정렬
+                // (정렬하지 않으면 목표 시간 설정·집중모드에서 하위 할 일 순서가 뒤섞임)
                 let selectedChildren = parent.children
+                    .sorted { $0.order < $1.order }
                     .filter { !$0.isCompleted && isSelected($0.id) }
                 result.append(contentsOf: selectedChildren)
             }

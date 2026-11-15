@@ -50,6 +50,11 @@ struct AddTaskModalView: View {
             }
             .background(Color("BgLight").ignoresSafeArea())
         }
+        .alert("하위 항목이 가득 찼어요!", isPresented: $viewModel.showChildLimitAlert) {
+            Button("확인", role: .cancel) { }
+        } message: {
+            Text("하위 항목은 최대 \(AddTaskModalViewModel.maxChildren)개까지 입력 가능해요.")
+        }
         .onAppear {
             // 실제 ViewModel 재설정
             viewModel.setupWithParent(listViewModel, context: context)

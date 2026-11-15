@@ -17,6 +17,10 @@ class AddTaskModalViewModel: ObservableObject {
     // MARK: - Published Properties
     @Published var title: String = ""
     @Published var children: [String] = []
+    /// 하위 항목 최대 개수 초과 알림
+    @Published var showChildLimitAlert = false
+    /// 하위 항목은 최대 10개까지 (플로우 설계 기준)
+    static let maxChildren = 10
     /// children와 같은 순서로, 기존 하위 할 일이면 그 id를 / 새로 추가한 칸이면 nil을 저장
     /// → 제목을 고쳐도 같은 할 일로 인식해 완료 상태와 집중 시간을 유지
     private var childIDs: [UUID?] = []
@@ -79,6 +83,10 @@ class AddTaskModalViewModel: ObservableObject {
     
     // MARK: - Child Management
     func addChild() {
+        guard children.count < Self.maxChildren else {
+            showChildLimitAlert = true
+            return
+        }
         withAnimation(.easeInOut(duration: 0.2)) {
             children.append("")
             childIDs.append(nil)

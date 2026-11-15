@@ -114,6 +114,10 @@ struct ContentView: View {
         }
         // ✅ View가 나타날 때 실제 context로 업데이트
         .onAppear {
+            #if DEBUG
+            // 시연 영상용: -seedDemoData 실행 인자가 있을 때만 더미데이터 주입
+            DemoDataSeeder.seedIfRequested(into: modelContext)
+            #endif
             mainViewModel.updateContext(modelContext)
         }
     }
