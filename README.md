@@ -2,7 +2,7 @@
   <img src="docs/images/icon.png" width="120" alt="StarTodo 앱 아이콘">
 </p>
 
-<h1 align="center">StarTodo (스타트두)</h1>
+<h1 align="center">StarTodo (스타트두/스타투두)</h1>
 
 <p align="center"><b>ADHD가 할 일을 시작할 수 있게 돕는 iOS 할 일 관리 · 집중 타이머 앱</b></p>
 
