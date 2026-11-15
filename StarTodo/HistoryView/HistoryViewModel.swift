@@ -70,7 +70,8 @@ final class HistoryViewModel: ObservableObject {
 
         do {
             // 1. 세션 불러오기
-            sessions = try context.fetch(descriptor)
+            // 집중 도중 앱이 종료되어 끝나지 못한 세션은 할 일 기록(items)이 없으므로 제외
+            sessions = try context.fetch(descriptor).filter { !$0.items.isEmpty }
 
             // 2. 카드 뷰 데이터로 변환
             let cardDataList = sessions.map { HistoryCardViewData(session: $0) }

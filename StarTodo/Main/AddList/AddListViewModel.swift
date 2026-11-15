@@ -156,7 +156,7 @@ extension AddListViewModel {
     func saveTodo(
         editingParent: Todo?,
         title: String,
-        children: [String],
+        children: [ChildDraft],
         context: ModelContext
     ) {
         if let todo = editingParent {
@@ -173,46 +173,50 @@ extension AddListViewModel {
         }
     }
 
+    /// 하위 할 일을 제목이 아니라 id로 맞춰서 갱신
+    /// - id가 있는 항목: 같은 할 일의 제목·순서만 변경 (완료 상태·집중 시간 유지)
+    /// - id가 없는 항목: 새 하위 할 일로 추가
+    /// - 목록에서 빠진 기존 항목: 삭제
     private func updateTodo(
         _ todo: Todo,
         with title: String,
-        children: [String],
+        children: [ChildDraft],
         context: ModelContext
     ) {
         todo.title = title
 
-        let existingChildren = todo.children
-        let existingTitles = Set(existingChildren.map(\.title))
-        let newTitles = Set(children)
-
-        for child in existingChildren where !newTitles.contains(child.title) {
+        let keptIDs = Set(children.compactMap(\.id))
+        let removed = todo.children.filter { !keptIDs.contains($0.id) }
+        todo.children.removeAll { !keptIDs.contains($0.id) }
+        for child in removed {
             context.delete(child)
         }
 
-        let toAdd = children.filter { !existingTitles.contains($0) }
-        let startOrder = (todo.children.map(\.order).max() ?? -1) + 1
+        let existingByID = Dictionary(uniqueKeysWithValues: todo.children.map { ($0.id, $0) })
 
-        for (offset, raw) in toAdd.enumerated() {
-            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { continue }
-
-            let child = Todo(
-                title: trimmed,
-                isCompleted: false,
-                setTime: todo.setTime,
-                elapsedTime: 0,
-                createdAt: .now,
-                performedDate: nil,
-                order: startOrder + offset,
-                parent: todo
-            )
-            todo.children.append(child)
+        for (index, draft) in children.enumerated() {
+            if let id = draft.id, let existing = existingByID[id] {
+                existing.title = draft.title
+                existing.order = index
+            } else {
+                let child = Todo(
+                    title: draft.title,
+                    isCompleted: false,
+                    setTime: todo.setTime,
+                    elapsedTime: 0,
+                    createdAt: .now,
+                    performedDate: nil,
+                    order: index,
+                    parent: todo
+                )
+                todo.children.append(child)
+            }
         }
     }
 
     private func createTodo(
         with title: String,
-        children: [String],
+        children: [ChildDraft],
         context: ModelContext
     ) {
         let nextOrder = (parents.map(\.order).max() ?? -1) + 1
@@ -228,12 +232,9 @@ extension AddListViewModel {
             parent: nil
         )
 
-        for (i, raw) in children.enumerated() {
-            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { continue }
-
+        for (i, draft) in children.enumerated() {
             let child = Todo(
-                title: trimmed,
+                title: draft.title,
                 isCompleted: false,
                 setTime: 25,
                 elapsedTime: 0,
@@ -247,6 +248,13 @@ extension AddListViewModel {
 
         context.insert(parent)
     }
+}
+
+/// 할 일 추가/수정 모달에서 넘어오는 하위 할 일 입력값
+/// - id: 기존 하위 할 일이면 그 id, 새로 추가한 칸이면 nil
+struct ChildDraft {
+    let id: UUID?
+    let title: String
 }
 
 // MARK: - Todo 완료 처리
