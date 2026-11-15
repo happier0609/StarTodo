@@ -9,7 +9,7 @@ import SwiftUI
 
 struct MinutePickerChip: View {
     @Binding var minutes: Int
-    let options = Array(stride(from: 5, through: 30, by: 5)) // 5~30분, 5분 단위
+    let options = DemoMode.breakMinuteOptions // 5~30분, 5분 단위 (시연 모드에서는 1분 추가)
 
     var body: some View {
         Menu {

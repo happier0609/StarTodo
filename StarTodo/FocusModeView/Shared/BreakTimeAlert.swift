@@ -12,7 +12,7 @@ struct BreakTimeAlert: View {
     @Binding var minutes: Int
     let onConfirm: () -> Void
     
-    private let options = Array(stride(from: 5, through: 30, by: 5))
+    private let options = DemoMode.breakMinuteOptions
     
     var body: some View {
         ZStack {
