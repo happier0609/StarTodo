@@ -11,6 +11,7 @@ import SwiftData
 struct FocusModeView: View {
     @EnvironmentObject var coordinator: MainCoordinator
     @Environment(\.modelContext) private var context
+    @Environment(\.scenePhase) private var scenePhase
     @StateObject private var viewModel: FocusModeViewModel
     @State private var selectedTab: FocusTab = .timer
     @State private var todoIDPairs: [(UUID, Int)]
@@ -91,7 +92,20 @@ struct FocusModeView: View {
                 coordinator.push(.report(sessionID: session.id))
             }
         }
+        // 백그라운드에서 돌아오면 실제 흐른 시간으로 화면을 바로 갱신
+        .onChange(of: scenePhase) { _, newPhase in
+            if newPhase == .active {
+                viewModel.refreshAfterForeground()
+            }
+        }
+        .onDisappear {
+            // 집중모드를 벗어나면 화면 자동 잠금을 다시 허용
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
         .onAppear {
+            // 집중모드 동안에는 화면이 자동으로 꺼지지 않도록 유지
+            UIApplication.shared.isIdleTimerDisabled = true
+
             // ✅ context 준비가 안된 경우에만 실행
             guard !isContextReady else { return }
             

@@ -28,7 +28,14 @@ final class FocusModeViewModel: ObservableObject {
     @Published var currentIndex: Int = 0
     @Published var isRunning: Bool = false
     private var todoTimer: Timer?
-    
+
+    // 시각 기반 측정: 현재 구간을 시작한 시각과, 그 시점까지 누적된 경과 시간
+    // → 화면이 잠기거나 앱이 백그라운드에 있어도 실제 흐른 시간으로 계산됨
+    private var segmentTodoID: UUID?
+    private var segmentStartDate: Date?
+    private var segmentBaseElapsed: Int = 0
+    private let maxElapsedSeconds = 120 * 60
+
     // NEW: 120분 도달 알림용
     @Published var show120MinAlert: Bool = false // NEW
     
@@ -60,7 +67,8 @@ final class FocusModeViewModel: ObservableObject {
     @Published var isBreakActive: Bool = false
     @Published var showBreakSheet: Bool = false
     @Published var breakPickedMinutes: Int = 10
-    @Published private(set) var breakTotalSeconds: Int = 0
+    @Published private(set) var breakTotalSeconds: Int = 0      // 지금까지 끝난 휴식의 누적 시간(초)
+    @Published private(set) var breakPlannedSeconds: Int = 0    // 진행 중인 휴식의 계획 시간(초)
     @Published private(set) var breakElapsed: Int = 0
     @Published var showBreakEndOverlay: Bool = false
     @Published var breakSessions: [BreakSession] = []
@@ -155,14 +163,21 @@ final class FocusModeViewModel: ObservableObject {
     // MARK: - 휴식 로직
     func startBreak() {
         print("휴식 시작: \(breakPickedMinutes)분")
-        isBreakActive = true
-        breakStartDate = Date()
-        breakElapsed = 0
-        breakTotalSeconds = breakPickedMinutes * 60
-        startBreakTimer()
-        
+        // 휴식 전까지 흐른 집중 시간을 먼저 반영
+        flushCurrentElapsed()
         todoTimer?.invalidate()
         todoTimer = nil
+        isRunning = false
+
+        isBreakActive = true
+        let start = Date()
+        breakStartDate = start
+        breakElapsed = 0
+        breakPlannedSeconds = breakPickedMinutes * 60
+        startBreakTimer()
+
+        // 앱 밖에 있어도 휴식 종료를 알 수 있도록 로컬 알림 예약
+        BreakNotificationScheduler.schedule(after: TimeInterval(breakPlannedSeconds))
         print("----------------------------------")
     }
     
@@ -176,26 +191,28 @@ final class FocusModeViewModel: ObservableObject {
     }
     
     private func onBreakTimerTick() {
-        guard isBreakActive else { return }
-        
-        breakElapsed += 1
-        
-        if breakElapsed == breakPickedMinutes * 60 {
+        guard isBreakActive, let start = breakStartDate else { return }
+
+        // 틱 횟수가 아니라 실제 흐른 시간으로 계산
+        breakElapsed = max(0, Int(Date().timeIntervalSince(start)))
+
+        if breakElapsed >= breakPlannedSeconds && !showBreakEndOverlay {
             print("휴식 시간 종료 알림 표시")
             showBreakEndOverlay = true
         }
     }
-    
+
     func endBreak() {
         print("휴식 종료")
         breakTimer?.invalidate()
         breakTimer = nil
         showBreakEndOverlay = false
-        
+        BreakNotificationScheduler.cancel()
+
         if let start = breakStartDate {
             let end = Date()
             let duration = end.timeIntervalSince(start)
-            let isOver = duration > Double(breakPickedMinutes * 60)
+            let isOver = duration > Double(breakPlannedSeconds)
             
             let record = BreakSession(start: start, end: end, isOverdue: isOver)
             record.session = focusSession
@@ -207,6 +224,8 @@ final class FocusModeViewModel: ObservableObject {
             print("휴식 기록 저장 완료: \(Int(duration))초")
         }
         print("----------------------------------")
+        breakStartDate = nil
+        breakPlannedSeconds = 0
         isBreakActive = false
     }
     
@@ -233,9 +252,23 @@ final class FocusModeViewModel: ObservableObject {
         return result
     }
     
+    /// 화면 정렬 순서와 무관하게 id로 할 일을 선택
+    func selectTodo(id: UUID) {
+        guard let index = todos.firstIndex(where: { $0.id == id }) else { return }
+        selectTodo(at: index)
+    }
+
+    /// 화면 정렬 순서와 무관하게 id로 할 일을 완료 처리
+    func markTodoAsCompleted(id: UUID) {
+        guard let index = todos.firstIndex(where: { $0.id == id }) else { return }
+        markTodoAsCompleted(at: index)
+    }
+
     func selectTodo(at index: Int) {
         guard todos.indices.contains(index) else { return }
         print("할 일 선택: \(index) - \(todos[index].title)")
+        // 이전 할 일에 지금까지 흐른 시간을 반영한 뒤 전환
+        flushCurrentElapsed()
         currentIndex = index
         
         if !isBreakActive {
@@ -255,22 +288,57 @@ final class FocusModeViewModel: ObservableObject {
         
         todoTimer?.invalidate()
         isRunning = true
-        
+
+        // 현재 할 일의 측정 구간 시작
+        if let todo = currentTodo {
+            segmentTodoID = todo.id
+            segmentBaseElapsed = todoElapsed[todo.id, default: 0]
+            segmentStartDate = Date()
+        }
+
         print("할 일 타이머 시작: \(currentTodo?.title ?? "알 수 없음")")
-        
+
+        // 타이머는 화면 갱신용. 시간 값은 segmentStartDate 기준으로 계산
         todoTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in
                 self?.onTodoTimerTick()
             }
         }
     }
-    
+
     func stopTimer() {
         print("할 일 타이머 중지")
+        flushCurrentElapsed()
         todoTimer?.invalidate()
         todoTimer = nil
         isRunning = false
         print("----------------------------------")
+    }
+
+    /// 진행 중인 구간의 실제 경과 시간을 계산 (초)
+    private func measuredElapsed() -> Int? {
+        guard let start = segmentStartDate else { return nil }
+        let seconds = segmentBaseElapsed + max(0, Int(Date().timeIntervalSince(start)))
+        return min(seconds, maxElapsedSeconds)
+    }
+
+    /// 진행 중인 구간의 경과 시간을 todoElapsed에 반영하고 구간을 닫음
+    private func flushCurrentElapsed() {
+        if let id = segmentTodoID, let elapsed = measuredElapsed() {
+            todoElapsed[id] = elapsed
+        }
+        segmentTodoID = nil
+        segmentStartDate = nil
+    }
+
+    /// 앱이 다시 활성화되었을 때 화면 값을 즉시 갱신
+    /// (백그라운드에 있는 동안 멈춰 있던 타이머 대신 실제 흐른 시간을 바로 보여줌)
+    func refreshAfterForeground() {
+        if isBreakActive {
+            onBreakTimerTick()
+        } else {
+            onTodoTimerTick()
+        }
     }
     
     func resumeCurrentTodo() {
@@ -285,14 +353,14 @@ final class FocusModeViewModel: ObservableObject {
     
     // CHANGED: 120분 자동 완료 로직으로 변경
     private func onTodoTimerTick() {
-        guard let todo = currentTodo else { return }
+        guard let todo = currentTodo, todo.id == segmentTodoID else { return }
         guard !isBreakActive else { return } // NEW: 휴식 중에는 증가하지 않음
-        
-        let currentElapsed = todoElapsed[todo.id, default: 0] + 1
+        guard let currentElapsed = measuredElapsed() else { return }
+
         todoElapsed[todo.id] = currentElapsed
-        
+
         // CHANGED: 120분(7200초) 도달 시 자동 완료
-        if currentElapsed >= 120 * 60 { // 7200초
+        if currentElapsed >= maxElapsedSeconds { // 7200초
             print("⏰ 120분 진행 완료: \(todo.title)")
             print("  경과 시간: \(currentElapsed)초")
             
@@ -323,6 +391,11 @@ final class FocusModeViewModel: ObservableObject {
         guard todos.indices.contains(index) else { return }
         let todo = todos[index]
         
+        // 진행 중인 할 일이면 완료 직전까지 흐른 시간을 반영
+        if index == currentIndex {
+            flushCurrentElapsed()
+        }
+
         print("🎯 FocusMode 완료 처리 시작: \(todo.title)")
         print("  이전 상태:")
         print("    - isCompleted: \(todo.isCompleted)")
@@ -401,8 +474,13 @@ final class FocusModeViewModel: ObservableObject {
     func endFocusSession() {
         print("집중 세션 종료")
         stopTimer()
+        // 휴식 중에 종료한 경우에도 그 휴식을 기록하고 예약된 알림을 취소
+        if isBreakActive {
+            endBreak()
+        }
         breakTimer?.invalidate()
         breakTimer = nil
+        BreakNotificationScheduler.cancel()
         isRunning = false
         isBreakActive = false
         
@@ -522,7 +600,7 @@ final class FocusModeViewModel: ObservableObject {
     private var timeHeaderStatus: TimeHeaderStatus {
         // 1) 휴식 중
         if isBreakActive {
-            let remaining = max(breakTotalSeconds - breakElapsed, 0)
+            let remaining = max(breakPlannedSeconds - breakElapsed, 0)
             return .breakRemaining(remaining)
         }
 
@@ -550,7 +628,9 @@ final class FocusModeViewModel: ObservableObject {
             return result + max(0, setSeconds - elapsed)
         }
         
-        let totalRemaining = taskRemainingSeconds + breakTotalSeconds
+        // 이미 끝난 휴식은 지나간 시간이므로 제외하고, 진행 중인 휴식의 남은 시간만 더함
+        let breakRemainingSeconds = isBreakActive ? max(breakPlannedSeconds - breakElapsed, 0) : 0
+        let totalRemaining = taskRemainingSeconds + breakRemainingSeconds
         
         let endDate = Date().addingTimeInterval(TimeInterval(totalRemaining))
         let formatter = DateFormatter()

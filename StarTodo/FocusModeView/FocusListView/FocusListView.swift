@@ -11,24 +11,26 @@ struct FocusListView: View {
     @ObservedObject var viewModel: FocusModeViewModel
 
     var body: some View {
-        let enumeratedTodos = Array(viewModel.sortedTodosForListView.enumerated())
+        // 화면에 보이는 순서(정렬 결과)와 viewModel.todos의 순서가 다를 수 있으므로
+        // 인덱스가 아니라 id로 선택/완료를 처리
+        let sortedTodos = viewModel.sortedTodosForListView
 
         return VStack(alignment: .leading, spacing: 20) {
             ScrollView {
                 VStack(spacing: 8) {
-                    ForEach(enumeratedTodos, id: \.offset) { index, todo in
+                    ForEach(sortedTodos, id: \.id) { todo in
                         let isCurrent = todo.id == viewModel.currentTodo?.id
-                        
+
                         FocusListRowView(
                             title: todo.title,
                             isCompleted: todo.isCompleted,
                             isCurrent: isCurrent,
                             onComplete: {
-                                viewModel.markTodoAsCompleted(at: index)
+                                viewModel.markTodoAsCompleted(id: todo.id)
                             }
                         )
                         .onTapGesture {
-                            viewModel.selectTodo(at: index)
+                            viewModel.selectTodo(id: todo.id)
                         }
                     }
                 }
