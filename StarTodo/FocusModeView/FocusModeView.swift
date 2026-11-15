@@ -86,12 +86,9 @@ struct FocusModeView: View {
                 .transition(.opacity)
             }
         }
-        .onChange(of: viewModel.savedSession) {
-            if let session = viewModel.savedSession {
-                print("세션 완료 - ReportView로 이동: \(session.id)")
-                coordinator.push(.report(sessionID: session.id))
-            }
-        }
+        // 결과판(ReportView)은 FocusModeViewModel.endFocusSession()에서
+        // fullScreenCover로 띄우므로, 여기서 NavigationStack에 따로 push하지 않음
+        // (push하면 빈 화면(EmptyView)이 스택에 쌓임)
         // 백그라운드에서 돌아오면 실제 흐른 시간으로 화면을 바로 갱신
         .onChange(of: scenePhase) { _, newPhase in
             if newPhase == .active {

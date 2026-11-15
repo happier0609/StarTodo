@@ -17,6 +17,9 @@ class AddTaskModalViewModel: ObservableObject {
     // MARK: - Published Properties
     @Published var title: String = ""
     @Published var children: [String] = []
+    /// children와 같은 순서로, 기존 하위 할 일이면 그 id를 / 새로 추가한 칸이면 nil을 저장
+    /// → 제목을 고쳐도 같은 할 일로 인식해 완료 상태와 집중 시간을 유지
+    private var childIDs: [UUID?] = []
     
     // MARK: - Properties
     private var editingParent: Todo?
@@ -69,19 +72,16 @@ class AddTaskModalViewModel: ObservableObject {
         
         let existingChildren = todo.children
             .sorted(by: { $0.order < $1.order })
-            .map { $0.title }
         
-        if !existingChildren.isEmpty {
-            children = existingChildren
-        } else {
-            children = []
-        }
+        children = existingChildren.map { $0.title }
+        childIDs = existingChildren.map { Optional($0.id) }
     }
     
     // MARK: - Child Management
     func addChild() {
         withAnimation(.easeInOut(duration: 0.2)) {
             children.append("")
+            childIDs.append(nil)
         }
     }
     
@@ -90,9 +90,16 @@ class AddTaskModalViewModel: ObservableObject {
         if children.count > 1 {
             withAnimation(.easeInOut(duration: 0.2)) {
                 children.remove(at: index)
+                if childIDs.indices.contains(index) {
+                    childIDs.remove(at: index)
+                }
             }
         } else if !children[index].isEmpty {
+            // 마지막 칸을 비우는 경우: 기존 하위 할 일과의 연결도 끊어 삭제되도록 함
             children[index] = ""
+            if childIDs.indices.contains(index) {
+                childIDs[index] = nil
+            }
         }
     }
     
@@ -102,15 +109,18 @@ class AddTaskModalViewModel: ObservableObject {
     
     // MARK: - Save
     func save() {
-        // 빈 문자열 필터링
-        let filteredChildren = children.filter {
-            !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        // 제목과 id를 함께 넘기고, 빈 칸은 제외
+        let drafts: [ChildDraft] = children.enumerated().compactMap { index, raw in
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return nil }
+            let id = childIDs.indices.contains(index) ? childIDs[index] : nil
+            return ChildDraft(id: id, title: trimmed)
         }
         
         parentViewModel?.saveTodo(
             editingParent: editingParent,
             title: title,
-            children: filteredChildren,
+            children: drafts,
             context: context
         )
     }

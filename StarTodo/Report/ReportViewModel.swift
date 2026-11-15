@@ -267,8 +267,9 @@ final class ReportViewModel: ObservableObject {
     
     /// 세션을 종료하고 데이터를 저장
     func finalizeSession() async {
-        session.endedAt = Date()
-        
+        // 종료 시각은 집중모드가 끝날 때(FocusModeViewModel.endFocusSession) 이미 기록됨
+        // 여기서 다시 덮어쓰면 결과판을 보고 있던 시간까지 세션에 포함되므로 변경하지 않음
+
         print("📝 ReportViewModel: 세션 종료 처리 시작")
         print("  - 완료된 항목: \(completedTodos.count)개")
         print("  - 미완료 항목: \(incompletedTodos.count)개")
