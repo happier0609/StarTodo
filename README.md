@@ -16,7 +16,7 @@
 
 | 자료 | 링크 |
 | --- | --- |
-| 🎬 시연 영상 | 추가 예정 |
+| 🎬 시연 영상 | [YouTube](https://youtu.be/UA_jc0Iqb_s) |
 | 🖼️ 포스터 (90×140cm) | [PDF](docs/StarTodo_poster.pdf) · [JPG](docs/StarTodo_poster.jpg) |
 | 📄 결과보고서 | [PDF](docs/StarTodo_report.pdf) |
 | 💻 소스 코드 | 이 저장소 (`develop` 브랜치) |
