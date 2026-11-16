@@ -28,7 +28,9 @@ struct HistoryCardViewData: Identifiable {
         self.id = session.persistentModelID
         
         // 1. 집중 시간 (초 → 분)
-        let seconds = Int(session.endedAt.timeIntervalSince(session.startedAt))
+        // 결과판(ReportViewModel)과 같은 기준: 할 일별 실제 집중 시간의 합
+        // (종료-시작 시각 차이로 계산하면 휴식 시간까지 포함되어 결과판과 달라짐)
+        let seconds = session.items.reduce(0) { $0 + $1.elapsedSeconds }
         self.focusMinutes = max(0, seconds / 60)
         
         // 2. 완료된 할일 개수

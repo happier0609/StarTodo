@@ -10,21 +10,59 @@ import SwiftData
 
 struct AddListView: View {
     @Environment(\.modelContext) private var context
-    @StateObject private var viewModel = AddListViewModel()
+    @EnvironmentObject var mainVM: MainViewModel
     
-    // 타이머 추가 - 매분마다 UI 갱신을 위해
+    // ✅ MainViewModel을 참조하는 ViewModel 생성
+    @StateObject private var viewModel: AddListViewModel
+    
+    // ✅ 수정: mainViewModel을 optional로 전달
+    init() {
+        _viewModel = StateObject(wrappedValue: AddListViewModel(
+            context: defaultContext,
+            mainViewModel: nil  // ✅ optional이므로 nil 가능
+        ))
+    }
+    
+    // ✅ 스마트 타이머: 리셋 시간 1시간 전부터만 동작
     @State private var timer = Timer.publish(every: 60, on: .main, in: .common).autoconnect()
+    @State private var isNearResetTime = false
 
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             mainContent
-            addButton
+            VStack(alignment: .trailing, spacing: -15) {
+                Spacer()
+
+                // 할 일이 하나도 없을 때 추가 버튼 위에 안내 말풍선 표시
+                if viewModel.parents.isEmpty {
+                    SpeechBubbleView(text: "머릿속에 있는 할 일을 꺼내\n목록에 추가해봅시다.")
+                        .padding(.trailing, 16)
+                        .transition(.opacity)
+                }
+
+                HStack {
+                    Spacer()
+                    addButton
+                }
+            }
         }
-        .onAppear { refreshData() }
-        .onReceive(NotificationCenter.default.publisher(for: UIApplication.willEnterForegroundNotification)) { _ in
-            refreshData()
+        // ✅ onAppear에서 MainViewModel 연결만 수행
+        .onAppear {
+            if viewModel.mainViewModel == nil {
+                viewModel.mainViewModel = mainVM
+            }
+            checkResetTime()
         }
-        .onReceive(timer) { _ in refreshData() }
+        
+        // ✅ 스마트 타이머: 리셋 시간 근처에만 UI 갱신
+        .onReceive(timer) { _ in
+            checkResetTime()
+            if isNearResetTime {
+                print("⏰ 리셋 시간 근처 - UI 갱신")
+                // ✅ 수정: viewModel의 objectWillChange 사용
+                viewModel.objectWillChange.send()
+            }
+        }
         .sheet(isPresented: $viewModel.showModal) {
             addTaskModalSheet
         }
@@ -35,6 +73,34 @@ struct AddListView: View {
         }
     }
     
+    // MARK: - Helper: 리셋 시간 체크
+    private func checkResetTime() {
+        let now = Date()
+        let calendar = Calendar.current
+        
+        var resetComponents = calendar.dateComponents([.year, .month, .day], from: now)
+        resetComponents.hour = mainVM.resetHour
+        resetComponents.minute = 0
+        
+        guard let todayReset = calendar.date(from: resetComponents),
+              let tomorrowReset = calendar.date(byAdding: .day, value: 1, to: todayReset) else {
+            isNearResetTime = false
+            return
+        }
+        
+        // 현재 시간이 오늘 리셋 시간 1시간 전 ~ 내일 리셋 시간 1시간 후 사이인지 체크
+        let oneHourBefore = calendar.date(byAdding: .hour, value: -1, to: todayReset)!
+        let oneHourAfterTomorrow = calendar.date(byAdding: .hour, value: 1, to: tomorrowReset)!
+        
+        let wasNear = isNearResetTime
+        isNearResetTime = (now >= oneHourBefore && now <= todayReset) ||
+                          (now >= tomorrowReset && now <= oneHourAfterTomorrow)
+        
+        if isNearResetTime != wasNear {
+            print("🔔 리셋 시간 근접 상태 변경: \(isNearResetTime)")
+        }
+    }
+    
     // MARK: - Main Content
     @ViewBuilder
     private var mainContent: some View {
@@ -42,14 +108,16 @@ struct AddListView: View {
             AddListEmptyView()
         } else {
             ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 8) {
                     todaySection
+                        .padding(.vertical, 8)
                     previousSection
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.top)
                 
                 resetInfoText
+                    .padding(8)
             }
         }
     }
@@ -93,7 +161,7 @@ struct AddListView: View {
             .foregroundColor(Color("Cool300"))
             .multilineTextAlignment(.center)
             .frame(maxWidth: .infinity)
-            .padding(.bottom, 80)
+            .padding(.bottom, 20)
     }
     
     // MARK: - Add Button
@@ -131,9 +199,36 @@ struct AddListView: View {
     private func deleteAlertMessage(for parent: Todo) -> some View {
         Text("\"\(parent.title)\"의 하위 항목 \(parent.children.count)개도 함께 삭제됩니다.")
     }
-    
-    // MARK: - Helper Methods
-    private func refreshData() {
-        viewModel.fetchParents(with: context)
-    }
 }
+
+// MARK: - Preview
+#if DEBUG
+import SwiftUI
+import SwiftData
+
+#Preview("AddListView - 기본 + 계층") {
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(
+        for: Todo.self,
+        configurations: config
+    )
+
+    let flatTodos = PreviewData.makeSampleTodos()
+    for todo in flatTodos {
+        container.mainContext.insert(todo)
+    }
+
+    let hierarchicalTodos = PreviewData.makeTodosWithHierarchy()
+    for todo in hierarchicalTodos {
+        container.mainContext.insert(todo)
+    }
+
+    return AddListView()
+        .modelContainer(container)
+        .environmentObject(MainCoordinator.shared)
+        .environmentObject(MainViewModel(context: container.mainContext))
+        .previewDisplayName("할 일 목록 (기본 + 계층)")
+        .previewLayout(.device)
+        .previewDevice("iPhone 15 Pro")
+}
+#endif

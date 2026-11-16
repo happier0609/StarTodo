@@ -24,28 +24,42 @@ struct FocusStartButton: View {
                 }
                 .padding(.horizontal, 24)
                 .padding(.vertical, 14)
-                .background(selectedCount > 0 ? Color.blue : Color.gray.opacity(0.3))
+                .background(selectedCount > 0 ? Color("Primary500") : Color("Cool200"))
                 .foregroundColor(Color("App.White"))
                 .clipShape(Capsule())
-                .overlay(
-                    Capsule()
-                        .strokeBorder(Color.black.opacity(0.05), lineWidth: 1)
-                )
 
                 if selectedCount > 0 {
                     Text("\(selectedCount)")
-                        .font(.caption2)
-                        .fontWeight(.bold)
-                        .foregroundColor(Color("App.White"))
-                        .padding(6)
+                        .typo(.textSMRegular)
+                        .foregroundColor(Color("Primary500"))
+                        .padding(8)
                         .background(Circle().fill(Color("App.White")))
-                        .overlay(
-                            Circle().stroke(Color.blue, lineWidth: 2)
-                        )
-                        .offset(x: 10, y: -10)
+                        .offset(x: 4, y: -12)
                 }
             }
         }
+        .shadow(color: Color("Cool1000").opacity(0.3), radius: 6, x: 2, y: 3)
         .disabled(selectedCount == 0)
     }
 }
+
+#if DEBUG
+import SwiftUI
+
+#Preview("선택된 항목 있음") {
+    FocusStartButton(selectedCount: 2) {
+        print("버튼 눌림")
+    }
+    .padding()
+//    .previewLayout(.sizeThatFits)
+}
+
+#Preview("선택된 항목 없음") {
+    FocusStartButton(selectedCount: 0) {
+        print("버튼 눌림")
+    }
+    .padding()
+//    .previewLayout(.sizeThatFits)
+}
+
+#endif

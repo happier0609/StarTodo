@@ -9,14 +9,19 @@ import SwiftUI
 
 struct HistoryView: View {
     @Environment(\.modelContext) private var context
-    
+    // body 안에서 매번 새로 만들면 처음 한 번만 불러오고 갱신되지 않으므로 상태로 유지
+    @StateObject private var viewModel = HistoryViewModel()
+
     var body: some View {
-        let viewModel = HistoryViewModel(context: context)
-        
         VStack(spacing: 16) {
             HistoryHeaderView()
             Divider()
             HistoryListView(viewModel: viewModel)
+        }
+        // 히스토리 탭에 들어올 때마다 최신 기록을 다시 불러옴
+        // (집중모드에서 새 세션이 저장된 뒤에도 바로 보이도록)
+        .onAppear {
+            viewModel.reload(with: context)
         }
     }
 }

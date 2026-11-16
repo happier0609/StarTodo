@@ -35,28 +35,43 @@ final class HistoryViewModel: ObservableObject {
     // MARK: - Private Properties
     
     /// SwiftData의 ModelContext (의존성 주입 방식)
-    private let context: ModelContext
-    
+    /// - 뷰의 @StateObject로 먼저 만들고, 화면이 나타날 때 실제 context를 주입할 수 있도록 옵셔널로 둠
+    private var context: ModelContext?
+
     // MARK: - 초기화
-    
+
     /// 기본 생성자
-    init(context: ModelContext) {
+    /// - context가 주어지면 바로 세션을 불러옴 (프리뷰/테스트용)
+    init(context: ModelContext? = nil) {
+        self.context = context
+        if context != nil {
+            loadSessions()
+        }
+    }
+
+    // MARK: - 세션 불러오기
+
+    /// 화면이 나타날 때마다 호출: 실제 context로 교체한 뒤 최신 세션을 다시 불러옴
+    func reload(with context: ModelContext) {
         self.context = context
         loadSessions()
     }
-    
-    // MARK: - 세션 불러오기
-    
+
     /// 저장된 집중 세션을 최신순으로 불러오고,
     /// HistoryCardViewData로 가공한 후 월별 섹션으로 그룹화
     func loadSessions() {
+        guard let context else {
+            print("⚠️ HistoryViewModel: context가 없어 세션을 불러오지 않습니다.")
+            return
+        }
         let descriptor = FetchDescriptor<FocusSession>(
             sortBy: [SortDescriptor(\.startedAt, order: .reverse)]
         )
 
         do {
             // 1. 세션 불러오기
-            sessions = try context.fetch(descriptor)
+            // 집중 도중 앱이 종료되어 끝나지 못한 세션은 할 일 기록(items)이 없으므로 제외
+            sessions = try context.fetch(descriptor).filter { !$0.items.isEmpty }
 
             // 2. 카드 뷰 데이터로 변환
             let cardDataList = sessions.map { HistoryCardViewData(session: $0) }

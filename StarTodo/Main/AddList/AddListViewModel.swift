@@ -5,7 +5,7 @@
 //  Created by 조민경 on 9/1/25.
 //
 
-/// 역할: 할 일 목록 필터링 (오늘/이전), 삭제, 추가/편집 모달
+/// 역할: MainViewModel 데이터를 가공하여 표시 (오늘/이전 필터링)
 
 import Foundation
 import SwiftUI
@@ -14,8 +14,14 @@ import SwiftData
 @MainActor
 final class AddListViewModel: ObservableObject {
 
-    // MARK: - 수동 관리할 부모 Todo 목록
-    @Published var parents: [Todo] = []
+    // MARK: - ✅ MainViewModel 참조 (Optional로 변경)
+    weak var mainViewModel: MainViewModel?
+    
+    // ✅ Computed Property: MainViewModel의 데이터를 필터링
+    var parents: [Todo] {
+        guard let mainVM = mainViewModel else { return [] }
+        return filterVisibleTodos(from: mainVM.parentTodos)
+    }
 
     // MARK: - 상태
     @Published var showModal: Bool = false
@@ -27,116 +33,35 @@ final class AddListViewModel: ObservableObject {
     // MARK: - 완료 기준 시간 설정 (새벽 5시)
     @AppStorage("resetHour") private var resetHour: Int = 5
 
-    // MARK: - SwiftData 관련
-    
+    // MARK: - SwiftData Context
     private var context: ModelContext
     
-    init(context: ModelContext) {
+    // ✅ 수정: mainViewModel을 optional로 받음
+    init(context: ModelContext, mainViewModel: MainViewModel? = nil) {
         self.context = context
-        fetchTodos()
-    }
-    
-    // Convenience init for cases where we need a default context
-    convenience init() {
-        self.init(context: defaultContext)
-    }
-    
-    // 내부 메서드에서 context 사용을 위한 setter (필요시)
-    func setContext(_ newContext: ModelContext) {
-        self.context = newContext
-        fetchTodos()
-    }
-    
-    // MARK: - Fetch 로직
-    
-    private func fetchTodos() {
-        do {
-            // 전체 할 일 Fetch
-            let fd = FetchDescriptor<Todo>()
-            let list = try context.fetch(fd)
-            
-            // 메모리 내 정렬
-            let sorted = list.sorted {
-                if $0.isCompleted != $1.isCompleted { return !$0.isCompleted && $1.isCompleted }
-                if $0.order != $1.order { return $0.order < $1.order }
-                return $0.createdAt < $1.createdAt
-            }
-            
-            parents = sorted.filter { $0.parent == nil }
-        } catch {
-            print("❌ SwiftData fetch 실패:", error.localizedDescription)
-            parents = []
-        }
+        self.mainViewModel = mainViewModel
     }
 
     // MARK: - 오늘 할 일 / 이전 할 일 필터링
     var todayParents: [Todo] {
-        filterVisibleTodos(from: parents)
+        parents
             .filter { Calendar.current.isDateInToday($0.createdAt) }
             .sorted(by: sortingRule)
     }
 
     var previousParents: [Todo] {
-        filterVisibleTodos(from: parents)
+        parents
             .filter { !Calendar.current.isDateInToday($0.createdAt) }
             .sorted(by: sortingRule)
-    }
-    
-    // MARK: - 완료 할 일 표시 여부 판단
-    /// 완료된 할 일이 UI에 표시되어야 하는지 판단
-    /// - Parameter todo: 확인할 Todo 객체
-    /// - Returns: UI에 표시할 경우 true
-    private func shouldShowCompletedTodo(_ todo: Todo) -> Bool {
-        // 미완료 항목은 항상 표시
-        guard todo.isCompleted else { return true }
-        
-        // 완료 날짜가 없으면 표시하지 않음
-        guard let performedDate = todo.performedDate else { return false }
-        
-        // 리셋 기준 시간 계산
-        let calendar = Calendar.current
-        let now = Date()
-        
-        // 오늘의 리셋 시간 (새벽 5시)
-        var todayResetComponents = calendar.dateComponents([.year, .month, .day], from: now)
-        todayResetComponents.hour = resetHour
-        todayResetComponents.minute = 0
-        todayResetComponents.second = 0
-        
-        guard let todayResetTime = calendar.date(from: todayResetComponents) else { return false }
-        
-        // 현재 시간이 오늘의 리셋 시간 이전이라면, 어제의 리셋 시간부터 확인
-        let effectiveResetTime: Date
-        if now < todayResetTime {
-            // 어제의 리셋 시간을 기준으로 함
-            effectiveResetTime = calendar.date(byAdding: .day, value: -1, to: todayResetTime) ?? todayResetTime
-        } else {
-            // 오늘의 리셋 시간을 기준으로 함
-            effectiveResetTime = todayResetTime
-        }
-        
-        // 완료 시간이 현재 기준 리셋 시간 이후인 경우만 표시
-        return performedDate >= effectiveResetTime
     }
     
     // MARK: - 표시 가능한 Todo 필터링
     /// 완료 기준 시간을 고려하여 표시할 Todo만 필터링
     private func filterVisibleTodos(from todos: [Todo]) -> [Todo] {
-        todos.compactMap { parent in
-            // 부모가 완료되었는데 표시 기간이 지났으면 제외
-            guard shouldShowCompletedTodo(parent) else { return nil }
-            
-            // 부모가 미완료인 경우는 자식 상태와 관계없이 항상 표시
-            // (자식이 모두 완료되어 숨겨져도 부모는 계속 보임)
-            
-            return parent
-        }
+        todos.filter { shouldShowCompletedTodo($0) }
     }
     
     // MARK: - 표시 가능한 자식 Todo 필터링
-    /// 완료 기준 시간을 고려하여 표시할 자식 Todo만 반환
-    /// - Parameter parent: 부모 Todo
-    /// - Returns: 표시 가능한 자식 Todo 배열
     func getVisibleChildren(of parent: Todo) -> [Todo] {
         parent.children.filter { shouldShowCompletedTodo($0) }
     }
@@ -148,54 +73,41 @@ final class AddListViewModel: ObservableObject {
         return left < right
     }
 
-    // MARK: - ✨ 부모 Todo 목록 갱신 (핵심 메서드)
-    func fetchParents(with context: ModelContext) {
-        do {
-            // SwiftData에서는 정렬을 직접 처리하는 것이 더 안정적
-            let descriptor = FetchDescriptor<Todo>(
-                predicate: #Predicate { todo in
-                    todo.parent == nil
-                }
-            )
-            let fetchedTodos = try context.fetch(descriptor)
-            
-            // 수동으로 정렬 적용
-            parents = fetchedTodos.sorted { a, b in
-                // 1. 완료 여부 (미완료가 먼저)
-                if a.isCompleted != b.isCompleted {
-                    return !a.isCompleted && b.isCompleted
-                }
-                // 2. order 순서
-                if a.order != b.order {
-                    return a.order < b.order
-                }
-                // 3. 생성 시간
-                return a.createdAt < b.createdAt
-            }
-        } catch {
-            print("❌ Todo fetch 실패: \(error.localizedDescription)")
-            parents = []
-        }
+    // MARK: - 완료 할 일 표시 여부 판단
+    private func shouldShowCompletedTodo(_ todo: Todo) -> Bool {
+        // 미완료 항목은 항상 표시
+        guard todo.isCompleted else { return true }
+        
+        // 완료 날짜가 없으면 표시하지 않음
+        guard let performedDate = todo.performedDate else { return false }
+        
+        // 다음 리셋 시간 계산
+        let nextResetTime = calculateNextResetTime(from: performedDate)
+        return Date() < nextResetTime
     }
 
-    // MARK: - 부모 할 일 fetch (async 버전 - 필요시 사용)
-    func fetchParentTodos(context: ModelContext) async throws -> [Todo] {
-        let descriptor = FetchDescriptor<Todo>(
-            predicate: #Predicate { todo in
-                todo.parent == nil
-            }
-        )
-        let fetchedTodos = try context.fetch(descriptor)
+    /// 완료 시각으로부터 다음 리셋 시간 계산
+    private func calculateNextResetTime(from performedDate: Date) -> Date {
+        let calendar = Calendar.current
         
-        return fetchedTodos.sorted { a, b in
-            if a.isCompleted != b.isCompleted {
-                return !a.isCompleted && b.isCompleted
-            }
-            if a.order != b.order {
-                return a.order < b.order
-            }
-            return a.createdAt < b.createdAt
+        var sameDayResetComponents = calendar.dateComponents([.year, .month, .day], from: performedDate)
+        sameDayResetComponents.hour = resetHour
+        sameDayResetComponents.minute = 0
+        sameDayResetComponents.second = 0
+        
+        guard let sameDayResetTime = calendar.date(from: sameDayResetComponents) else {
+            return performedDate
         }
+        
+        if performedDate < sameDayResetTime {
+            return sameDayResetTime
+        }
+        
+        guard let nextDayResetTime = calendar.date(byAdding: .day, value: 1, to: sameDayResetTime) else {
+            return performedDate
+        }
+        
+        return nextDayResetTime
     }
 
     // MARK: - 삭제 경고 호출
@@ -206,18 +118,17 @@ final class AddListViewModel: ObservableObject {
 
     // MARK: - 삭제 수행
     func delete(parent: Todo, in context: ModelContext) {
-        // 자식 Todo들도 함께 삭제 (SwiftData의 cascade 삭제가 작동하지 않을 경우를 대비)
+        // 자식 Todo들도 함께 삭제
         for child in parent.children {
             context.delete(child)
         }
         
-        // 부모 Todo 삭제
         context.delete(parent)
         
         do {
             try context.save()
-            fetchParents(with: context) // 삭제 후 목록 갱신
-            print("✅ Todo '\(parent.title)' 및 하위 항목 \(parent.children.count)개 삭제 완료")
+            mainViewModel?.fetchTodos() // ✅ MainViewModel 갱신
+            print("✅ Todo '\(parent.title)' 삭제 완료")
         } catch {
             print("❌ 삭제 저장 실패: \(error.localizedDescription)")
         }
@@ -232,21 +143,20 @@ final class AddListViewModel: ObservableObject {
         }
         do {
             try context.save()
-            fetchParents(with: context) // 재정렬 후 목록 갱신
+            mainViewModel?.fetchTodos() // ✅ MainViewModel 갱신
         } catch {
             print("❌ 재정렬 저장 실패: \(error.localizedDescription)")
         }
     }
 }
 
-// MARK: - 모달 저장 로직 (신규 추가 또는 편집)
+// MARK: - 모달 저장 로직
 extension AddListViewModel {
     
-    /// 부모 Todo를 저장 (추가 또는 수정)
     func saveTodo(
         editingParent: Todo?,
         title: String,
-        children: [String],
+        children: [ChildDraft],
         context: ModelContext
     ) {
         if let todo = editingParent {
@@ -257,56 +167,56 @@ extension AddListViewModel {
 
         do {
             try context.save()
-            fetchParents(with: context)
+            mainViewModel?.fetchTodos() // ✅ MainViewModel 갱신
         } catch {
             print("❌ 저장 실패: \(error.localizedDescription)")
         }
     }
 
-    /// 기존 Todo 수정
+    /// 하위 할 일을 제목이 아니라 id로 맞춰서 갱신
+    /// - id가 있는 항목: 같은 할 일의 제목·순서만 변경 (완료 상태·집중 시간 유지)
+    /// - id가 없는 항목: 새 하위 할 일로 추가
+    /// - 목록에서 빠진 기존 항목: 삭제
     private func updateTodo(
         _ todo: Todo,
         with title: String,
-        children: [String],
+        children: [ChildDraft],
         context: ModelContext
     ) {
         todo.title = title
 
-        let existingChildren = todo.children
-        let existingTitles = Set(existingChildren.map(\.title))
-        let newTitles = Set(children)
-
-        // ⛔️ 기존에는 없고, 새 목록에도 없는 → 삭제 대상
-        for child in existingChildren where !newTitles.contains(child.title) {
+        let keptIDs = Set(children.compactMap(\.id))
+        let removed = todo.children.filter { !keptIDs.contains($0.id) }
+        todo.children.removeAll { !keptIDs.contains($0.id) }
+        for child in removed {
             context.delete(child)
         }
 
-        // ✅ 새로 추가될 자식만 필터링
-        let toAdd = children.filter { !existingTitles.contains($0) }
-        let startOrder = (todo.children.map(\.order).max() ?? -1) + 1
+        let existingByID = Dictionary(uniqueKeysWithValues: todo.children.map { ($0.id, $0) })
 
-        for (offset, raw) in toAdd.enumerated() {
-            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { continue }
-
-            let child = Todo(
-                title: trimmed,
-                isCompleted: false,
-                setTime: todo.setTime,
-                elapsedTime: 0,
-                createdAt: .now,
-                performedDate: nil,
-                order: startOrder + offset,
-                parent: todo
-            )
-            todo.children.append(child)
+        for (index, draft) in children.enumerated() {
+            if let id = draft.id, let existing = existingByID[id] {
+                existing.title = draft.title
+                existing.order = index
+            } else {
+                let child = Todo(
+                    title: draft.title,
+                    isCompleted: false,
+                    setTime: todo.setTime,
+                    elapsedTime: 0,
+                    createdAt: .now,
+                    performedDate: nil,
+                    order: index,
+                    parent: todo
+                )
+                todo.children.append(child)
+            }
         }
     }
 
-    /// 새로운 Todo 생성
     private func createTodo(
         with title: String,
-        children: [String],
+        children: [ChildDraft],
         context: ModelContext
     ) {
         let nextOrder = (parents.map(\.order).max() ?? -1) + 1
@@ -322,12 +232,9 @@ extension AddListViewModel {
             parent: nil
         )
 
-        for (i, raw) in children.enumerated() {
-            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-            guard !trimmed.isEmpty else { continue }
-
+        for (i, draft) in children.enumerated() {
             let child = Todo(
-                title: trimmed,
+                title: draft.title,
                 isCompleted: false,
                 setTime: 25,
                 elapsedTime: 0,
@@ -340,5 +247,51 @@ extension AddListViewModel {
         }
 
         context.insert(parent)
+    }
+}
+
+/// 할 일 추가/수정 모달에서 넘어오는 하위 할 일 입력값
+/// - id: 기존 하위 할 일이면 그 id, 새로 추가한 칸이면 nil
+struct ChildDraft {
+    let id: UUID?
+    let title: String
+}
+
+// MARK: - Todo 완료 처리
+extension AddListViewModel {
+    
+    func toggleTodoCompletion(_ todo: Todo, context: ModelContext) {
+        do {
+            if todo.isCompleted {
+                try todo.markAsIncomplete(context: context)
+                
+                if let parent = todo.parent, parent.isCompleted {
+                    try parent.markAsIncomplete(context: context)
+                }
+            } else {
+                try todo.markAsCompleted(context: context)
+                
+                if !todo.children.isEmpty {
+                    for child in todo.children where !child.isCompleted {
+                        try child.markAsCompleted(context: context)
+                    }
+                }
+                
+                if let parent = todo.parent {
+                    let allSiblingsCompleted = parent.children.allSatisfy { $0.isCompleted }
+                    if allSiblingsCompleted && !parent.isCompleted {
+                        try parent.markAsCompleted(context: context)
+                    }
+                }
+            }
+            
+            print("🔄 완료 상태 토글: \(todo.title) → \(todo.isCompleted)")
+            
+            // ✅ MainViewModel 갱신
+            mainViewModel?.fetchTodos()
+            
+        } catch {
+            print("❌ 완료 상태 토글 실패: \(error.localizedDescription)")
+        }
     }
 }

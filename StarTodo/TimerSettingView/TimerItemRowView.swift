@@ -8,7 +8,7 @@ struct TimerItemRowView: View {
     let onTimeChange: (Int?) -> Void  // 🔁 시간 변경 시 호출되는 콜백
 
     // ⏱ 시간 선택 옵션: nil("없음") 포함, 5분~60분까지 5분 단위
-    private let timeOptions: [Int?] = [nil] + Array(stride(from: 5, through: 60, by: 5))
+    private let timeOptions: [Int?] = [nil] + DemoMode.focusMinuteOptions  // 시연 모드에서는 1분 추가
 
     var body: some View {
         VStack(alignment: .leading, spacing: 4) {

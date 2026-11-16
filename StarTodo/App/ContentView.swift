@@ -1,6 +1,6 @@
 //
 //  ContentView.swift
-//  JPS_3
+//  StarTodo
 //
 //  Created by ChoMinKyung on 3/12/25.
 //
@@ -39,7 +39,15 @@ struct ContentView: View {
     @State private var selectedTab: TabBarType = .main
     @ObservedObject private var mainCoordinator = MainCoordinator.shared
     
+    // ✅ ModelContext와 MainViewModel을 직접 관리
+    @Environment(\.modelContext) private var modelContext
+    @StateObject private var mainViewModel: MainViewModel
+    
     init() {
+        // ✅ MainViewModel 초기화 - init에서는 임시 context 사용
+        _mainViewModel = StateObject(wrappedValue: MainViewModel(context: defaultContext))
+        
+        // TabBar 스타일 설정
         let appearance = UITabBarAppearance()
         appearance.configureWithOpaqueBackground()
         appearance.backgroundColor = .white
@@ -53,15 +61,18 @@ struct ContentView: View {
             NavigationStack(path: $mainCoordinator.path) {
                 MainView()
                     .environmentObject(mainCoordinator)
+                    .environmentObject(mainViewModel)
                     .navigationDestination(for: MainScreen.self) { screen in
                         switch screen {
                         case .focusSetting:
                             FocusSettingView()
                                 .environmentObject(mainCoordinator)
+                                .environmentObject(mainViewModel)
                             
                         case .timerSetting(let selectedIDs, let allTodos):
                             TimerSettingView(selectedIDs: selectedIDs, allTodos: allTodos)
                                 .environmentObject(mainCoordinator)
+                                .environmentObject(mainViewModel)
                             
                         case .focusMode, .report:
                             // 🚫 fullScreenCover에서 처리하므로 여긴 무시
@@ -89,22 +100,25 @@ struct ContentView: View {
             switch screen {
             case .focusMode(let input):
                 FocusModeView(input: input)
-                    .focusLocked() // 탭바 숨기기 + 스와이프 금지
+                    .environment(\.modelContext, modelContext)
+                    .focusLocked()
                 
             case .report(let sessionID):
-                let vm = ReportViewModel(sessionID: sessionID)
-                ReportView(
-                    viewModel: vm,
-                    onComplete: {
-                        mainCoordinator.dismissFullScreen()
-                        mainCoordinator.popToRoot()
-                    }
-                )
-                .focusLocked()
-                
-            default:
-                EmptyView() // 안전 처리용
+                // ✅ ReportView는 내부에서 ViewModel을 로드하므로 sessionID만 전달
+                ReportView(sessionID: sessionID)
+                    .environmentObject(mainCoordinator)
+                    .environmentObject(mainViewModel)
+                    .environment(\.modelContext, modelContext)
+                    .focusLocked()
             }
+        }
+        // ✅ View가 나타날 때 실제 context로 업데이트
+        .onAppear {
+            #if DEBUG
+            // 시연 영상용: -seedDemoData 실행 인자가 있을 때만 더미데이터 주입
+            DemoDataSeeder.seedIfRequested(into: modelContext)
+            #endif
+            mainViewModel.updateContext(modelContext)
         }
     }
 }

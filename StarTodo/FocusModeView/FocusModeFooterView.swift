@@ -19,9 +19,15 @@ struct FocusModeFooterView: View {
                     .frame(height: 50)
             }
             
-            Text("예상 종료 시간  \(expectedEndTimeString)")
-                .foregroundColor(Color("Primary500"))
-                .typo(.textSMRegular)
+            HStack {
+                Text("예상 종료 시간")
+                    .foregroundColor(Color("Cool600"))
+                    .typo(.textSMRegular)
+                
+                Text("\(expectedEndTimeString)")
+                    .foregroundStyle(Color("Info400"))
+                    .typo(.textSMEmphasized)
+            }
         }
         .padding(.bottom, 20)
     }
@@ -45,5 +51,4 @@ struct FocusModeFooterView: View {
     }
     .frame(maxWidth: .infinity, maxHeight: .infinity)
     .background(Color("BgDark"))
-    .preferredColorScheme(.dark)
 }

@@ -149,15 +149,6 @@ enum PreviewData {
 // MARK: - ViewModel Factory
 enum PreviewViewModelFactory {
     
-    // MARK: - AddListViewModel
-//    static func makeAddListViewModel() -> AddListViewModel {
-//        let context = makePreviewContext()
-//        let vm = AddListViewModel(context: context)
-//        // 샘플 데이터로 초기화
-//        vm.parents = PreviewData.makeSampleTodos()
-//        return vm
-//    }
-    
     // MARK: - TimerSettingViewModel
     static func makeTimerSettingViewModel(
         selectedCount: Int = 3,
@@ -176,14 +167,19 @@ enum PreviewViewModelFactory {
     }
     
     // MARK: - FocusSettingViewModel
-//    static func makeFocusSettingViewModel() -> FocusSettingViewModel {
-//        let vm = FocusSettingViewModel()
-//        vm.todoEntities = PreviewData.makeSampleTodos()
-//        return vm
-//    }
+    @MainActor
+    static func makeFocusSettingViewModel(withHierarchy: Bool = false) -> FocusSettingViewModel {
+        let vm = FocusSettingViewModel()
+        let todos = withHierarchy
+            ? PreviewData.makeTodosWithHierarchy()
+            : PreviewData.makeSampleTodos()
+//        vm.loadFrom(todos)
+        return vm
+    }
     
     // MARK: - Helper
-    @MainActor private static func makePreviewContext() -> ModelContext {
+    @MainActor
+    static func makePreviewContext() -> ModelContext {
         let config = ModelConfiguration(isStoredInMemoryOnly: true)
         let container = try! ModelContainer(
             for: Todo.self,
